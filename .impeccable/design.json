@@ -1,0 +1,167 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-10-05T00:00:00Z",
+  "title": "Design System: malplan",
+  "extensions": {
+    "themes": [
+      { "id": "bus", "label": "버스 안내판", "default": true, "selector": ":root, [data-theme=\"bus\"]", "tokenPrefix": "bus-" },
+      { "id": "desk", "label": "탁상달력", "selector": "[data-theme=\"desk\"]", "tokenPrefix": "desk-" },
+      { "id": "standard", "label": "기본", "selector": "[data-theme=\"standard\"]", "tokenPrefix": "standard-" }
+    ],
+    "colorMeta": {
+      "bus-accent": { "role": "primary", "displayName": "Route Blue", "tonalRamp": ["oklch(15% 0.06 258)", "oklch(25% 0.10 258)", "oklch(35% 0.13 258)", "oklch(45% 0.15 258)", "oklch(55% 0.15 258)", "oklch(65% 0.12 258)", "oklch(80% 0.07 258)", "oklch(95% 0.02 258)"] },
+      "bus-plate-when": { "role": "secondary", "displayName": "Arrival Amber", "tonalRamp": ["oklch(15% 0.04 85)", "oklch(28% 0.07 85)", "oklch(40% 0.10 85)", "oklch(52% 0.13 85)", "oklch(65% 0.16 85)", "oklch(80% 0.17 85)", "oklch(88% 0.12 85)", "oklch(96% 0.04 85)"] },
+      "bus-plate-bg": { "role": "secondary", "displayName": "Route Band Navy" },
+      "bus-cat-1-trunk": { "role": "tertiary", "displayName": "간선 Trunk Blue" },
+      "bus-cat-2-branch": { "role": "tertiary", "displayName": "지선 Branch Green", "tonalRamp": ["oklch(15% 0.05 145)", "oklch(25% 0.08 145)", "oklch(35% 0.11 145)", "oklch(45% 0.13 145)", "oklch(58% 0.15 145)", "oklch(68% 0.13 145)", "oklch(82% 0.08 145)", "oklch(95% 0.03 145)"] },
+      "bus-cat-3-express": { "role": "tertiary", "displayName": "광역 Express Red", "tonalRamp": ["oklch(15% 0.06 30)", "oklch(25% 0.10 30)", "oklch(35% 0.14 30)", "oklch(45% 0.17 30)", "oklch(58% 0.19 30)", "oklch(68% 0.15 30)", "oklch(82% 0.08 30)", "oklch(95% 0.02 30)"] },
+      "bus-cat-4-circular": { "role": "tertiary", "displayName": "순환 Circular Yellow", "tonalRamp": ["oklch(15% 0.04 80)", "oklch(28% 0.07 80)", "oklch(40% 0.10 80)", "oklch(52% 0.13 80)", "oklch(64% 0.15 80)", "oklch(76% 0.16 80)", "oklch(87% 0.11 80)", "oklch(96% 0.04 80)"] },
+      "bus-cat-5-night": { "role": "tertiary", "displayName": "심야 Night Navy" },
+      "bus-cat-6-airport": { "role": "tertiary", "displayName": "공항 Airport Teal", "tonalRamp": ["oklch(15% 0.04 190)", "oklch(25% 0.06 190)", "oklch(35% 0.08 190)", "oklch(45% 0.10 190)", "oklch(58% 0.11 190)", "oklch(68% 0.10 190)", "oklch(82% 0.06 190)", "oklch(95% 0.02 190)"] },
+      "bus-cat-ink-4": { "role": "neutral", "displayName": "Circular Slot Ink" },
+      "bus-bg": { "role": "neutral", "displayName": "Bus Ground" },
+      "bus-ink": { "role": "neutral", "displayName": "Bus Ink" },
+      "bus-late": { "role": "neutral", "displayName": "Late Amber" },
+      "desk-accent-red": { "role": "primary", "displayName": "Calendar Red", "tonalRamp": ["oklch(15% 0.06 28)", "oklch(25% 0.10 28)", "oklch(35% 0.14 28)", "oklch(45% 0.17 28)", "oklch(53% 0.19 28)", "oklch(65% 0.15 28)", "oklch(80% 0.08 28)", "oklch(95% 0.02 28)"] },
+      "desk-bg": { "role": "neutral", "displayName": "Card Stock" },
+      "desk-surface": { "role": "neutral", "displayName": "Calendar Paper" },
+      "desk-ink": { "role": "neutral", "displayName": "Press Ink" },
+      "desk-blue": { "role": "secondary", "displayName": "Saturday Blue" },
+      "standard-accent": { "role": "primary", "displayName": "Interface Blue", "tonalRamp": ["oklch(15% 0.07 263)", "oklch(25% 0.12 263)", "oklch(35% 0.16 263)", "oklch(45% 0.19 263)", "oklch(55% 0.21 263)", "oklch(65% 0.16 263)", "oklch(80% 0.08 263)", "oklch(95% 0.02 263)"] },
+      "standard-plate-bg": { "role": "secondary", "displayName": "Plate Tint" },
+      "standard-bg": { "role": "neutral", "displayName": "Cool Grey Ground" },
+      "standard-ink": { "role": "neutral", "displayName": "Slate Ink" }
+    },
+    "typographyMeta": {
+      "display-bus": { "displayName": "Display (bus)", "purpose": "Today date numeral. Provisional family: installed Bahnschrift stands in for a pending self-hosted face." },
+      "display-desk": { "displayName": "Display (desk)", "purpose": "Today date numeral at 96px, font-stretch condensed. Provisional family: a self-hosted condensed numeral face is pending approval." },
+      "display-standard": { "displayName": "Display (standard)", "purpose": "Today date numeral." },
+      "plate-when": { "displayName": "Plate When", "purpose": "Countdown on the next-up plate; 32px on bus." },
+      "headline": { "displayName": "Headline", "purpose": "Pane titles and plate title; desk month title 22px." },
+      "title": { "displayName": "Title", "purpose": "Agenda row titles and the sentence input." },
+      "body": { "displayName": "Body", "purpose": "Base text." },
+      "label": { "displayName": "Label", "purpose": "Times, ranges, tabs, text buttons, theme options, input preview." },
+      "cell": { "displayName": "Cell", "purpose": "Week and month item lines, category tags (700), weekday headers; 11px for item times, holidays, +n." },
+      "numeral": { "displayName": "Numeral", "purpose": "All dates, times, counts; tabular figures. Segoe UI on standard." }
+    },
+    "shadows": [
+      { "name": "unfolded-day", "value": "0 8px 24px color-mix(in srgb, var(--ink) 16%, transparent)", "purpose": "Full item list unfolded over a crowded month cell on focus. The only lifted surface." },
+      { "name": "tab-band", "value": "inset 0 3px 0 var(--c)", "purpose": "Selected tab's colour as the month frame's top band; 4px on desk. Structural, not a lift." },
+      { "name": "desk-today-ring", "value": "inset 0 0 0 2px var(--red)", "purpose": "Desk today marker on week and month numerals." }
+    ],
+    "motion": [
+      { "name": "state-colour", "value": "background-color 160ms cubic-bezier(0.16, 1, 0.3, 1), color 160ms cubic-bezier(0.16, 1, 0.3, 1)", "purpose": "Hover/selection colour change on agenda rows, tabs, theme options and month cells; only under prefers-reduced-motion: no-preference." }
+    ],
+    "breakpoints": [
+      { "name": "stack", "value": "900px", "purpose": "Max-width: board becomes one column (Today, Week, Month); page scrolls; theme switch wraps." },
+      { "name": "docked", "value": "600px", "purpose": "Max-width: week becomes a stacked day list, month tabs drop below title, month cells show marks only." }
+    ],
+    "focus": { "value": "outline: 2px solid var(--focus); outline-offset: 2px", "purpose": "Global focus ring; inset (-2px) on the sentence input and month cells." }
+  },
+  "components": [
+    {
+      "name": "Sentence Input (bus)",
+      "kind": "input",
+      "refersTo": "quick-add-input",
+      "description": "Dominant natural-language input fused to its submit, shown on the bus route band.",
+      "html": "<div class=\"ds-band\"><form class=\"ds-quick-add\"><input class=\"ds-quick-input\" placeholder=\"예: 12월 28일까지 매주 수요일 오후 4시 회사 우편물 발송\"><button type=\"button\" class=\"ds-quick-submit\" aria-label=\"확인\"><svg width=\"18\" height=\"18\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><polyline points=\"9 10 4 15 9 20\"/><path d=\"M20 4v7a4 4 0 0 1-4 4H4\"/></svg></button></form></div>",
+      "css": ".ds-band { background: #18212d; padding: 14px 20px; } .ds-quick-add { display: grid; grid-template-columns: minmax(0,1fr) auto; max-width: 760px; } .ds-quick-input { height: 42px; padding: 0 14px; border: 1px solid transparent; border-right: 0; border-radius: 14px 0 0 14px; background: #ffffff; color: #18212d; font: 15px 'Malgun Gothic', system-ui, sans-serif; caret-color: #1b5fb5; } .ds-quick-input::placeholder { color: #6b7686; } .ds-quick-input:focus-visible { outline: 2px solid #1b5fb5; outline-offset: -2px; } .ds-quick-submit { display: grid; place-items: center; width: 46px; border: 1px solid #f2b705; border-radius: 0 14px 14px 0; background: #f2b705; color: #1d1600; cursor: pointer; } .ds-quick-submit:focus-visible { outline: 2px solid #ffffff; outline-offset: 2px; }"
+    },
+    {
+      "name": "Theme Switch",
+      "kind": "nav",
+      "refersTo": "theme-option-active",
+      "description": "Segmented radiogroup choosing the livery (standard theme shown).",
+      "html": "<div class=\"ds-theme-switch\" role=\"radiogroup\"><button class=\"ds-theme-opt\" role=\"radio\" aria-checked=\"false\">버스 안내판</button><button class=\"ds-theme-opt\" role=\"radio\" aria-checked=\"false\">탁상달력</button><button class=\"ds-theme-opt\" role=\"radio\" aria-checked=\"true\">기본</button></div>",
+      "css": ".ds-theme-switch { display: inline-flex; padding: 3px; border: 1px solid #e5e7eb; border-radius: 10px; background: #ffffff; font-family: 'Segoe UI', 'Malgun Gothic', sans-serif; } .ds-theme-opt { padding: 6px 12px; border: 0; border-radius: 7px; background: transparent; color: #4b5563; font: inherit; font-size: 13px; cursor: pointer; transition: background-color 160ms cubic-bezier(0.16,1,0.3,1), color 160ms cubic-bezier(0.16,1,0.3,1); } .ds-theme-opt:hover { color: #1f2937; } .ds-theme-opt[aria-checked=\"true\"] { background: #1f2937; color: #ffffff; } .ds-theme-opt:focus-visible { outline: 2px solid #2563eb; outline-offset: 2px; }"
+    },
+    {
+      "name": "Next-up Plate (bus)",
+      "kind": "custom",
+      "refersTo": "next-plate-bus",
+      "description": "Signature: the reversed arrival-board plate with the countdown.",
+      "html": "<div class=\"ds-plate\" role=\"status\"><span class=\"ds-plate-when\">40분 후</span><span class=\"ds-plate-title\"><span class=\"ds-tag\">회사</span><span>디자인 리뷰</span></span><span class=\"ds-plate-detail\">14시–15시</span></div>",
+      "css": ".ds-plate { display: grid; grid-template-columns: auto minmax(0,1fr); align-items: baseline; column-gap: 14px; padding: 14px 18px; border-radius: 10px; background: #18212d; color: #ffffff; font-family: 'Malgun Gothic', system-ui, sans-serif; } .ds-plate-when { grid-row: 1 / 3; align-self: center; color: #f2b705; font: 700 32px/1 Bahnschrift, 'Malgun Gothic', sans-serif; font-variant-numeric: tabular-nums; } .ds-plate-title { display: flex; align-items: center; gap: 8px; font-size: 16px; font-weight: 700; } .ds-plate-detail { color: rgba(255,255,255,0.72); font-size: 13px; } .ds-tag { padding: 1px 9px; border-radius: 999px; background: #1b5fb5; color: #ffffff; font-size: 12px; font-weight: 700; line-height: 20px; }"
+    },
+    {
+      "name": "Next-up Plate (desk)",
+      "kind": "custom",
+      "refersTo": "next-plate-desk",
+      "description": "Signature: the paper tear-off plate with a red top rule.",
+      "html": "<div class=\"ds-plate-desk\" role=\"status\"><span class=\"ds-pd-when\">40분 후</span><span class=\"ds-pd-title\"><span class=\"ds-pd-tag\">회사</span><span>디자인 리뷰</span></span><span class=\"ds-pd-detail\">14시–15시</span></div>",
+      "css": ".ds-plate-desk { display: grid; grid-template-columns: auto minmax(0,1fr); align-items: baseline; column-gap: 14px; padding: 12px 16px; border: 1px solid #ddd5c8; border-top: 3px solid #c8281f; border-radius: 0; background: #fbf8f2; color: #23201b; font-family: 'Malgun Gothic', system-ui, sans-serif; } .ds-pd-when { grid-row: 1 / 3; align-self: center; color: #c8281f; font: 700 28px/1 Bahnschrift, 'Malgun Gothic', sans-serif; font-variant-numeric: tabular-nums; } .ds-pd-title { display: flex; align-items: center; gap: 8px; font-size: 16px; font-weight: 700; } .ds-pd-detail { color: rgba(35,32,27,0.72); font-size: 13px; } .ds-pd-tag { padding: 0 6px; border: 1px solid #2e5aac; border-radius: 3px; color: #2e5aac; font-size: 12px; font-weight: 600; line-height: 20px; }"
+    },
+    {
+      "name": "Category Tags (three liveries)",
+      "kind": "chip",
+      "refersTo": "cat-tag-bus",
+      "description": "Bus filled route capsule, desk outlined stamp, standard soft tint; colour from the category slot.",
+      "html": "<div class=\"ds-tags\"><span class=\"ds-tag-bus\">회사</span><span class=\"ds-tag-bus ds-slot4\">약속</span><span class=\"ds-tag-desk\">회사</span><span class=\"ds-tag-std\">회사</span></div>",
+      "css": ".ds-tags { display: flex; gap: 8px; align-items: center; font-family: 'Malgun Gothic', system-ui, sans-serif; } .ds-tag-bus, .ds-tag-desk, .ds-tag-std { font-size: 12px; line-height: 20px; } .ds-tag-bus { padding: 1px 9px; border-radius: 999px; background: #1b5fb5; color: #ffffff; font-weight: 700; } .ds-tag-bus.ds-slot4 { background: #e9a800; color: #1d1600; } .ds-tag-desk { padding: 0 6px; border: 1px solid #2e5aac; border-radius: 3px; background: transparent; color: #2e5aac; font-weight: 600; } .ds-tag-std { padding: 1px 9px; border-radius: 6px; background: color-mix(in srgb, #2563eb 14%, #ffffff); color: color-mix(in srgb, #2563eb 80%, #1f2937); font-weight: 600; }"
+    },
+    {
+      "name": "Agenda Rows (state by row)",
+      "kind": "custom",
+      "refersTo": "agenda-row-late",
+      "description": "Today rows: late task (amber wash), past event (ink-3), done task (2px strikethrough); events have no checkbox.",
+      "html": "<ol class=\"ds-agenda\"><li class=\"ds-row ds-late\"><span class=\"ds-time\">9:30</span><span class=\"ds-title\">주간 보고서 제출</span><button class=\"ds-check\" aria-pressed=\"false\" aria-label=\"완료\"></button></li><li class=\"ds-row ds-past\"><span class=\"ds-time\">점심</span><span class=\"ds-title\">김철수와 점심</span><span></span></li><li class=\"ds-row ds-done\"><span class=\"ds-time\">미정</span><span class=\"ds-title\">택배 반품 보내기</span><button class=\"ds-check\" aria-pressed=\"true\" aria-label=\"완료 취소\"><svg width=\"14\" height=\"14\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"3\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><path d=\"M20 6 9 17l-5-5\"/></svg></button></li><li class=\"ds-now\"><span>지금</span></li></ol>",
+      "css": ".ds-agenda { list-style: none; margin: 0; padding: 0; font: 14px/1.5 'Malgun Gothic', system-ui, sans-serif; color: #18212d; background: #ffffff; } .ds-row { display: grid; grid-template-columns: 76px minmax(0,1fr) auto; align-items: center; gap: 10px; padding: 9px 4px; border-bottom: 1px solid #d5dbe3; transition: background-color 160ms cubic-bezier(0.16,1,0.3,1); } .ds-time { font: 600 15px Bahnschrift, 'Malgun Gothic', sans-serif; font-variant-numeric: tabular-nums; } .ds-title { font-size: 15px; } .ds-late { background: #fff3dc; } .ds-late .ds-time { color: #b86e00; font-weight: 700; } .ds-past { color: #6b7686; } .ds-done .ds-title { color: #6b7686; text-decoration: line-through; text-decoration-thickness: 2px; } .ds-check { display: grid; place-items: center; width: 22px; height: 22px; padding: 0; border: 1.5px solid #6b7686; border-radius: 6px; background: #ffffff; cursor: pointer; } .ds-check[aria-pressed=\"true\"] { border-color: #4a5566; background: #4a5566; color: #ffffff; } .ds-check:focus-visible { outline: 2px solid #1b5fb5; outline-offset: 2px; } .ds-now { display: flex; align-items: center; gap: 8px; color: #d33a2a; font-size: 11px; font-weight: 700; } .ds-now::after { content: ''; flex: 1; height: 2px; background: #d33a2a; }"
+    },
+    {
+      "name": "Month Tabs + Tab Frame",
+      "kind": "nav",
+      "refersTo": "tab",
+      "description": "Signature: selected tab fills with its category colour and bands the month frame (bus capsules shown).",
+      "html": "<section class=\"ds-frame\"><div class=\"ds-tabs\" role=\"tablist\"><button class=\"ds-tab\" role=\"tab\" aria-selected=\"false\">전체</button><button class=\"ds-tab ds-on\" role=\"tab\" aria-selected=\"true\">학교</button><button class=\"ds-tab\" role=\"tab\" aria-selected=\"false\">회사</button></div></section>",
+      "css": ".ds-frame { padding: 14px 16px; border: 1px solid color-mix(in srgb, #23803a 55%, #d5dbe3); border-radius: 14px; background: #ffffff; box-shadow: inset 0 3px 0 #23803a; font-family: 'Malgun Gothic', system-ui, sans-serif; } .ds-tabs { display: flex; gap: 4px; } .ds-tab { height: 28px; padding: 0 12px; border: 1px solid #d5dbe3; border-radius: 999px; background: #ffffff; color: #4a5566; font: inherit; font-size: 13px; cursor: pointer; transition: background-color 160ms cubic-bezier(0.16,1,0.3,1), color 160ms cubic-bezier(0.16,1,0.3,1); } .ds-tab:hover { background: #f3f5f8; color: #18212d; } .ds-tab.ds-on { border-color: #23803a; background: #23803a; color: #ffffff; font-weight: 700; } .ds-tab:focus-visible { outline: 2px solid #1b5fb5; outline-offset: 2px; }"
+    },
+    {
+      "name": "Desk Month Cell",
+      "kind": "card",
+      "refersTo": "display-desk",
+      "description": "Desk calendar cell: big condensed numeral, red Sunday, today ring, item marks (square = task, dot = event).",
+      "html": "<div class=\"ds-cells\"><div class=\"ds-cell\"><span class=\"ds-day ds-red\">4</span></div><div class=\"ds-cell\"><span class=\"ds-day ds-today\">5</span><ul class=\"ds-items\"><li><svg width=\"12\" height=\"12\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"#2e5aac\" stroke-width=\"2.5\"><rect x=\"3\" y=\"3\" width=\"18\" height=\"18\" rx=\"2\"/></svg>치과 예약 전화</li><li><span class=\"ds-dot\"></span>주간 회의</li></ul></div></div>",
+      "css": ".ds-cells { display: grid; grid-template-columns: repeat(2, 140px); background: #fbf8f2; color: #23201b; font-family: 'Malgun Gothic', system-ui, sans-serif; } .ds-cell { min-height: 84px; padding: 5px 6px; border-right: 1px solid #ddd5c8; border-bottom: 1px solid #ddd5c8; cursor: pointer; transition: background-color 160ms cubic-bezier(0.16,1,0.3,1); } .ds-cell:hover { background: #f2ede3; } .ds-cell:focus-visible { outline: 2px solid #2e5aac; outline-offset: -2px; } .ds-day { font: 700 32px/1 Bahnschrift, 'Malgun Gothic', sans-serif; font-stretch: condensed; letter-spacing: -0.03em; font-variant-numeric: tabular-nums; } .ds-red { color: #c8281f; } .ds-today { padding: 0 4px; color: #c8281f; box-shadow: inset 0 0 0 2px #c8281f; border-radius: 3px; } .ds-items { list-style: none; margin: 2px 0 0; padding: 0; display: grid; gap: 2px; font-size: 11px; line-height: 1.35; } .ds-items li { display: flex; align-items: center; gap: 5px; } .ds-dot { width: 7px; height: 7px; border-radius: 50%; background: #3f7d4e; }"
+    }
+  ],
+  "narrative": {
+    "northStar": "One Board, Three Liveries",
+    "overview": "malplan is a single planning board that the user can repaint. The shell is fixed: a top bar dominated by the sentence input, Today as the wide lead column, the week above the month on the right. Each theme is a livery painted on that same chassis, and a livery may change only four things: type, palette, density, and one signature move. Bus (버스 안내판, the default) is a Seoul bus arrival board: navy route band, route-family category colours, capsule tags, one reversed arrival plate. Desk (탁상달력) is a bank desk calendar: warm paper ground, huge condensed numerals, red Sundays and holidays, index tabs hanging off the month frame. Standard (기본) is a neutral calendar: cool greys, one blue accent, soft tinted tags.\n\nThe board is built for a glance from an always-on window. Density is medium: rows sit at 8–10px vertical padding, panes are separated by a 14px gutter, and nothing decorates for its own sake. Information hierarchy comes from the numerals, the plate and row state, not from ornament. Every theme keeps the panes flat on a tinted ground; the only lifted surface is the unfolded crowded-day list.",
+    "keyCharacteristics": [
+      "One shell, three liveries switched by `data-theme` on the root element; the choice is saved to local storage and defaults to bus.",
+      "Today leads; the next-up plate is the single loudest object on screen.",
+      "Category colour arrives only through palette slots 0–6, never as ad-hoc hex.",
+      "Kind is shown by the mark (task = square checkbox, event = dot), state by the row (late, past, done).",
+      "Dates and times are set in tabular numerals; desk scales them into the dominant visual."
+    ],
+    "rules": [
+      { "name": "The Route Colour Rule", "body": "Category colour comes only from slots `--cat-0`…`--cat-6`, applied through a slot class that sets the local colour and its ink. Never write a category hex into a component. The slot index is stable across themes, so a category keeps its meaning when the livery changes.", "section": "colors" },
+      { "name": "The Calendar Tone Rule", "body": "Red marks Sundays, public holidays and the now line; blue marks Saturdays. On bus and standard, the red tone is used only for these calendar meanings (the red category slot is a separate token). Desk is the exception: its accent is the same Calendar Red, so its today ring and plate top rule are red as well. No theme uses red for errors.", "section": "colors" },
+      { "name": "The Same Roles Rule", "body": "A new theme must fill every role token the three existing themes define. A theme that needs a new role has to add it to all three.", "section": "colors" },
+      { "name": "The Tabular Numeral Rule", "body": "Every date, time, count and countdown uses the numeral face with tabular figures, so columns of times line up and countdowns don't jitter.", "section": "typography" },
+      { "name": "The Numeral Leads Rule", "body": "On desk the numerals are the visual: they are scaled and condensed, and month cells show two items instead of three so the numbers keep the room.", "section": "typography" },
+      { "name": "The Today Leads Rule", "body": "Today is always first, in the wide column on desktop and on top when stacked. Week and month support it; they never displace it.", "section": "layout" },
+      { "name": "The Same Shell Rule", "body": "Themes don't move panes, change the grid, or add regions. Only type, palette, density (row padding, cell capacity) and one signature move differ.", "section": "layout" },
+      { "name": "The Flat Board Rule", "body": "Panes, plates, tags and rows never cast shadows. If something needs to stand out, use tone, the plate, or the tab band.", "section": "elevation" },
+      { "name": "The Mark Says Kind Rule", "body": "In week and month cells a task is a 12px square checkbox outline (checked when done) and an event is a 7px dot, both in the category colour. The mark is the only kind signal in cells; no text labels.", "section": "components" },
+      { "name": "The Row Carries State Rule", "body": "State is shown by row style, never by an extra badge: a **late** task gets the amber wash and a bold amber time; a **past** event drops to ink-3; a **done** item gets a 2px strikethrough in ink-3 with its tag at 45%. In week and month cells, done is a strikethrough in ink-3.", "section": "components" },
+      { "name": "The Frame Follows Tab Rule", "body": "The selected tab fills with its category colour, and the whole month pane takes that colour as an inset top band with its border mixed 55% toward it. The default 전체 tab uses slot 0 (neutral ink). A tab's colour is the colour of its first category.", "section": "components" }
+    ],
+    "dos": [
+      "**Do** bind every colour to a role token on the active theme; a new component must render correctly in bus, desk and standard without per-theme code unless it is that theme's signature move.",
+      "**Do** colour categories only through slots 0–6, and keep bus slots mapped to Seoul route families (간선 blue, 지선 green, 광역 red, 순환 yellow, 심야 navy, 공항 teal).",
+      "**Do** set every date, time and count in the numeral face with tabular figures.",
+      "**Do** show task vs event by the mark (square checkbox vs dot) and late/past/done by row style.",
+      "**Do** keep red for Sundays, holidays and the now line (plus the accent on desk), and blue for Saturdays.",
+      "**Do** keep Today first in both the desktop layout and the ≤900px stack."
+    ],
+    "donts": [
+      "**Don't** let a theme change layout, pane order or grid structure; themes change type, palette, density and one signature move only.",
+      "**Don't** add a second plate or reversed block; the next-up plate is the only one.",
+      "**Don't** add shadows to panes, plates, tags or rows; the unfolded crowded-day list is the only lifted surface.",
+      "**Don't** add status badges or labels for late/done; the row style carries state.",
+      "**Don't** fill desk tags or round them into capsules; desk tags are outlined at 3px. Capsules belong to bus.",
+      "**Don't** use red for errors or general emphasis. It means a Sunday, a holiday or now, plus the accent on desk only."
+    ]
+  }
+}

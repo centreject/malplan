@@ -25,3 +25,8 @@ dist-ssr
 
 # Claude Code local settings
 .claude/settings.local.json
+
+# impeccable scratch (screenshots, server logs)
+.impeccable/review/
+.impeccable/*.log
+.impeccable/config.local.json

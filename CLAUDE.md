@@ -17,7 +17,8 @@ Natural-language schedule/todo app. Spec: `SPEC.md` (Korean). Stack: Tauri 2 + R
 - Validate every external boundary (LLM JSON, sync files, Drive API) with valibot schemas.
 
 ## Verification before completion
-- Never claim done/working without running `npm run check` (oxlint + anti-slop, tsc, vitest) and reading the output.
+- Never claim done/working without running `npm run check` (oxlint + anti-slop, tsc, vitest) and `npm run build`, and reading the output.
+- Never write files with PowerShell `Set-Content`/`Out-File` (Windows PowerShell 5.1 adds a BOM that breaks JSON loaders). Use the editor tools.
 - Rust changes: also `cargo clippy --manifest-path src-tauri/Cargo.toml -- -D warnings`.
 - Report failures as failures, with the output.
 
