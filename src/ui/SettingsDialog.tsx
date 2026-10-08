@@ -1,5 +1,5 @@
 import { X } from "lucide-react";
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, type ReactNode } from "react";
 import { THEMES, type ThemeId } from "./themes";
 
 type SettingsDialogProps = {
@@ -7,10 +7,12 @@ type SettingsDialogProps = {
   theme: ThemeId;
   onTheme: (theme: ThemeId) => void;
   onClose: () => void;
+  /** Further sections, e.g. category settings. */
+  children?: ReactNode;
 };
 
 /** Settings window. Only the design choice for now; more sections join later. */
-export function SettingsDialog({ open, theme, onTheme, onClose }: SettingsDialogProps) {
+export function SettingsDialog({ open, theme, onTheme, onClose, children }: SettingsDialogProps) {
   const dialog = useRef<HTMLDialogElement>(null);
 
   useEffect(() => {
@@ -53,6 +55,7 @@ export function SettingsDialog({ open, theme, onTheme, onClose }: SettingsDialog
           ))}
         </div>
       </fieldset>
+      {children}
     </dialog>
   );
 }

@@ -874,7 +874,7 @@ ul {
   font-weight: 700;
 }
 
-.tab-add {
+.tab-icon {
   display: grid;
   place-items: center;
   width: 28px;
@@ -1270,3 +1270,172 @@ ul {
     transition: background-color 160ms cubic-bezier(0.16, 1, 0.3, 1), color 160ms cubic-bezier(0.16, 1, 0.3, 1);
   }
 }
+
+/* ───────── Tab editor, 전체 filter, category settings ───────── */
+
+.tab[draggable="true"] {
+  cursor: grab;
+}
+
+.tab-filter {
+  anchor-name: --all-filter;
+}
+
+.tab-filter.is-filtering {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+/* Anchored under the filter button; the browser centres it if anchors are unsupported. */
+.all-filter {
+  position-anchor: --all-filter;
+  inset: auto;
+  top: anchor(bottom);
+  left: anchor(left);
+  position-try-fallbacks: flip-inline;
+  margin: 6px 0 0;
+  min-width: 180px;
+  padding: 8px 12px;
+  border: 1px solid var(--line);
+  border-radius: calc(var(--radius-pane) - 4px);
+  background: var(--surface);
+  color: var(--ink);
+  box-shadow: 0 8px 24px color-mix(in srgb, var(--ink) 16%, transparent);
+}
+
+.cat-checklist {
+  display: grid;
+  gap: 2px;
+}
+
+.cat-check {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 30px;
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.cat-check input {
+  width: 16px;
+  height: 16px;
+  margin: 0;
+  accent-color: var(--accent);
+}
+
+.cat-check.is-all {
+  border-bottom: 1px solid var(--line);
+  font-weight: 700;
+}
+
+.tab-editor-name {
+  display: grid;
+  gap: 6px;
+  color: var(--ink-2);
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.tab-editor-name input,
+.cat-row-name {
+  height: 34px;
+  min-width: 0;
+  padding: 0 10px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--surface);
+  color: var(--ink);
+  font-size: 14px;
+  font-weight: 400;
+}
+
+.tab-editor-hint {
+  margin-top: 8px;
+  color: var(--late);
+  font-size: 13px;
+}
+
+.tab-editor-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px;
+  padding: 12px 20px 16px;
+  border-top: 1px solid var(--line);
+}
+
+.tab-editor-delete {
+  display: flex;
+  gap: 4px;
+}
+
+.tab-editor-cancel {
+  margin-left: auto;
+}
+
+.tab-editor-save {
+  background: var(--accent);
+  color: var(--accent-ink);
+  font-weight: 700;
+}
+
+.tab-editor-save:hover {
+  background: color-mix(in srgb, var(--accent) 85%, var(--ink));
+  color: var(--accent-ink);
+}
+
+.cat-rows {
+  display: grid;
+  gap: 6px;
+}
+
+.cat-row {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) 30px;
+  align-items: center;
+  gap: 10px;
+  min-height: 34px;
+}
+
+.cat-slots {
+  display: flex;
+  gap: 4px;
+}
+
+.cat-slot {
+  appearance: none;
+  width: 20px;
+  height: 20px;
+  margin: 0;
+  border-radius: 50%;
+  background: var(--c);
+  cursor: pointer;
+}
+
+.cat-slot:checked {
+  box-shadow: inset 0 0 0 2px var(--c), inset 0 0 0 5px var(--surface);
+}
+
+.cat-row-fixed {
+  grid-column: 2 / -1;
+  padding: 0 11px;
+  color: var(--ink-2);
+}
+
+.cat-add {
+  display: flex;
+  gap: 4px;
+  margin-top: 8px;
+}
+
+.cat-warning {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 8px;
+  color: var(--late);
+  font-size: 13px;
+}
+
+/* ───────── end: tab editor, 전체 filter, category settings ───────── */
