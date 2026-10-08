@@ -13,6 +13,8 @@ import { ALL_TAB_ID, addTab, deleteTab, moveTab, updateTab, type CalendarTab } f
 import { CategorySettings } from "./ui/CategorySettings";
 import { MonthPane } from "./ui/MonthPane";
 import { SAMPLE_CATEGORIES, sampleItems } from "./ui/sampleData";
+import { NotificationSettings } from "./ui/NotificationSettings";
+import { loadNotificationSettings, saveNotificationSettings, useReminders } from "./ui/notifications";
 import { StorageSettings } from "./ui/StorageSettings";
 import { TabEditor } from "./ui/TabEditor";
 import { useBoard } from "./ui/useBoard";
@@ -59,6 +61,10 @@ export default function App() {
   const setItems = (change: (current: Item[]) => Item[]) => persisted.update((b) => ({ ...b, items: change(b.items) }));
   const setCategories = (next: Category[]) => persisted.update((b) => ({ ...b, categories: next }));
   const setTabs = (next: CalendarTab[]) => persisted.update((b) => ({ ...b, tabs: next }));
+  const [notifications, setNotifications] = useState(loadNotificationSettings);
+
+  useReminders(items, now, notifications);
+
   const [selected, setSelected] = useState<IsoDate>(now.today);
   const [weekAnchor, setWeekAnchor] = useState<IsoDate>(now.today);
   const [monthCursor, setMonthCursor] = useState<MonthCursor>(() => partsOf(now.today));
@@ -250,6 +256,13 @@ export default function App() {
         onTheme={setTheme}
         onClose={() => setSettingsOpen(false)}
       >
+        <NotificationSettings
+          settings={notifications}
+          onChange={(next) => {
+            setNotifications(next);
+            saveNotificationSettings(next);
+          }}
+        />
         <StorageSettings dir={persisted.dir} errors={persisted.errors} onSwitch={persisted.switchFolder} />
         <CategorySettings
           categories={categories}
