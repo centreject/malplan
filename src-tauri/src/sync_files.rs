@@ -98,3 +98,9 @@ pub fn sync_append(dir: String, name: String, line: String) -> Result<(), String
     file.write_all(format!("{prefix}{line}").as_bytes()).map_err(text_error)?;
     file.sync_data().map_err(text_error)
 }
+
+/// Save an export (backup JSON, .ics) to the path the user picked in the save dialog.
+#[tauri::command]
+pub fn save_text_file(path: String, content: String) -> Result<(), String> {
+    fs::write(path, content).map_err(text_error)
+}

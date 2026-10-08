@@ -52,6 +52,7 @@ pub fn run() {
             sync_files::sync_read,
             sync_files::sync_write,
             sync_files::sync_append,
+            sync_files::save_text_file,
         ])
         .setup(|app| {
             let open = MenuItem::with_id(app, "open", "열기", true, None::<&str>)?;

@@ -13,6 +13,7 @@ import { ALL_TAB_ID, addTab, deleteTab, moveTab, updateTab, type CalendarTab } f
 import { CategorySettings } from "./ui/CategorySettings";
 import { MonthPane } from "./ui/MonthPane";
 import { SAMPLE_CATEGORIES, sampleItems } from "./ui/sampleData";
+import { BackupSettings } from "./ui/BackupSettings";
 import { DisplaySettings, loadDisplay, saveDisplay } from "./ui/DisplaySettings";
 import { NotificationSettings } from "./ui/NotificationSettings";
 import { loadNotificationSettings, saveNotificationSettings, useReminders } from "./ui/notifications";
@@ -311,6 +312,7 @@ export default function App() {
           }}
         />
         <StorageSettings dir={persisted.dir} errors={persisted.errors} onSwitch={persisted.switchFolder} />
+        <BackupSettings board={persisted.board} today={now.today} />
         <CategorySettings
           categories={categories}
           tabs={tabs}
