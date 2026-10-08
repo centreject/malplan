@@ -1840,3 +1840,73 @@ ul {
     padding-top: 0;
   }
 }
+
+/* ───────── Settings: 저장 위치 (StorageSettings.tsx) ───────── */
+
+.storage-settings {
+  display: grid;
+  gap: 8px;
+  border-top: 1px solid var(--line);
+  padding-top: 16px;
+}
+
+.storage-settings:disabled {
+  color: var(--ink-3);
+}
+
+.settings-note {
+  margin: 0;
+  color: var(--ink-3);
+  font-size: 13px;
+}
+
+.storage-path {
+  margin: 0;
+  padding: 8px 10px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: var(--surface-2);
+  font-size: 13px;
+  overflow-wrap: anywhere;
+}
+
+.storage-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.text-button.bordered {
+  display: inline-flex;
+  gap: 6px;
+  align-items: center;
+  border: 1px solid var(--line);
+}
+
+.storage-choice {
+  display: grid;
+  gap: 8px;
+  padding: 10px 12px;
+  border: 1px solid var(--late);
+  border-radius: 6px;
+  background: var(--late-bg);
+}
+
+.storage-choice p {
+  margin: 0;
+  font-size: 13px;
+}
+
+.storage-errors summary {
+  color: var(--late);
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.storage-errors ul {
+  margin: 6px 0 0;
+  color: var(--ink-2);
+  font-size: 12px;
+}
+
+/* ───────── end Settings: 저장 위치 ───────── */

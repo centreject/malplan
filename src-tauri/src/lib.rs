@@ -1,14 +1,10 @@
+mod sync_files;
+
 use std::sync::atomic::{AtomicBool, Ordering};
 
 use tauri::menu::{Menu, MenuItem};
 use tauri::tray::{MouseButton, MouseButtonState, TrayIconBuilder, TrayIconEvent};
 use tauri::{AppHandle, Manager, WindowEvent};
-
-// Learn more about Tauri commands at https://tauri.app/develop/calling-rust/
-#[tauri::command]
-fn greet(name: &str) -> String {
-    format!("Hello, {}! You've been greeted from Rust!", name)
-}
 
 /// Whether the window close button hides to the tray. The frontend owns the
 /// persisted setting and pushes it here on startup and on change.
@@ -31,6 +27,7 @@ fn show_main(app: &AppHandle) {
 pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_opener::init())
+        .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_autostart::init(
             tauri_plugin_autostart::MacosLauncher::LaunchAgent,
             None,
@@ -47,7 +44,14 @@ pub fn run() {
                 .build(),
         )
         .manage(CloseToTray(AtomicBool::new(true)))
-        .invoke_handler(tauri::generate_handler![greet, set_close_to_tray])
+        .invoke_handler(tauri::generate_handler![
+            set_close_to_tray,
+            sync_files::sync_default_dir,
+            sync_files::sync_list,
+            sync_files::sync_read,
+            sync_files::sync_write,
+            sync_files::sync_append,
+        ])
         .setup(|app| {
             let open = MenuItem::with_id(app, "open", "열기", true, None::<&str>)?;
             let quit = MenuItem::with_id(app, "quit", "종료", true, None::<&str>)?;

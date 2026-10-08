@@ -1,18 +1,19 @@
 import { useEffect, useMemo, useState } from "react";
 import { cardFromItem, cardFromParse, commitCards, splitInput, type Draft } from "./domain/card";
 import { addDays, partsOf, type IsoDate, type Weekday } from "./domain/date";
-import type { Item } from "./domain/item";
+import type { Category, Item } from "./domain/item";
 import { holidaysForYears } from "./domain/holidays";
 import { overdueTasks, weekDates } from "./domain/schedule";
 import { parseKorean } from "./parse/parseKorean";
 import { ConfirmDialog } from "./ui/ConfirmDialog";
 import { addCategory, deleteCategory, recolorCategory, renameCategory } from "./domain/categories";
 import { ALL_TAB_ID, addTab, deleteTab, moveTab, updateTab, type CalendarTab } from "./domain/tabs";
-import { loadCategories, loadTabs, saveCategories, saveTabs } from "./ui/boardStorage";
 import { CategorySettings } from "./ui/CategorySettings";
 import { MonthPane } from "./ui/MonthPane";
 import { SAMPLE_CATEGORIES, sampleItems } from "./ui/sampleData";
+import { StorageSettings } from "./ui/StorageSettings";
 import { TabEditor } from "./ui/TabEditor";
+import { useBoard } from "./ui/useBoard";
 import { loadTheme, saveTheme, type ThemeId } from "./ui/themes";
 import { SettingsDialog } from "./ui/SettingsDialog";
 import { TodayPane } from "./ui/TodayPane";
@@ -23,11 +24,22 @@ import "./styles.css";
 
 const WEEK_START: Weekday = 0;
 
-const INITIAL_TABS: CalendarTab[] = [
-  { id: ALL_TAB_ID, name: "전체", categoryIds: undefined },
-  { id: "school", name: "학교", categoryIds: ["school", "contest"] },
-  { id: "work", name: "회사", categoryIds: ["work"] },
-];
+const ALL_TAB: CalendarTab = { id: ALL_TAB_ID, name: "전체", categoryIds: undefined };
+
+/** First run: default categories. The dev build also gets synthetic items and example tabs. */
+function firstBoard(today: IsoDate) {
+  return import.meta.env.DEV
+    ? {
+        items: sampleItems(today),
+        categories: SAMPLE_CATEGORIES,
+        tabs: [
+          ALL_TAB,
+          { id: "school", name: "학교", categoryIds: ["school", "contest"] },
+          { id: "work", name: "회사", categoryIds: ["work"] },
+        ],
+      }
+    : { items: [], categories: SAMPLE_CATEGORIES, tabs: [ALL_TAB] };
+}
 
 type MonthCursor = { year: number; month: number };
 
@@ -40,14 +52,16 @@ function shiftMonth(cursor: MonthCursor, delta: number): MonthCursor {
 export default function App() {
   const now = useNow();
   const [theme, setTheme] = useState<ThemeId>(loadTheme);
-  const [items, setItems] = useState<Item[]>(() => sampleItems(now.today));
+  const persisted = useBoard(() => firstBoard(now.today));
+  const { items, categories, tabs } = persisted.board;
+  const setItems = (change: (current: Item[]) => Item[]) => persisted.update((b) => ({ ...b, items: change(b.items) }));
+  const setCategories = (next: Category[]) => persisted.update((b) => ({ ...b, categories: next }));
+  const setTabs = (next: CalendarTab[]) => persisted.update((b) => ({ ...b, tabs: next }));
   const [selected, setSelected] = useState<IsoDate>(now.today);
   const [weekAnchor, setWeekAnchor] = useState<IsoDate>(now.today);
   const [monthCursor, setMonthCursor] = useState<MonthCursor>(() => partsOf(now.today));
   const [activeTab, setActiveTab] = useState(ALL_TAB_ID);
   const [settingsOpen, setSettingsOpen] = useState(false);
-  const [categories, setCategories] = useState(() => loadCategories(SAMPLE_CATEGORIES));
-  const [tabs, setTabs] = useState(() => loadTabs(INITIAL_TABS));
   const [allFilter, setAllFilter] = useState<string[]>();
   /** Tab being edited: an id, "new", or undefined when the editor is closed. */
   const [editing, setEditing] = useState<string>();
@@ -70,7 +84,7 @@ export default function App() {
   const saveDrafts = (drafts: Draft[]) => {
     const result = commitCards(drafts, items, categories, () => crypto.randomUUID());
 
-    setItems(result.items);
+    setItems(() => result.items);
     setCategories(result.categories);
 
     if (confirm?.editing === false) {
@@ -89,10 +103,6 @@ export default function App() {
     document.documentElement.dataset["theme"] = theme;
     saveTheme(theme);
   }, [theme]);
-
-  useEffect(() => saveCategories(categories), [categories]);
-
-  useEffect(() => saveTabs(tabs), [tabs]);
 
   const tab = tabs.find((t) => t.id === activeTab);
   const shownIds = tab?.categoryIds ?? allFilter;
@@ -113,7 +123,7 @@ export default function App() {
 
     setCategories(result.categories);
     setTabs(result.tabs);
-    setItems(result.items);
+    setItems(() => result.items);
   };
 
   const todayMonth = partsOf(now.today);
@@ -219,6 +229,7 @@ export default function App() {
         onTheme={setTheme}
         onClose={() => setSettingsOpen(false)}
       >
+        <StorageSettings dir={persisted.dir} errors={persisted.errors} onSwitch={persisted.switchFolder} />
         <CategorySettings
           categories={categories}
           tabs={tabs}
