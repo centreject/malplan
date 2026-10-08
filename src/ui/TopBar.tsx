@@ -1,17 +1,15 @@
-import { CornerDownLeft } from "lucide-react";
+import { CornerDownLeft, Settings } from "lucide-react";
 import { useState } from "react";
 import type { IsoDate } from "../domain/date";
 import { parseKorean } from "../parse/parseKorean";
 import { parseSummary } from "./format";
-import { THEMES, type ThemeId } from "./themes";
 
 type TopBarProps = {
   today: IsoDate;
-  theme: ThemeId;
-  onTheme: (theme: ThemeId) => void;
+  onSettings: () => void;
 };
 
-export function TopBar({ today, theme, onTheme }: TopBarProps) {
+export function TopBar({ today, onSettings }: TopBarProps) {
   const [text, setText] = useState("");
   const summary = text.trim() === "" ? "" : parseSummary(parseKorean(text, today));
 
@@ -39,20 +37,9 @@ export function TopBar({ today, theme, onTheme }: TopBarProps) {
         </output>
       </form>
 
-      <div className="theme-switch" role="radiogroup" aria-label="테마">
-        {THEMES.map((option) => (
-          <button
-            key={option.id}
-            type="button"
-            role="radio"
-            aria-checked={option.id === theme}
-            className="theme-option"
-            onClick={() => onTheme(option.id)}
-          >
-            {option.name}
-          </button>
-        ))}
-      </div>
+      <button type="button" className="icon-button settings-button" onClick={onSettings} aria-label="설정">
+        <Settings size={20} strokeWidth={2} />
+      </button>
     </header>
   );
 }

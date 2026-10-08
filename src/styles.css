@@ -259,27 +259,114 @@ ul {
   font-size: 13px;
 }
 
-.theme-switch {
-  display: flex;
-  padding: 3px;
+.settings-button {
+  width: 42px;
+  height: 42px;
+}
+
+/* ───────── Settings dialog ───────── */
+
+.settings {
+  width: min(560px, calc(100vw - 32px));
+  padding: 0;
   border: 1px solid var(--line);
   border-radius: var(--radius-pane);
   background: var(--surface);
+  color: var(--ink);
+  box-shadow: 0 16px 48px color-mix(in srgb, var(--ink) 22%, transparent);
 }
 
-.theme-option {
-  padding: 6px 12px;
+.settings::backdrop {
+  background: color-mix(in srgb, var(--ink) 35%, transparent);
+}
+
+.settings-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 16px 8px 20px;
+}
+
+.settings-head h2 {
+  font-size: 18px;
+}
+
+.settings-section {
+  margin: 0;
+  padding: 8px 20px 20px;
   border: 0;
-  border-radius: calc(var(--radius-pane) - 3px);
-  background: transparent;
+}
+
+.settings-section legend {
+  margin-bottom: 10px;
+  padding: 0;
   color: var(--ink-2);
   font-size: 13px;
-  white-space: nowrap;
+  font-weight: 700;
 }
 
-.theme-option[aria-checked="true"] {
-  background: var(--ink);
-  color: var(--surface);
+.theme-cards {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.theme-card {
+  display: grid;
+  align-content: start;
+  gap: 6px;
+  padding: 12px;
+  border: 1px solid var(--line);
+  border-radius: calc(var(--radius-pane) - 4px);
+  cursor: pointer;
+}
+
+.theme-card:hover {
+  background: var(--surface-2);
+}
+
+.theme-card:has(input:checked) {
+  border-color: var(--accent);
+  box-shadow: inset 0 0 0 1px var(--accent);
+}
+
+.theme-card:has(input:focus-visible) {
+  outline: 2px solid var(--focus);
+  outline-offset: 2px;
+}
+
+.theme-card input {
+  position: absolute;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.theme-swatch {
+  display: flex;
+  height: 28px;
+  overflow: hidden;
+  border: 1px solid var(--line);
+  border-radius: 4px;
+}
+
+.theme-swatch span {
+  flex: 1;
+}
+
+.theme-name {
+  font-weight: 700;
+}
+
+.theme-desc {
+  color: var(--ink-3);
+  font-size: 12px;
+  line-height: 1.4;
+}
+
+@media (max-width: 600px) {
+  .theme-cards {
+    grid-template-columns: minmax(0, 1fr);
+  }
 }
 
 .board {
@@ -942,18 +1029,13 @@ ul {
   color: color-mix(in srgb, var(--plate-ink) 75%, transparent);
 }
 
-[data-theme="bus"] .theme-switch {
-  border-color: color-mix(in srgb, var(--plate-ink) 22%, transparent);
-  background: transparent;
+[data-theme="bus"] .settings-button {
+  color: color-mix(in srgb, var(--plate-ink) 85%, transparent);
 }
 
-[data-theme="bus"] .theme-option {
-  color: color-mix(in srgb, var(--plate-ink) 78%, transparent);
-}
-
-[data-theme="bus"] .theme-option[aria-checked="true"] {
-  background: var(--plate-when);
-  color: var(--cat-ink-4);
+[data-theme="bus"] .settings-button:hover {
+  background: color-mix(in srgb, var(--plate-ink) 12%, transparent);
+  color: var(--plate-ink);
 }
 
 [data-theme="bus"] .next-plate {
@@ -1071,15 +1153,6 @@ ul {
     min-height: 100%;
   }
 
-  .top-bar {
-    grid-template-columns: auto minmax(0, 1fr);
-  }
-
-  .theme-switch {
-    grid-column: 1 / -1;
-    justify-self: start;
-  }
-
   .board {
     grid-template-columns: minmax(0, 1fr);
   }
@@ -1101,13 +1174,19 @@ ul {
    the month title so its arrows stay on the title row. */
 @media (max-width: 600px) {
   .top-bar {
-    grid-template-columns: minmax(0, 1fr);
-    gap: 10px;
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: center;
+    gap: 6px 10px;
     padding: 12px 16px 8px;
   }
 
   .brand {
     padding-top: 0;
+  }
+
+  .quick-add {
+    grid-column: 1 / -1;
+    grid-row: 2;
   }
 
   .board {
@@ -1187,7 +1266,6 @@ ul {
 @media (prefers-reduced-motion: no-preference) {
   .agenda-row,
   .tab,
-  .theme-option,
   .month-cell {
     transition: background-color 160ms cubic-bezier(0.16, 1, 0.3, 1), color 160ms cubic-bezier(0.16, 1, 0.3, 1);
   }

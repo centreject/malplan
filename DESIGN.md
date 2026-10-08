@@ -131,6 +131,7 @@ rounded:
   standard-pane: "10px"
   control: "8px"
   check: "6px"
+  standard-plate: "6px"
 spacing:
   shell: "20px"
   shell-docked: "16px"
@@ -190,10 +191,11 @@ components:
   agenda-row-late:
     backgroundColor: "{colors.bus-late-bg}"
     textColor: "{colors.bus-ink}"
-  theme-option-active:
-    backgroundColor: "{colors.standard-ink}"
-    textColor: "{colors.standard-surface}"
-    padding: "6px 12px"
+  theme-card-selected:
+    backgroundColor: "{colors.standard-surface}"
+    textColor: "{colors.standard-ink}"
+    rounded: "{rounded.standard-plate}"
+    padding: "12px"
   check:
     backgroundColor: "{colors.bus-surface}"
     rounded: "{rounded.check}"
@@ -276,13 +278,13 @@ Each theme defines the same role vocabulary (ground, two surfaces, three inks, l
 
 The board fills the window as a fixed-height app shell: a top bar, then a two-column board with 20px outer padding and a 14px gutter. The left column (minimum 340px, 2fr) is Today; the right column (3fr) stacks Week (0.8fr) over Month (1.2fr). Panes scroll internally, so the window never scrolls at desktop sizes.
 
-The top bar is a three-part grid: brand, the sentence input (dominant, max 760px, with a live parse preview line underneath), and the theme switch. On bus the whole top bar becomes the navy route band.
+The top bar is a three-part grid: brand, the sentence input (dominant, max 760px, with a live parse preview line underneath), and a 42px settings (gear) button. On bus the whole top bar becomes the navy route band.
 
 Inside panes: 16px horizontal inset, headers at 14px/16px/10px. The agenda row is a four-column grid (76px time, title, tag, check). Week and month are 7-column grids with hairline rules, starting on Sunday.
 
-**900px and below:** the shell stops being fixed-height and the page scrolls. The theme switch wraps to its own row, the board becomes one column in story order (Today, Week, Month), the week grid keeps at least 220px and month rows at least 76px.
+**900px and below:** the shell stops being fixed-height and the page scrolls. The board becomes one column in story order (Today, Week, Month), the week grid keeps at least 220px and month rows at least 76px.
 
-**600px and below (docked window):** the top bar stacks into one column with 16px padding. The week turns into a stacked day list (64px date column, items beside it, empty days dimmed). Month tabs drop below the title so the arrows stay on the title row; month cells show only item marks (titles and "+n" hidden), and the agenda time column narrows to 62px.
+**600px and below (docked window):** the top bar becomes brand + gear on one row with the sentence input full-width below, 16px padding. The week turns into a stacked day list (64px date column, items beside it, empty days dimmed). Month tabs drop below the title so the arrows stay on the title row; month cells show only item marks (titles and "+n" hidden), and the agenda time column narrows to 62px.
 
 ### Named Rules
 **The Today Leads Rule.** Today is always first, in the wide column on desktop and on top when stacked. Week and month support it; they never displace it.
@@ -307,7 +309,7 @@ Corner language is one of the four livery levers. Each theme sets two radii: a s
 - **Bus:** capsules (999px) for tags, tabs and the today marker, which read as route-number badges; panes at 14px.
 - **Desk:** nearly square, like printed paper (3px tags, 4px panes). Month tabs hang from the frame with only their bottom corners rounded (6px); desk tags are outlined, not filled.
 - **Standard:** gentle 6px tags and 10px panes.
-- **Shared:** the plate radius is the pane radius minus 4px; icon and text buttons use 8px; the task checkbox uses 6px; the theme option is inset 3px inside its pane-radius track. Hairlines are always 1px; the checkbox border is 1.5px; done strikethrough is 2px.
+- **Shared:** the plate radius is the pane radius minus 4px; icon and text buttons use 8px; the task checkbox uses 6px; theme cards use the plate radius. Hairlines are always 1px; the checkbox border is 1.5px; done strikethrough is 2px.
 
 ## Components
 
@@ -318,9 +320,11 @@ The one input that matters, and the widest thing in the top bar.
 - **Focus:** the global 2px focus ring, drawn inset (-2px offset) so it stays inside the fused shape.
 - **Preview:** a 13px ink-2 line under the input shows the live parse; it reserves 20px so the layout doesn't jump.
 
-### Theme Switch
-- **Style:** a segmented radiogroup in a pane-radius track with a 1px line border, labels 13px ink-2.
-- **Active:** ink fill with surface text; on bus, Arrival Amber with dark ink on the band.
+### Settings Dialog (theme choice)
+Themes are chosen in settings, not on the board, so the top bar stays about the task. The gear button in the top bar opens it.
+- **Shape:** native modal `<dialog>`, max 560px wide, pane radius, 1px line border, the one modal shadow (0 16px 48px of ink at 22%) over a 35% ink backdrop.
+- **Theme cards:** a 3-column radio group (one column at 600px and below). Each card shows a 4-colour swatch strip, the theme name (700) and a 12px ink-3 description. Selected = accent border plus a 1px inset accent ring; keyboard focus draws the global focus ring around the card.
+- **Behaviour:** the choice applies at once and is saved; Escape or the close button dismisses.
 
 ### Next-up Plate (signature)
 The single loudest object on the board: what is next and how long until it.

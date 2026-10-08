@@ -4,59 +4,278 @@
   "title": "Design System: malplan",
   "extensions": {
     "themes": [
-      { "id": "bus", "label": "버스 안내판", "default": true, "selector": ":root, [data-theme=\"bus\"]", "tokenPrefix": "bus-" },
-      { "id": "desk", "label": "탁상달력", "selector": "[data-theme=\"desk\"]", "tokenPrefix": "desk-" },
-      { "id": "standard", "label": "기본", "selector": "[data-theme=\"standard\"]", "tokenPrefix": "standard-" }
+      {
+        "id": "bus",
+        "label": "버스 안내판",
+        "default": true,
+        "selector": ":root, [data-theme=\"bus\"]",
+        "tokenPrefix": "bus-"
+      },
+      {
+        "id": "desk",
+        "label": "탁상달력",
+        "selector": "[data-theme=\"desk\"]",
+        "tokenPrefix": "desk-"
+      },
+      {
+        "id": "standard",
+        "label": "기본",
+        "selector": "[data-theme=\"standard\"]",
+        "tokenPrefix": "standard-"
+      }
     ],
     "colorMeta": {
-      "bus-accent": { "role": "primary", "displayName": "Route Blue", "tonalRamp": ["oklch(15% 0.06 258)", "oklch(25% 0.10 258)", "oklch(35% 0.13 258)", "oklch(45% 0.15 258)", "oklch(55% 0.15 258)", "oklch(65% 0.12 258)", "oklch(80% 0.07 258)", "oklch(95% 0.02 258)"] },
-      "bus-plate-when": { "role": "secondary", "displayName": "Arrival Amber", "tonalRamp": ["oklch(15% 0.04 85)", "oklch(28% 0.07 85)", "oklch(40% 0.10 85)", "oklch(52% 0.13 85)", "oklch(65% 0.16 85)", "oklch(80% 0.17 85)", "oklch(88% 0.12 85)", "oklch(96% 0.04 85)"] },
-      "bus-plate-bg": { "role": "secondary", "displayName": "Route Band Navy" },
-      "bus-cat-1-trunk": { "role": "tertiary", "displayName": "간선 Trunk Blue" },
-      "bus-cat-2-branch": { "role": "tertiary", "displayName": "지선 Branch Green", "tonalRamp": ["oklch(15% 0.05 145)", "oklch(25% 0.08 145)", "oklch(35% 0.11 145)", "oklch(45% 0.13 145)", "oklch(58% 0.15 145)", "oklch(68% 0.13 145)", "oklch(82% 0.08 145)", "oklch(95% 0.03 145)"] },
-      "bus-cat-3-express": { "role": "tertiary", "displayName": "광역 Express Red", "tonalRamp": ["oklch(15% 0.06 30)", "oklch(25% 0.10 30)", "oklch(35% 0.14 30)", "oklch(45% 0.17 30)", "oklch(58% 0.19 30)", "oklch(68% 0.15 30)", "oklch(82% 0.08 30)", "oklch(95% 0.02 30)"] },
-      "bus-cat-4-circular": { "role": "tertiary", "displayName": "순환 Circular Yellow", "tonalRamp": ["oklch(15% 0.04 80)", "oklch(28% 0.07 80)", "oklch(40% 0.10 80)", "oklch(52% 0.13 80)", "oklch(64% 0.15 80)", "oklch(76% 0.16 80)", "oklch(87% 0.11 80)", "oklch(96% 0.04 80)"] },
-      "bus-cat-5-night": { "role": "tertiary", "displayName": "심야 Night Navy" },
-      "bus-cat-6-airport": { "role": "tertiary", "displayName": "공항 Airport Teal", "tonalRamp": ["oklch(15% 0.04 190)", "oklch(25% 0.06 190)", "oklch(35% 0.08 190)", "oklch(45% 0.10 190)", "oklch(58% 0.11 190)", "oklch(68% 0.10 190)", "oklch(82% 0.06 190)", "oklch(95% 0.02 190)"] },
-      "bus-cat-ink-4": { "role": "neutral", "displayName": "Circular Slot Ink" },
-      "bus-bg": { "role": "neutral", "displayName": "Bus Ground" },
-      "bus-ink": { "role": "neutral", "displayName": "Bus Ink" },
-      "bus-late": { "role": "neutral", "displayName": "Late Amber" },
-      "desk-accent-red": { "role": "primary", "displayName": "Calendar Red", "tonalRamp": ["oklch(15% 0.06 28)", "oklch(25% 0.10 28)", "oklch(35% 0.14 28)", "oklch(45% 0.17 28)", "oklch(53% 0.19 28)", "oklch(65% 0.15 28)", "oklch(80% 0.08 28)", "oklch(95% 0.02 28)"] },
-      "desk-bg": { "role": "neutral", "displayName": "Card Stock" },
-      "desk-surface": { "role": "neutral", "displayName": "Calendar Paper" },
-      "desk-ink": { "role": "neutral", "displayName": "Press Ink" },
-      "desk-blue": { "role": "secondary", "displayName": "Saturday Blue" },
-      "standard-accent": { "role": "primary", "displayName": "Interface Blue", "tonalRamp": ["oklch(15% 0.07 263)", "oklch(25% 0.12 263)", "oklch(35% 0.16 263)", "oklch(45% 0.19 263)", "oklch(55% 0.21 263)", "oklch(65% 0.16 263)", "oklch(80% 0.08 263)", "oklch(95% 0.02 263)"] },
-      "standard-plate-bg": { "role": "secondary", "displayName": "Plate Tint" },
-      "standard-bg": { "role": "neutral", "displayName": "Cool Grey Ground" },
-      "standard-ink": { "role": "neutral", "displayName": "Slate Ink" }
+      "bus-accent": {
+        "role": "primary",
+        "displayName": "Route Blue",
+        "tonalRamp": [
+          "oklch(15% 0.06 258)",
+          "oklch(25% 0.10 258)",
+          "oklch(35% 0.13 258)",
+          "oklch(45% 0.15 258)",
+          "oklch(55% 0.15 258)",
+          "oklch(65% 0.12 258)",
+          "oklch(80% 0.07 258)",
+          "oklch(95% 0.02 258)"
+        ]
+      },
+      "bus-plate-when": {
+        "role": "secondary",
+        "displayName": "Arrival Amber",
+        "tonalRamp": [
+          "oklch(15% 0.04 85)",
+          "oklch(28% 0.07 85)",
+          "oklch(40% 0.10 85)",
+          "oklch(52% 0.13 85)",
+          "oklch(65% 0.16 85)",
+          "oklch(80% 0.17 85)",
+          "oklch(88% 0.12 85)",
+          "oklch(96% 0.04 85)"
+        ]
+      },
+      "bus-plate-bg": {
+        "role": "secondary",
+        "displayName": "Route Band Navy"
+      },
+      "bus-cat-1-trunk": {
+        "role": "tertiary",
+        "displayName": "간선 Trunk Blue"
+      },
+      "bus-cat-2-branch": {
+        "role": "tertiary",
+        "displayName": "지선 Branch Green",
+        "tonalRamp": [
+          "oklch(15% 0.05 145)",
+          "oklch(25% 0.08 145)",
+          "oklch(35% 0.11 145)",
+          "oklch(45% 0.13 145)",
+          "oklch(58% 0.15 145)",
+          "oklch(68% 0.13 145)",
+          "oklch(82% 0.08 145)",
+          "oklch(95% 0.03 145)"
+        ]
+      },
+      "bus-cat-3-express": {
+        "role": "tertiary",
+        "displayName": "광역 Express Red",
+        "tonalRamp": [
+          "oklch(15% 0.06 30)",
+          "oklch(25% 0.10 30)",
+          "oklch(35% 0.14 30)",
+          "oklch(45% 0.17 30)",
+          "oklch(58% 0.19 30)",
+          "oklch(68% 0.15 30)",
+          "oklch(82% 0.08 30)",
+          "oklch(95% 0.02 30)"
+        ]
+      },
+      "bus-cat-4-circular": {
+        "role": "tertiary",
+        "displayName": "순환 Circular Yellow",
+        "tonalRamp": [
+          "oklch(15% 0.04 80)",
+          "oklch(28% 0.07 80)",
+          "oklch(40% 0.10 80)",
+          "oklch(52% 0.13 80)",
+          "oklch(64% 0.15 80)",
+          "oklch(76% 0.16 80)",
+          "oklch(87% 0.11 80)",
+          "oklch(96% 0.04 80)"
+        ]
+      },
+      "bus-cat-5-night": {
+        "role": "tertiary",
+        "displayName": "심야 Night Navy"
+      },
+      "bus-cat-6-airport": {
+        "role": "tertiary",
+        "displayName": "공항 Airport Teal",
+        "tonalRamp": [
+          "oklch(15% 0.04 190)",
+          "oklch(25% 0.06 190)",
+          "oklch(35% 0.08 190)",
+          "oklch(45% 0.10 190)",
+          "oklch(58% 0.11 190)",
+          "oklch(68% 0.10 190)",
+          "oklch(82% 0.06 190)",
+          "oklch(95% 0.02 190)"
+        ]
+      },
+      "bus-cat-ink-4": {
+        "role": "neutral",
+        "displayName": "Circular Slot Ink"
+      },
+      "bus-bg": {
+        "role": "neutral",
+        "displayName": "Bus Ground"
+      },
+      "bus-ink": {
+        "role": "neutral",
+        "displayName": "Bus Ink"
+      },
+      "bus-late": {
+        "role": "neutral",
+        "displayName": "Late Amber"
+      },
+      "desk-accent-red": {
+        "role": "primary",
+        "displayName": "Calendar Red",
+        "tonalRamp": [
+          "oklch(15% 0.06 28)",
+          "oklch(25% 0.10 28)",
+          "oklch(35% 0.14 28)",
+          "oklch(45% 0.17 28)",
+          "oklch(53% 0.19 28)",
+          "oklch(65% 0.15 28)",
+          "oklch(80% 0.08 28)",
+          "oklch(95% 0.02 28)"
+        ]
+      },
+      "desk-bg": {
+        "role": "neutral",
+        "displayName": "Card Stock"
+      },
+      "desk-surface": {
+        "role": "neutral",
+        "displayName": "Calendar Paper"
+      },
+      "desk-ink": {
+        "role": "neutral",
+        "displayName": "Press Ink"
+      },
+      "desk-blue": {
+        "role": "secondary",
+        "displayName": "Saturday Blue"
+      },
+      "standard-accent": {
+        "role": "primary",
+        "displayName": "Interface Blue",
+        "tonalRamp": [
+          "oklch(15% 0.07 263)",
+          "oklch(25% 0.12 263)",
+          "oklch(35% 0.16 263)",
+          "oklch(45% 0.19 263)",
+          "oklch(55% 0.21 263)",
+          "oklch(65% 0.16 263)",
+          "oklch(80% 0.08 263)",
+          "oklch(95% 0.02 263)"
+        ]
+      },
+      "standard-plate-bg": {
+        "role": "secondary",
+        "displayName": "Plate Tint"
+      },
+      "standard-bg": {
+        "role": "neutral",
+        "displayName": "Cool Grey Ground"
+      },
+      "standard-ink": {
+        "role": "neutral",
+        "displayName": "Slate Ink"
+      }
     },
     "typographyMeta": {
-      "display-bus": { "displayName": "Display (bus)", "purpose": "Today date numeral. Provisional family: installed Bahnschrift stands in for a pending self-hosted face." },
-      "display-desk": { "displayName": "Display (desk)", "purpose": "Today date numeral at 96px, font-stretch condensed. Provisional family: a self-hosted condensed numeral face is pending approval." },
-      "display-standard": { "displayName": "Display (standard)", "purpose": "Today date numeral." },
-      "plate-when": { "displayName": "Plate When", "purpose": "Countdown on the next-up plate; 32px on bus." },
-      "headline": { "displayName": "Headline", "purpose": "Pane titles and plate title; desk month title 22px." },
-      "title": { "displayName": "Title", "purpose": "Agenda row titles and the sentence input." },
-      "body": { "displayName": "Body", "purpose": "Base text." },
-      "label": { "displayName": "Label", "purpose": "Times, ranges, tabs, text buttons, theme options, input preview." },
-      "cell": { "displayName": "Cell", "purpose": "Week and month item lines, category tags (700), weekday headers; 11px for item times, holidays, +n." },
-      "numeral": { "displayName": "Numeral", "purpose": "All dates, times, counts; tabular figures. Segoe UI on standard." }
+      "display-bus": {
+        "displayName": "Display (bus)",
+        "purpose": "Today date numeral. Provisional family: installed Bahnschrift stands in for a pending self-hosted face."
+      },
+      "display-desk": {
+        "displayName": "Display (desk)",
+        "purpose": "Today date numeral at 96px, font-stretch condensed. Provisional family: a self-hosted condensed numeral face is pending approval."
+      },
+      "display-standard": {
+        "displayName": "Display (standard)",
+        "purpose": "Today date numeral."
+      },
+      "plate-when": {
+        "displayName": "Plate When",
+        "purpose": "Countdown on the next-up plate; 32px on bus."
+      },
+      "headline": {
+        "displayName": "Headline",
+        "purpose": "Pane titles and plate title; desk month title 22px."
+      },
+      "title": {
+        "displayName": "Title",
+        "purpose": "Agenda row titles and the sentence input."
+      },
+      "body": {
+        "displayName": "Body",
+        "purpose": "Base text."
+      },
+      "label": {
+        "displayName": "Label",
+        "purpose": "Times, ranges, tabs, text buttons, theme options, input preview."
+      },
+      "cell": {
+        "displayName": "Cell",
+        "purpose": "Week and month item lines, category tags (700), weekday headers; 11px for item times, holidays, +n."
+      },
+      "numeral": {
+        "displayName": "Numeral",
+        "purpose": "All dates, times, counts; tabular figures. Segoe UI on standard."
+      }
     },
     "shadows": [
-      { "name": "unfolded-day", "value": "0 8px 24px color-mix(in srgb, var(--ink) 16%, transparent)", "purpose": "Full item list unfolded over a crowded month cell on focus. The only lifted surface." },
-      { "name": "tab-band", "value": "inset 0 3px 0 var(--c)", "purpose": "Selected tab's colour as the month frame's top band; 4px on desk. Structural, not a lift." },
-      { "name": "desk-today-ring", "value": "inset 0 0 0 2px var(--red)", "purpose": "Desk today marker on week and month numerals." }
+      {
+        "name": "unfolded-day",
+        "value": "0 8px 24px color-mix(in srgb, var(--ink) 16%, transparent)",
+        "purpose": "Full item list unfolded over a crowded month cell on focus. The only lifted surface."
+      },
+      {
+        "name": "tab-band",
+        "value": "inset 0 3px 0 var(--c)",
+        "purpose": "Selected tab's colour as the month frame's top band; 4px on desk. Structural, not a lift."
+      },
+      {
+        "name": "desk-today-ring",
+        "value": "inset 0 0 0 2px var(--red)",
+        "purpose": "Desk today marker on week and month numerals."
+      }
     ],
     "motion": [
-      { "name": "state-colour", "value": "background-color 160ms cubic-bezier(0.16, 1, 0.3, 1), color 160ms cubic-bezier(0.16, 1, 0.3, 1)", "purpose": "Hover/selection colour change on agenda rows, tabs, theme options and month cells; only under prefers-reduced-motion: no-preference." }
+      {
+        "name": "state-colour",
+        "value": "background-color 160ms cubic-bezier(0.16, 1, 0.3, 1), color 160ms cubic-bezier(0.16, 1, 0.3, 1)",
+        "purpose": "Hover/selection colour change on agenda rows, tabs, theme options and month cells; only under prefers-reduced-motion: no-preference."
+      }
     ],
     "breakpoints": [
-      { "name": "stack", "value": "900px", "purpose": "Max-width: board becomes one column (Today, Week, Month); page scrolls; theme switch wraps." },
-      { "name": "docked", "value": "600px", "purpose": "Max-width: week becomes a stacked day list, month tabs drop below title, month cells show marks only." }
+      {
+        "name": "stack",
+        "value": "900px",
+        "purpose": "Max-width: board becomes one column (Today, Week, Month); page scrolls."
+      },
+      {
+        "name": "docked",
+        "value": "600px",
+        "purpose": "Max-width: week becomes a stacked day list, month tabs drop below title, month cells show marks only."
+      }
     ],
-    "focus": { "value": "outline: 2px solid var(--focus); outline-offset: 2px", "purpose": "Global focus ring; inset (-2px) on the sentence input and month cells." }
+    "focus": {
+      "value": "outline: 2px solid var(--focus); outline-offset: 2px",
+      "purpose": "Global focus ring; inset (-2px) on the sentence input and month cells."
+    }
   },
   "components": [
     {
@@ -68,12 +287,12 @@
       "css": ".ds-band { background: #18212d; padding: 14px 20px; } .ds-quick-add { display: grid; grid-template-columns: minmax(0,1fr) auto; max-width: 760px; } .ds-quick-input { height: 42px; padding: 0 14px; border: 1px solid transparent; border-right: 0; border-radius: 14px 0 0 14px; background: #ffffff; color: #18212d; font: 15px 'Malgun Gothic', system-ui, sans-serif; caret-color: #1b5fb5; } .ds-quick-input::placeholder { color: #6b7686; } .ds-quick-input:focus-visible { outline: 2px solid #1b5fb5; outline-offset: -2px; } .ds-quick-submit { display: grid; place-items: center; width: 46px; border: 1px solid #f2b705; border-radius: 0 14px 14px 0; background: #f2b705; color: #1d1600; cursor: pointer; } .ds-quick-submit:focus-visible { outline: 2px solid #ffffff; outline-offset: 2px; }"
     },
     {
-      "name": "Theme Switch",
-      "kind": "nav",
-      "refersTo": "theme-option-active",
-      "description": "Segmented radiogroup choosing the livery (standard theme shown).",
-      "html": "<div class=\"ds-theme-switch\" role=\"radiogroup\"><button class=\"ds-theme-opt\" role=\"radio\" aria-checked=\"false\">버스 안내판</button><button class=\"ds-theme-opt\" role=\"radio\" aria-checked=\"false\">탁상달력</button><button class=\"ds-theme-opt\" role=\"radio\" aria-checked=\"true\">기본</button></div>",
-      "css": ".ds-theme-switch { display: inline-flex; padding: 3px; border: 1px solid #e5e7eb; border-radius: 10px; background: #ffffff; font-family: 'Segoe UI', 'Malgun Gothic', sans-serif; } .ds-theme-opt { padding: 6px 12px; border: 0; border-radius: 7px; background: transparent; color: #4b5563; font: inherit; font-size: 13px; cursor: pointer; transition: background-color 160ms cubic-bezier(0.16,1,0.3,1), color 160ms cubic-bezier(0.16,1,0.3,1); } .ds-theme-opt:hover { color: #1f2937; } .ds-theme-opt[aria-checked=\"true\"] { background: #1f2937; color: #ffffff; } .ds-theme-opt:focus-visible { outline: 2px solid #2563eb; outline-offset: 2px; }"
+      "name": "Theme Cards (Settings)",
+      "kind": "form",
+      "refersTo": "theme-card-selected",
+      "description": "Radio cards inside the settings dialog choosing the theme; applies at once (standard theme shown).",
+      "html": "<div class=\"ds-cards\"><label class=\"ds-card\"><input type=\"radio\" name=\"ds-theme\"><span class=\"ds-sw\"><span style=\"background:#18212d\"></span><span style=\"background:#f2b705\"></span><span style=\"background:#1b5fb5\"></span><span style=\"background:#23803a\"></span></span><span class=\"ds-name\">버스 안내판</span><span class=\"ds-desc\">서울 버스 노선색, 다음 일정까지 남은 시간을 크게</span></label><label class=\"ds-card\"><input type=\"radio\" name=\"ds-theme\"><span class=\"ds-sw\"><span style=\"background:#fbf8f2\"></span><span style=\"background:#23201b\"></span><span style=\"background:#c8281f\"></span><span style=\"background:#2e5aac\"></span></span><span class=\"ds-name\">탁상달력</span><span class=\"ds-desc\">큰 날짜 숫자와 빨간 휴일, 종이 느낌</span></label><label class=\"ds-card ds-on\"><input type=\"radio\" name=\"ds-theme\" checked><span class=\"ds-sw\"><span style=\"background:#ffffff\"></span><span style=\"background:#1f2937\"></span><span style=\"background:#2563eb\"></span><span style=\"background:#e5e7eb\"></span></span><span class=\"ds-name\">기본</span><span class=\"ds-desc\">익숙한 캘린더 앱처럼 깔끔하게</span></label></div>",
+      "css": ".ds-cards { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; max-width: 520px; font-family: 'Segoe UI', 'Malgun Gothic', system-ui, sans-serif; color: #1f2937; } .ds-card { display: grid; align-content: start; gap: 6px; padding: 12px; border: 1px solid #e5e7eb; border-radius: 6px; background: #ffffff; cursor: pointer; } .ds-card:hover { background: #f7f8fa; } .ds-card.ds-on { border-color: #2563eb; box-shadow: inset 0 0 0 1px #2563eb; } .ds-card input { position: absolute; opacity: 0; pointer-events: none; } .ds-sw { display: flex; height: 28px; overflow: hidden; border: 1px solid #e5e7eb; border-radius: 4px; } .ds-sw span { flex: 1; } .ds-name { font-weight: 700; font-size: 14px; } .ds-desc { color: #6b7280; font-size: 12px; line-height: 1.4; }"
     },
     {
       "name": "Next-up Plate (bus)",
@@ -135,17 +354,61 @@
       "Dates and times are set in tabular numerals; desk scales them into the dominant visual."
     ],
     "rules": [
-      { "name": "The Route Colour Rule", "body": "Category colour comes only from slots `--cat-0`…`--cat-6`, applied through a slot class that sets the local colour and its ink. Never write a category hex into a component. The slot index is stable across themes, so a category keeps its meaning when the livery changes.", "section": "colors" },
-      { "name": "The Calendar Tone Rule", "body": "Red marks Sundays, public holidays and the now line; blue marks Saturdays. On bus and standard, the red tone is used only for these calendar meanings (the red category slot is a separate token). Desk is the exception: its accent is the same Calendar Red, so its today ring and plate top rule are red as well. No theme uses red for errors.", "section": "colors" },
-      { "name": "The Same Roles Rule", "body": "A new theme must fill every role token the three existing themes define. A theme that needs a new role has to add it to all three.", "section": "colors" },
-      { "name": "The Tabular Numeral Rule", "body": "Every date, time, count and countdown uses the numeral face with tabular figures, so columns of times line up and countdowns don't jitter.", "section": "typography" },
-      { "name": "The Numeral Leads Rule", "body": "On desk the numerals are the visual: they are scaled and condensed, and month cells show two items instead of three so the numbers keep the room.", "section": "typography" },
-      { "name": "The Today Leads Rule", "body": "Today is always first, in the wide column on desktop and on top when stacked. Week and month support it; they never displace it.", "section": "layout" },
-      { "name": "The Same Shell Rule", "body": "Themes don't move panes, change the grid, or add regions. Only type, palette, density (row padding, cell capacity) and one signature move differ.", "section": "layout" },
-      { "name": "The Flat Board Rule", "body": "Panes, plates, tags and rows never cast shadows. If something needs to stand out, use tone, the plate, or the tab band.", "section": "elevation" },
-      { "name": "The Mark Says Kind Rule", "body": "In week and month cells a task is a 12px square checkbox outline (checked when done) and an event is a 7px dot, both in the category colour. The mark is the only kind signal in cells; no text labels.", "section": "components" },
-      { "name": "The Row Carries State Rule", "body": "State is shown by row style, never by an extra badge: a **late** task gets the amber wash and a bold amber time; a **past** event drops to ink-3; a **done** item gets a 2px strikethrough in ink-3 with its tag at 45%. In week and month cells, done is a strikethrough in ink-3.", "section": "components" },
-      { "name": "The Frame Follows Tab Rule", "body": "The selected tab fills with its category colour, and the whole month pane takes that colour as an inset top band with its border mixed 55% toward it. The default 전체 tab uses slot 0 (neutral ink). A tab's colour is the colour of its first category.", "section": "components" }
+      {
+        "name": "The Route Colour Rule",
+        "body": "Category colour comes only from slots `--cat-0`…`--cat-6`, applied through a slot class that sets the local colour and its ink. Never write a category hex into a component. The slot index is stable across themes, so a category keeps its meaning when the livery changes.",
+        "section": "colors"
+      },
+      {
+        "name": "The Calendar Tone Rule",
+        "body": "Red marks Sundays, public holidays and the now line; blue marks Saturdays. On bus and standard, the red tone is used only for these calendar meanings (the red category slot is a separate token). Desk is the exception: its accent is the same Calendar Red, so its today ring and plate top rule are red as well. No theme uses red for errors.",
+        "section": "colors"
+      },
+      {
+        "name": "The Same Roles Rule",
+        "body": "A new theme must fill every role token the three existing themes define. A theme that needs a new role has to add it to all three.",
+        "section": "colors"
+      },
+      {
+        "name": "The Tabular Numeral Rule",
+        "body": "Every date, time, count and countdown uses the numeral face with tabular figures, so columns of times line up and countdowns don't jitter.",
+        "section": "typography"
+      },
+      {
+        "name": "The Numeral Leads Rule",
+        "body": "On desk the numerals are the visual: they are scaled and condensed, and month cells show two items instead of three so the numbers keep the room.",
+        "section": "typography"
+      },
+      {
+        "name": "The Today Leads Rule",
+        "body": "Today is always first, in the wide column on desktop and on top when stacked. Week and month support it; they never displace it.",
+        "section": "layout"
+      },
+      {
+        "name": "The Same Shell Rule",
+        "body": "Themes don't move panes, change the grid, or add regions. Only type, palette, density (row padding, cell capacity) and one signature move differ.",
+        "section": "layout"
+      },
+      {
+        "name": "The Flat Board Rule",
+        "body": "Panes, plates, tags and rows never cast shadows. If something needs to stand out, use tone, the plate, or the tab band.",
+        "section": "elevation"
+      },
+      {
+        "name": "The Mark Says Kind Rule",
+        "body": "In week and month cells a task is a 12px square checkbox outline (checked when done) and an event is a 7px dot, both in the category colour. The mark is the only kind signal in cells; no text labels.",
+        "section": "components"
+      },
+      {
+        "name": "The Row Carries State Rule",
+        "body": "State is shown by row style, never by an extra badge: a **late** task gets the amber wash and a bold amber time; a **past** event drops to ink-3; a **done** item gets a 2px strikethrough in ink-3 with its tag at 45%. In week and month cells, done is a strikethrough in ink-3.",
+        "section": "components"
+      },
+      {
+        "name": "The Frame Follows Tab Rule",
+        "body": "The selected tab fills with its category colour, and the whole month pane takes that colour as an inset top band with its border mixed 55% toward it. The default 전체 tab uses slot 0 (neutral ink). A tab's colour is the colour of its first category.",
+        "section": "components"
+      }
     ],
     "dos": [
       "**Do** bind every colour to a role token on the active theme; a new component must render correctly in bus, desk and standard without per-theme code unless it is that theme's signature move.",

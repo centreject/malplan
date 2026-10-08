@@ -5,6 +5,7 @@ import { overdueTasks, weekDates } from "./domain/schedule";
 import { MonthPane, type CalendarTab } from "./ui/MonthPane";
 import { SAMPLE_CATEGORIES, SAMPLE_HOLIDAYS, sampleItems } from "./ui/sampleData";
 import { loadTheme, saveTheme, type ThemeId } from "./ui/themes";
+import { SettingsDialog } from "./ui/SettingsDialog";
 import { TodayPane } from "./ui/TodayPane";
 import { TopBar } from "./ui/TopBar";
 import { useNow } from "./ui/useNow";
@@ -35,6 +36,7 @@ export default function App() {
   const [weekAnchor, setWeekAnchor] = useState<IsoDate>(now.today);
   const [monthCursor, setMonthCursor] = useState<MonthCursor>(() => partsOf(now.today));
   const [activeTab, setActiveTab] = useState("all");
+  const [settingsOpen, setSettingsOpen] = useState(false);
 
   useEffect(() => {
     document.documentElement.dataset["theme"] = theme;
@@ -74,7 +76,7 @@ export default function App() {
 
   return (
     <div className="app">
-      <TopBar today={now.today} theme={theme} onTheme={setTheme} />
+      <TopBar today={now.today} onSettings={() => setSettingsOpen(true)} />
       <main className="board">
         <TodayPane
           date={selected}
@@ -123,6 +125,12 @@ export default function App() {
           />
         </div>
       </main>
+      <SettingsDialog
+        open={settingsOpen}
+        theme={theme}
+        onTheme={setTheme}
+        onClose={() => setSettingsOpen(false)}
+      />
     </div>
   );
 }
