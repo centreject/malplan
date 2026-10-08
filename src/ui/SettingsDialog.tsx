@@ -25,7 +25,17 @@ export function SettingsDialog({ open, theme, onTheme, onClose, children }: Sett
   }, [open]);
 
   return (
-    <dialog ref={dialog} className="settings" aria-labelledby="settings-title" onClose={onClose}>
+    <dialog
+      ref={dialog}
+      className="settings"
+      aria-labelledby="settings-title"
+      // Escape: handle cancel directly; WebView2 does not always fire close afterwards.
+      onCancel={(event) => {
+        event.preventDefault();
+        onClose();
+      }}
+      onClose={onClose}
+    >
       <header className="settings-head">
         <h2 id="settings-title">설정</h2>
         <button type="button" className="icon-button" onClick={onClose} aria-label="설정 닫기">

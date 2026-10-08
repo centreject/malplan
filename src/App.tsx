@@ -1,8 +1,11 @@
 import { useEffect, useMemo, useState } from "react";
+import { cardFromItem, cardFromParse, commitCards, splitInput, type Draft } from "./domain/card";
 import { addDays, partsOf, type IsoDate, type Weekday } from "./domain/date";
 import type { Item } from "./domain/item";
 import { holidaysForYears } from "./domain/holidays";
 import { overdueTasks, weekDates } from "./domain/schedule";
+import { parseKorean } from "./parse/parseKorean";
+import { ConfirmDialog } from "./ui/ConfirmDialog";
 import { addCategory, deleteCategory, recolorCategory, renameCategory } from "./domain/categories";
 import { ALL_TAB_ID, addTab, deleteTab, moveTab, updateTab, type CalendarTab } from "./domain/tabs";
 import { loadCategories, loadTabs, saveCategories, saveTabs } from "./ui/boardStorage";
@@ -48,6 +51,39 @@ export default function App() {
   const [allFilter, setAllFilter] = useState<string[]>();
   /** Tab being edited: an id, "new", or undefined when the editor is closed. */
   const [editing, setEditing] = useState<string>();
+  const [quickText, setQuickText] = useState("");
+  const [confirm, setConfirm] = useState<{ drafts: Draft[]; editing: boolean }>();
+
+  const openNew = () => {
+    const drafts = splitInput(quickText).map((part) => ({
+      id: crypto.randomUUID(),
+      card: cardFromParse(parseKorean(part, now.today), now.today, categories),
+    }));
+
+    setConfirm({ drafts, editing: false });
+  };
+
+  const openEdit = (item: Item) => {
+    setConfirm({ drafts: [{ id: item.id, card: cardFromItem(item, now.today) }], editing: true });
+  };
+
+  const saveDrafts = (drafts: Draft[]) => {
+    const result = commitCards(drafts, items, categories, () => crypto.randomUUID());
+
+    setItems(result.items);
+    setCategories(result.categories);
+
+    if (confirm?.editing === false) {
+      setQuickText("");
+    }
+
+    setConfirm(undefined);
+  };
+
+  const deleteItem = (id: string) => {
+    setItems((current) => current.filter((item) => item.id !== id));
+    setConfirm(undefined);
+  };
 
   useEffect(() => {
     document.documentElement.dataset["theme"] = theme;
@@ -114,7 +150,13 @@ export default function App() {
 
   return (
     <div className="app">
-      <TopBar today={now.today} onSettings={() => setSettingsOpen(true)} />
+      <TopBar
+        today={now.today}
+        text={quickText}
+        onText={setQuickText}
+        onSubmit={openNew}
+        onSettings={() => setSettingsOpen(true)}
+      />
       <main className="board">
         <TodayPane
           date={selected}
@@ -126,6 +168,7 @@ export default function App() {
           overdue={overdueTasks(visible, now.today)}
           undated={visible.filter((item) => item.when.kind === "none" && !item.done.includes("done"))}
           onToggle={toggleDone}
+          onEdit={openEdit}
           onPrev={() => select(addDays(selected, -1))}
           onNext={() => select(addDays(selected, 1))}
           onReset={selected === now.today ? undefined : () => select(now.today)}
@@ -139,6 +182,7 @@ export default function App() {
             categories={categories}
             holidays={holidays}
             onSelect={select}
+            onEdit={openEdit}
             onPrev={() => setWeekAnchor(addDays(weekAnchor, -7))}
             onNext={() => setWeekAnchor(addDays(weekAnchor, 7))}
             onReset={week.includes(now.today) ? undefined : () => setWeekAnchor(now.today)}
@@ -162,6 +206,7 @@ export default function App() {
             allFilter={allFilter}
             onAllFilter={setAllFilter}
             onSelect={select}
+            onEdit={openEdit}
             onPrev={() => setMonthCursor(shiftMonth(monthCursor, -1))}
             onNext={() => setMonthCursor(shiftMonth(monthCursor, 1))}
             onReset={isCurrentMonth ? undefined : () => setMonthCursor(todayMonth)}
@@ -213,6 +258,16 @@ export default function App() {
           }}
           onMove={(delta) => setTabs(moveTab(tabs, editing, tabs.findIndex((t) => t.id === editing) + delta))}
           onClose={() => setEditing(undefined)}
+        />
+      )}
+      {confirm !== undefined && (
+        <ConfirmDialog
+          drafts={confirm.drafts}
+          editing={confirm.editing}
+          categories={categories}
+          onConfirm={saveDrafts}
+          onDelete={deleteItem}
+          onCancel={() => setConfirm(undefined)}
         />
       )}
     </div>

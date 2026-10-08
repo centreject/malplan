@@ -15,6 +15,7 @@ type TodayPaneProps = {
   overdue: OverdueTask[];
   undated: Item[];
   onToggle: (item: Item, date: string) => void;
+  onEdit: (item: Item) => void;
   onPrev: () => void;
   onNext: () => void;
   onReset: (() => void) | undefined;
@@ -38,7 +39,7 @@ export function TodayPane(props: TodayPaneProps) {
       <li key={item.id} className={`agenda-row ${state}`}>
         <span className="agenda-time num">{timeLabel(item.time)}</span>
         <span className="agenda-main">
-          <span className="agenda-title">{item.title}</span>
+          <button type="button" className="agenda-title item-open" onClick={() => props.onEdit(item)}>{item.title}</button>
           {item.place !== undefined && <span className="agenda-sub">{item.place}</span>}
         </span>
         <CategoryTag category={categoryOf(item)} />
@@ -119,7 +120,7 @@ export function TodayPane(props: TodayPaneProps) {
             <ul>
               {props.overdue.map(({ item, latest, missed }) => (
                 <li key={item.id} className="side-row">
-                  <span className="side-title">{item.title}</span>
+                  <button type="button" className="side-title item-open" onClick={() => props.onEdit(item)}>{item.title}</button>
                   <span className="side-meta num">
                     {shortDate(latest)}
                     {missed > 1 && ` 등 ${missed}회`}
@@ -138,7 +139,7 @@ export function TodayPane(props: TodayPaneProps) {
           <ul>
             {props.undated.map((item) => (
               <li key={item.id} className="side-row">
-                <span className="side-title">{item.title}</span>
+                <button type="button" className="side-title item-open" onClick={() => props.onEdit(item)}>{item.title}</button>
                 <CategoryTag category={categoryOf(item)} />
               </li>
             ))}

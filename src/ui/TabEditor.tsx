@@ -75,7 +75,17 @@ export function TabEditor({ tab, tabs, categories, onSave, onDelete, onMove, onC
   }, []);
 
   return (
-    <dialog ref={dialog} className="settings tab-editor" aria-labelledby="tab-editor-title" onClose={onClose}>
+    <dialog
+      ref={dialog}
+      className="settings tab-editor"
+      aria-labelledby="tab-editor-title"
+      // Escape: handle cancel directly; WebView2 does not always fire close afterwards.
+      onCancel={(event) => {
+        event.preventDefault();
+        onClose();
+      }}
+      onClose={onClose}
+    >
       <form
         onSubmit={(event) => {
           event.preventDefault();

@@ -29,6 +29,8 @@ export type Item = {
   done: string[];
   place?: string;
   note?: string;
+  /** Reminder this many minutes before the start. Delivery is not built yet. */
+  remindMinutes?: number;
 };
 
 export type Category = {
