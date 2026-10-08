@@ -198,3 +198,20 @@ export function mergeHolidays(
 ): Map<IsoDate, string> {
   return new Map([...supplement, ...computed]);
 }
+
+/** Holidays for several years; years outside the lunar table are skipped, not thrown. */
+export function holidaysForYears(years: number[]): Map<IsoDate, string> {
+  return new Map(
+    years.flatMap((year) => {
+      try {
+        return [...koreanHolidays(year)];
+      } catch (error) {
+        if (error instanceof RangeError) {
+          return [];
+        }
+
+        throw error;
+      }
+    }),
+  );
+}

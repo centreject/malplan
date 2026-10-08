@@ -1,6 +1,6 @@
 import { describe, expect, test } from "vitest";
 import { addDays, makeDate, type IsoDate } from "./date";
-import { koreanHolidays, lunarToSolar, mergeHolidays, parseSpecialDays } from "./holidays";
+import { holidaysForYears, koreanHolidays, lunarToSolar, mergeHolidays, parseSpecialDays } from "./holidays";
 
 function namesOn(year: number, dates: IsoDate[]): (string | undefined)[] {
   const holidays = koreanHolidays(year);
@@ -172,4 +172,12 @@ describe("mergeHolidays", () => {
       ["2026-10-05", "대체공휴일"],
     ]));
   });
+});
+
+test("holidaysForYears merges years and skips years outside the lunar table", () => {
+  const holidays = holidaysForYears([2026, 2027, 2099]);
+
+  expect(holidays.get("2026-10-05")).toBe("대체공휴일");
+  expect(holidays.get("2027-01-01")).toBe("신정");
+  expect([...holidays.keys()].some((date) => date.startsWith("2099"))).toBe(false);
 });

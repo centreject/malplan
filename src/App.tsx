@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { addDays, partsOf, type IsoDate, type Weekday } from "./domain/date";
 import type { Item } from "./domain/item";
-import { koreanHolidays } from "./domain/holidays";
+import { holidaysForYears } from "./domain/holidays";
 import { overdueTasks, weekDates } from "./domain/schedule";
 import { MonthPane, type CalendarTab } from "./ui/MonthPane";
 import { SAMPLE_CATEGORIES, sampleItems } from "./ui/sampleData";
@@ -51,7 +51,13 @@ export default function App() {
     : items.filter((item) => tab.categoryIds?.includes(item.categoryId));
 
   const todayMonth = partsOf(now.today);
-  const holidays = useMemo(() => new Map([-1, 0, 1].flatMap((d) => [...koreanHolidays(todayMonth.year + d)])), [todayMonth.year]);
+
+  // Every year any pane can show (adjacent-month cells included), so navigation never loses holidays.
+  const holidayYears = [...new Set([now.today, selected, weekAnchor].map((date) => partsOf(date).year).concat(monthCursor.year))]
+    .flatMap((year) => [year - 1, year, year + 1])
+    .join(",");
+
+  const holidays = useMemo(() => holidaysForYears(holidayYears.split(",").map(Number)), [holidayYears]);
   const isCurrentMonth = monthCursor.year === todayMonth.year && monthCursor.month === todayMonth.month;
   const week = weekDates(weekAnchor, WEEK_START);
 

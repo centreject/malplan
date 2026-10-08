@@ -30,3 +30,6 @@ dist-ssr
 .impeccable/review/
 .impeccable/*.log
 .impeccable/config.local.json
+
+# Claude Code agent worktrees
+.claude/worktrees/

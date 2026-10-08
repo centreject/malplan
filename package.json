@@ -10,7 +10,7 @@
     "tauri": "tauri",
     "lint": "oxlint",
     "typecheck": "tsc --noEmit",
-    "test": "vitest run",
+    "test": "vitest run --dir src",
     "check": "npm run lint && npm run typecheck && npm run test"
   },
   "dependencies": {
