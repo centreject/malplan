@@ -1270,3 +1270,80 @@ ul {
     transition: background-color 160ms cubic-bezier(0.16, 1, 0.3, 1), color 160ms cubic-bezier(0.16, 1, 0.3, 1);
   }
 }
+
+/* ───────── Settings: 시작 · 창 (WindowSettings.tsx) ───────── */
+
+.window-settings {
+  display: grid;
+  gap: 8px;
+  border-top: 1px solid var(--line);
+  padding-top: 16px;
+}
+
+.window-settings:disabled {
+  color: var(--ink-3);
+}
+
+.window-option {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+  cursor: pointer;
+}
+
+.window-option input {
+  margin: 0;
+  accent-color: var(--accent);
+}
+
+.window-settings:disabled .window-option,
+.window-close:disabled .window-option {
+  cursor: default;
+}
+
+.window-close {
+  display: grid;
+  gap: 6px;
+  margin: 0;
+  padding: 0 0 0 24px;
+  border: 0;
+}
+
+.window-close legend {
+  margin-bottom: 4px;
+  padding: 0;
+  color: var(--ink-2);
+  font-size: 13px;
+  font-weight: 400;
+}
+
+.window-close:disabled .window-option {
+  color: var(--ink-3);
+}
+
+.window-option kbd {
+  padding: 1px 6px;
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  background: var(--surface-2);
+  color: var(--ink-2);
+  font-family: inherit;
+  font-size: 12px;
+}
+
+.window-note,
+.window-error {
+  margin: 0;
+  font-size: 13px;
+}
+
+.window-note {
+  color: var(--ink-3);
+}
+
+.window-error {
+  color: var(--red);
+}
+
+/* ───────── end Settings: 시작 · 창 ───────── */

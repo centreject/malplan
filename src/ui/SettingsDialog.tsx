@@ -1,6 +1,7 @@
 import { X } from "lucide-react";
 import { useEffect, useRef } from "react";
 import { THEMES, type ThemeId } from "./themes";
+import { WindowSettings } from "./WindowSettings";
 
 type SettingsDialogProps = {
   open: boolean;
@@ -53,6 +54,7 @@ export function SettingsDialog({ open, theme, onTheme, onClose }: SettingsDialog
           ))}
         </div>
       </fieldset>
+      <WindowSettings />
     </dialog>
   );
 }
