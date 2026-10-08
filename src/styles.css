@@ -1973,3 +1973,41 @@ ul {
 }
 
 /* ───────── end Overdue reschedule ───────── */
+
+/* ───────── Series scope (ConfirmDialog) ───────── */
+
+.scope-choice {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 16px;
+  margin: 0 0 12px;
+  padding: 10px 12px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: var(--surface-2);
+}
+
+.scope-choice legend {
+  float: left;
+  width: 100%;
+  margin-bottom: 4px;
+  padding: 0;
+  color: var(--ink-2);
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.scope-choice label {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 14px;
+  cursor: pointer;
+}
+
+.scope-choice input {
+  margin: 0;
+  accent-color: var(--accent);
+}
+
+/* ───────── end Series scope ───────── */

@@ -4,6 +4,7 @@ import { addDays, partsOf, type IsoDate, type Weekday } from "./domain/date";
 import type { Category, Item } from "./domain/item";
 import { holidaysForYears } from "./domain/holidays";
 import { reschedule } from "./domain/reschedule";
+import { deleteOccurrence, editOccurrence, type SeriesScope } from "./domain/series";
 import { overdueTasks, weekDates } from "./domain/schedule";
 import { parseKorean } from "./parse/parseKorean";
 import { ConfirmDialog } from "./ui/ConfirmDialog";
@@ -67,7 +68,7 @@ export default function App() {
   /** Tab being edited: an id, "new", or undefined when the editor is closed. */
   const [editing, setEditing] = useState<string>();
   const [quickText, setQuickText] = useState("");
-  const [confirm, setConfirm] = useState<{ drafts: Draft[]; editing: boolean }>();
+  const [confirm, setConfirm] = useState<{ drafts: Draft[]; editing: boolean; occurrence?: IsoDate | undefined }>();
 
   const openNew = () => {
     const drafts = splitInput(quickText).map((part) => ({
@@ -78,14 +79,23 @@ export default function App() {
     setConfirm({ drafts, editing: false });
   };
 
-  const openEdit = (item: Item) => {
-    setConfirm({ drafts: [{ id: item.id, card: cardFromItem(item, now.today) }], editing: true });
+  const openEdit = (item: Item, date?: IsoDate) => {
+    const occurrence = item.when.kind === "recurring" ? date : undefined;
+
+    setConfirm({ drafts: [{ id: item.id, card: cardFromItem(item, now.today) }], editing: true, occurrence });
   };
 
-  const saveDrafts = (drafts: Draft[]) => {
+  const saveDrafts = (drafts: Draft[], scope: SeriesScope) => {
     const result = commitCards(drafts, items, categories, () => crypto.randomUUID());
+    const original = items.find((item) => item.id === drafts[0]?.id);
+    const edited = result.items.find((item) => item.id === original?.id);
+    const occurrence = confirm?.occurrence;
 
-    setItems(() => result.items);
+    setItems(() =>
+      original !== undefined && edited !== undefined && occurrence !== undefined
+        ? editOccurrence(items, original, edited, occurrence, scope, () => crypto.randomUUID())
+        : result.items,
+    );
     setCategories(result.categories);
 
     if (confirm?.editing === false) {
@@ -95,8 +105,15 @@ export default function App() {
     setConfirm(undefined);
   };
 
-  const deleteItem = (id: string) => {
-    setItems((current) => current.filter((item) => item.id !== id));
+  const deleteItem = (id: string, scope: SeriesScope) => {
+    const original = items.find((item) => item.id === id);
+    const occurrence = confirm?.occurrence;
+
+    setItems((current) =>
+      original !== undefined && occurrence !== undefined
+        ? deleteOccurrence(current, original, occurrence, scope)
+        : current.filter((item) => item.id !== id),
+    );
     setConfirm(undefined);
   };
 
@@ -279,6 +296,7 @@ export default function App() {
         <ConfirmDialog
           drafts={confirm.drafts}
           editing={confirm.editing}
+          occurrence={confirm.occurrence}
           categories={categories}
           onConfirm={saveDrafts}
           onDelete={deleteItem}

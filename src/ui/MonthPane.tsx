@@ -29,7 +29,8 @@ type MonthPaneProps = {
   allFilter: string[] | undefined;
   onAllFilter: (ids: string[] | undefined) => void;
   onSelect: (date: IsoDate) => void;
-  onEdit: (item: Item) => void;
+  /** date = the occurrence clicked, when there is one. */
+  onEdit: (item: Item, date?: IsoDate) => void;
   onPrev: () => void;
   onNext: () => void;
   onReset: (() => void) | undefined;
@@ -168,7 +169,7 @@ export function MonthPane(props: MonthPaneProps) {
               <ul className="month-items">
                 {occurrences.slice(0, props.cellCapacity).map(({ item, done }) => (
                   <li key={item.id}>
-                    <button type="button" className={`month-item item-open ${done ? "is-done" : ""}`} onClick={() => props.onEdit(item)}>
+                    <button type="button" className={`month-item item-open ${done ? "is-done" : ""}`} onClick={() => props.onEdit(item, date)}>
                       <ItemMark category={categoryOf(item)} task={item.kind === "task"} done={done} />
                       <span className="month-item-title">{item.title}</span>
                     </button>
@@ -182,7 +183,7 @@ export function MonthPane(props: MonthPaneProps) {
                 <ul className="month-full" aria-label={`${month}월 ${day}일 전체`}>
                   {occurrences.map(({ item, done }) => (
                     <li key={item.id}>
-                      <button type="button" className={`month-item item-open ${done ? "is-done" : ""}`} onClick={() => props.onEdit(item)}>
+                      <button type="button" className={`month-item item-open ${done ? "is-done" : ""}`} onClick={() => props.onEdit(item, date)}>
                         <ItemMark category={categoryOf(item)} task={item.kind === "task"} done={done} />
                         <span className="month-item-time num">{startLabel(item.time)}</span>
                         <span className="month-item-title">{item.title}</span>

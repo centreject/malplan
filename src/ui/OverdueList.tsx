@@ -10,7 +10,7 @@ type OverdueListProps = {
   overdue: OverdueTask[];
   today: IsoDate;
   categoryOf: (item: Item) => Category | undefined;
-  onEdit: (item: Item) => void;
+  onEdit: (item: Item, date?: IsoDate) => void;
   onReschedule: (ids: string[], target: IsoDate) => void;
 };
 
@@ -81,7 +81,7 @@ export function OverdueList({ overdue, today, categoryOf, onEdit, onReschedule }
                   checked={live.includes(item.id)}
                   onChange={() => toggle(item.id)}
                 />
-                <button type="button" className="side-title item-open" onClick={() => onEdit(item)}>
+                <button type="button" className="side-title item-open" onClick={() => onEdit(item, latest)}>
                   {item.title}
                 </button>
                 <span className="side-meta num">

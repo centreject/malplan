@@ -1,10 +1,11 @@
 import { CircleAlert, Trash2, X } from "lucide-react";
 import { useEffect, useId, useRef, useState, type ReactNode } from "react";
 import { NEW_CATEGORY, cardErrors, repeatSeed, type Card, type CardErrors, type CardKind, type Draft, type RepeatFreq } from "../domain/card";
-import type { Weekday } from "../domain/date";
+import type { IsoDate, Weekday } from "../domain/date";
 import type { Category, ItemTime } from "../domain/item";
+import type { SeriesScope } from "../domain/series";
 import type { Slot } from "../parse/parseKorean";
-import { SLOT_NAMES, WEEKDAY_NAMES } from "./format";
+import { SLOT_NAMES, WEEKDAY_NAMES, shortDate } from "./format";
 
 type ConfirmDialogProps = {
   /** Cards to start from: parsed input (new) or one existing item (edit). */
@@ -12,8 +13,10 @@ type ConfirmDialogProps = {
   /** Edit mode: shows 삭제 and the recurring-scope note. */
   editing: boolean;
   categories: Category[];
-  onConfirm: (drafts: Draft[]) => void;
-  onDelete: (id: string) => void;
+  /** The occurrence that was clicked; enables the 이 일정만 / 이후 전부 / 전체 choice for a series. */
+  occurrence?: IsoDate | undefined;
+  onConfirm: (drafts: Draft[], scope: SeriesScope) => void;
+  onDelete: (id: string, scope: SeriesScope) => void;
   onCancel: () => void;
 };
 
@@ -36,14 +39,18 @@ const REMINDERS: [string, string][] = [["", "없음"], ["10", "10분 전"], ["30
 
 const WEEKDAYS: Weekday[] = [0, 1, 2, 3, 4, 5, 6];
 
+const SCOPES: [SeriesScope, string][] = [["this", "이 일정만"], ["future", "이후 전부"], ["all", "전체"]];
+
 const DAYS = Array.from({ length: 31 }, (_, index) => index + 1);
 
 const MONTHS = DAYS.slice(0, 12);
 
 /** The confirm screen (= edit screen): one card per parsed part, saved only on 확인. */
-export function ConfirmDialog({ drafts: initial, editing, categories, onConfirm, onDelete, onCancel }: ConfirmDialogProps) {
+export function ConfirmDialog(props: ConfirmDialogProps) {
+  const { drafts: initial, editing, categories, occurrence, onConfirm, onDelete, onCancel } = props;
   const dialog = useRef<HTMLDialogElement>(null);
   const [drafts, setDrafts] = useState(initial);
+  const [scope, setScope] = useState<SeriesScope>(occurrence === undefined ? "all" : "this");
 
   useEffect(() => {
     if (dialog.current?.open === false) {
@@ -70,7 +77,7 @@ export function ConfirmDialog({ drafts: initial, editing, categories, onConfirm,
       return;
     }
 
-    onConfirm(drafts);
+    onConfirm(drafts, scope);
   };
 
   const recurring = editing && drafts[0]?.card.repeat === true;
@@ -96,9 +103,17 @@ export function ConfirmDialog({ drafts: initial, editing, categories, onConfirm,
         </header>
 
         <div className="confirm-body">
-          {recurring && (
-            // ponytail: edit/delete hit the whole series; per-occurrence scope (이 일정만 / 이후 전부) comes later.
-            <p className="confirm-note">반복 일정 전체에 적용됩니다.</p>
+          {recurring && occurrence === undefined && <p className="confirm-note">반복 일정 전체에 적용됩니다.</p>}
+          {recurring && occurrence !== undefined && (
+            <fieldset className="scope-choice">
+              <legend>반복 일정 중 어디에 적용할까요?</legend>
+              {SCOPES.map(([value, label]) => (
+                <label key={value}>
+                  <input type="radio" name="scope" checked={scope === value} onChange={() => setScope(value)} />
+                  {value === "this" ? `${label} (${shortDate(occurrence)})` : label}
+                </label>
+              ))}
+            </fieldset>
           )}
           {drafts.length === 0 && <p className="empty">모든 항목을 제외했습니다. 취소를 누르세요.</p>}
           {drafts.map((draft, index) => (
@@ -116,7 +131,7 @@ export function ConfirmDialog({ drafts: initial, editing, categories, onConfirm,
 
         <footer className="confirm-foot">
           {editing && (
-            <button type="button" className="confirm-button confirm-delete" onClick={() => onDelete(drafts[0]?.id ?? "")}>
+            <button type="button" className="confirm-button confirm-delete" onClick={() => onDelete(drafts[0]?.id ?? "", scope)}>
               <Trash2 size={16} strokeWidth={2} />
               삭제
             </button>

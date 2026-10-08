@@ -16,7 +16,8 @@ type TodayPaneProps = {
   overdue: OverdueTask[];
   undated: Item[];
   onToggle: (item: Item, date: string) => void;
-  onEdit: (item: Item) => void;
+  /** date = the occurrence clicked, when there is one. */
+  onEdit: (item: Item, date?: IsoDate) => void;
   /** The real today (the pane may show another day). */
   today: IsoDate;
   onReschedule: (ids: string[], target: IsoDate) => void;
@@ -43,7 +44,7 @@ export function TodayPane(props: TodayPaneProps) {
       <li key={item.id} className={`agenda-row ${state}`}>
         <span className="agenda-time num">{timeLabel(item.time)}</span>
         <span className="agenda-main">
-          <button type="button" className="agenda-title item-open" onClick={() => props.onEdit(item)}>{item.title}</button>
+          <button type="button" className="agenda-title item-open" onClick={() => props.onEdit(item, date)}>{item.title}</button>
           {item.place !== undefined && <span className="agenda-sub">{item.place}</span>}
         </span>
         <CategoryTag category={categoryOf(item)} />
