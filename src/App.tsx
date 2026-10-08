@@ -3,8 +3,13 @@ import { addDays, partsOf, type IsoDate, type Weekday } from "./domain/date";
 import type { Item } from "./domain/item";
 import { holidaysForYears } from "./domain/holidays";
 import { overdueTasks, weekDates } from "./domain/schedule";
-import { MonthPane, type CalendarTab } from "./ui/MonthPane";
+import { addCategory, deleteCategory, recolorCategory, renameCategory } from "./domain/categories";
+import { ALL_TAB_ID, addTab, deleteTab, moveTab, updateTab, type CalendarTab } from "./domain/tabs";
+import { loadCategories, loadTabs, saveCategories, saveTabs } from "./ui/boardStorage";
+import { CategorySettings } from "./ui/CategorySettings";
+import { MonthPane } from "./ui/MonthPane";
 import { SAMPLE_CATEGORIES, sampleItems } from "./ui/sampleData";
+import { TabEditor } from "./ui/TabEditor";
 import { loadTheme, saveTheme, type ThemeId } from "./ui/themes";
 import { SettingsDialog } from "./ui/SettingsDialog";
 import { TodayPane } from "./ui/TodayPane";
@@ -16,7 +21,7 @@ import "./styles.css";
 const WEEK_START: Weekday = 0;
 
 const INITIAL_TABS: CalendarTab[] = [
-  { id: "all", name: "전체", categoryIds: undefined },
+  { id: ALL_TAB_ID, name: "전체", categoryIds: undefined },
   { id: "school", name: "학교", categoryIds: ["school", "contest"] },
   { id: "work", name: "회사", categoryIds: ["work"] },
 ];
@@ -36,19 +41,44 @@ export default function App() {
   const [selected, setSelected] = useState<IsoDate>(now.today);
   const [weekAnchor, setWeekAnchor] = useState<IsoDate>(now.today);
   const [monthCursor, setMonthCursor] = useState<MonthCursor>(() => partsOf(now.today));
-  const [activeTab, setActiveTab] = useState("all");
+  const [activeTab, setActiveTab] = useState(ALL_TAB_ID);
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [categories, setCategories] = useState(() => loadCategories(SAMPLE_CATEGORIES));
+  const [tabs, setTabs] = useState(() => loadTabs(INITIAL_TABS));
+  const [allFilter, setAllFilter] = useState<string[]>();
+  /** Tab being edited: an id, "new", or undefined when the editor is closed. */
+  const [editing, setEditing] = useState<string>();
 
   useEffect(() => {
     document.documentElement.dataset["theme"] = theme;
     saveTheme(theme);
   }, [theme]);
 
-  const tab = INITIAL_TABS.find((t) => t.id === activeTab);
+  useEffect(() => saveCategories(categories), [categories]);
 
-  const visible = tab?.categoryIds === undefined
+  useEffect(() => saveTabs(tabs), [tabs]);
+
+  const tab = tabs.find((t) => t.id === activeTab);
+  const shownIds = tab?.categoryIds ?? allFilter;
+
+  const visible = shownIds === undefined
     ? items
-    : items.filter((item) => tab.categoryIds?.includes(item.categoryId));
+    : items.filter((item) => shownIds.includes(item.categoryId));
+
+  const editedTab = tabs.find((t) => t.id === editing);
+
+  const chooseTab = (id: string) => {
+    setActiveTab(id);
+    setAllFilter(undefined);
+  };
+
+  const removeCategory = (id: string) => {
+    const result = deleteCategory(categories, tabs, items, id);
+
+    setCategories(result.categories);
+    setTabs(result.tabs);
+    setItems(result.items);
+  };
 
   const todayMonth = partsOf(now.today);
 
@@ -91,7 +121,7 @@ export default function App() {
           isToday={selected === now.today}
           nowMinutes={now.minutes}
           items={visible}
-          categories={SAMPLE_CATEGORIES}
+          categories={categories}
           holiday={holidays.get(selected)}
           overdue={overdueTasks(visible, now.today)}
           undated={visible.filter((item) => item.when.kind === "none" && !item.done.includes("done"))}
@@ -106,7 +136,7 @@ export default function App() {
             today={now.today}
             selected={selected}
             items={visible}
-            categories={SAMPLE_CATEGORIES}
+            categories={categories}
             holidays={holidays}
             onSelect={select}
             onPrev={() => setWeekAnchor(addDays(weekAnchor, -7))}
@@ -120,12 +150,17 @@ export default function App() {
             today={now.today}
             selected={selected}
             items={visible}
-            categories={SAMPLE_CATEGORIES}
+            categories={categories}
             holidays={holidays}
             cellCapacity={theme === "desk" ? 2 : 3}
-            tabs={INITIAL_TABS}
+            tabs={tabs}
             activeTab={activeTab}
-            onTab={setActiveTab}
+            onTab={chooseTab}
+            onAddTab={() => setEditing("new")}
+            onEditTab={setEditing}
+            onMoveTab={(id, index) => setTabs(moveTab(tabs, id, index))}
+            allFilter={allFilter}
+            onAllFilter={setAllFilter}
             onSelect={select}
             onPrev={() => setMonthCursor(shiftMonth(monthCursor, -1))}
             onNext={() => setMonthCursor(shiftMonth(monthCursor, 1))}
@@ -138,7 +173,48 @@ export default function App() {
         theme={theme}
         onTheme={setTheme}
         onClose={() => setSettingsOpen(false)}
-      />
+      >
+        <CategorySettings
+          categories={categories}
+          tabs={tabs}
+          onAdd={() => {
+            const id = crypto.randomUUID();
+
+            setCategories(addCategory(categories, id));
+
+            return id;
+          }}
+          onRename={(id, name) => setCategories(renameCategory(categories, id, name))}
+          onRecolor={(id, slot) => setCategories(recolorCategory(categories, id, slot))}
+          onDelete={removeCategory}
+        />
+      </SettingsDialog>
+      {editing !== undefined && (
+        <TabEditor
+          tab={editedTab}
+          tabs={tabs}
+          categories={categories}
+          onSave={(name, categoryIds) => {
+            if (editedTab === undefined) {
+              const id = crypto.randomUUID();
+
+              setTabs(addTab(tabs, id, name, categoryIds));
+              setActiveTab(id);
+            } else {
+              setTabs(updateTab(tabs, editedTab.id, name, categoryIds));
+            }
+
+            setEditing(undefined);
+          }}
+          onDelete={() => {
+            setTabs(deleteTab(tabs, editing));
+            chooseTab(ALL_TAB_ID);
+            setEditing(undefined);
+          }}
+          onMove={(delta) => setTabs(moveTab(tabs, editing, tabs.findIndex((t) => t.id === editing) + delta))}
+          onClose={() => setEditing(undefined)}
+        />
+      )}
     </div>
   );
 }

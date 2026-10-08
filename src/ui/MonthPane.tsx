@@ -1,17 +1,12 @@
-import { Plus } from "lucide-react";
+import { ListFilter, Pencil, Plus } from "lucide-react";
+import { Fragment, useState } from "react";
 import { partsOf, weekdayOf, type IsoDate, type Weekday } from "../domain/date";
 import type { Category, Item } from "../domain/item";
 import { monthCells, occurrencesOn } from "../domain/schedule";
+import { ALL_TAB_ID, type CalendarTab } from "../domain/tabs";
 import { WEEKDAY_NAMES, startLabel } from "./format";
 import { ItemMark, PaneHeader } from "./parts";
-
-
-export type CalendarTab = {
-  id: string;
-  name: string;
-  /** undefined = every category (the default "전체" tab). */
-  categoryIds: string[] | undefined;
-};
+import { CategoryChecklist } from "./TabEditor";
 
 type MonthPaneProps = {
   year: number;
@@ -27,6 +22,12 @@ type MonthPaneProps = {
   tabs: CalendarTab[];
   activeTab: string;
   onTab: (id: string) => void;
+  onAddTab: () => void;
+  onEditTab: (id: string) => void;
+  onMoveTab: (id: string, index: number) => void;
+  /** Temporary category filter on 전체; undefined = every category. */
+  allFilter: string[] | undefined;
+  onAllFilter: (ids: string[] | undefined) => void;
   onSelect: (date: IsoDate) => void;
   onPrev: () => void;
   onNext: () => void;
@@ -39,6 +40,7 @@ export function MonthPane(props: MonthPaneProps) {
   const tab = props.tabs.find((t) => t.id === props.activeTab);
   const tabSlot = tabColorSlot(tab, props.categories);
   const categoryOf = (item: Item) => props.categories.find((c) => c.id === item.categoryId);
+  const [dragged, setDragged] = useState<string>();
 
   return (
     <section className={`pane pane-month tab-frame cat-${tabSlot}`} aria-label="이번 달 할 일">
@@ -55,19 +57,74 @@ export function MonthPane(props: MonthPaneProps) {
         }
       >
         <div className="tabs" role="tablist" aria-label="달력 탭">
-          {props.tabs.map((t) => (
-            <button
-              key={t.id}
-              type="button"
-              role="tab"
-              aria-selected={t.id === props.activeTab}
-              className={`tab cat-${tabColorSlot(t, props.categories)}`}
-              onClick={() => props.onTab(t.id)}
-            >
-              {t.name}
-            </button>
+          {props.tabs.map((t, index) => (
+            <Fragment key={t.id}>
+              <button
+                type="button"
+                role="tab"
+                aria-selected={t.id === props.activeTab}
+                className={`tab cat-${tabColorSlot(t, props.categories)}`}
+                draggable={t.id !== ALL_TAB_ID}
+                onClick={() => props.onTab(t.id)}
+                onDragStart={(event) => {
+                  event.dataTransfer.setData("text/plain", t.id);
+                  event.dataTransfer.effectAllowed = "move";
+                  setDragged(t.id);
+                }}
+                onDragEnd={() => setDragged(undefined)}
+                onDragOver={(event) => {
+                  if (dragged !== undefined) {
+                    event.preventDefault();
+                  }
+                }}
+                onDrop={(event) => {
+                  event.preventDefault();
+
+                  if (dragged !== undefined) {
+                    props.onMoveTab(dragged, index);
+                  }
+                }}
+              >
+                {t.name}
+              </button>
+              {t.id === props.activeTab && t.id !== ALL_TAB_ID && (
+                <button
+                  type="button"
+                  className="tab tab-icon"
+                  onClick={() => props.onEditTab(t.id)}
+                  aria-label={`'${t.name}' 탭 편집`}
+                  title="탭 편집"
+                >
+                  <Pencil size={14} strokeWidth={2} />
+                </button>
+              )}
+              {t.id === props.activeTab && t.id === ALL_TAB_ID && (
+                <>
+                  <button
+                    type="button"
+                    className={`tab tab-icon tab-filter ${props.allFilter === undefined ? "" : "is-filtering"}`}
+                    popoverTarget="all-filter"
+                    aria-label={
+                      props.allFilter === undefined ? "분류 필터" : `분류 필터 (${props.allFilter.length}개 표시 중)`
+                    }
+                    title="분류 필터"
+                  >
+                    <ListFilter size={14} strokeWidth={2} />
+                  </button>
+                  <div id="all-filter" className="all-filter" popover="auto">
+                    <CategoryChecklist
+                      categories={props.categories}
+                      selected={props.allFilter ?? props.categories.map((c) => c.id)}
+                      onChange={(ids) =>
+                        props.onAllFilter(ids.length === props.categories.length ? undefined : ids)
+                      }
+                    />
+                  </div>
+                </>
+              )}
+            </Fragment>
           ))}
-          <button type="button" className="tab tab-add" aria-label="탭 추가" title="탭 추가 (준비 중)" disabled>
+          <button type="button" className="tab tab-icon" aria-label="탭 추가" title="탭 추가" onClick={props.onAddTab}>
             <Plus size={16} strokeWidth={2} />
           </button>
         </div>
