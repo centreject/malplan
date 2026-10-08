@@ -28,6 +28,7 @@ type MonthPaneProps = {
   activeTab: string;
   onTab: (id: string) => void;
   onSelect: (date: IsoDate) => void;
+  onEdit: (item: Item) => void;
   onPrev: () => void;
   onNext: () => void;
   onReset: (() => void) | undefined;
@@ -109,9 +110,11 @@ export function MonthPane(props: MonthPaneProps) {
               </span>
               <ul className="month-items">
                 {occurrences.slice(0, props.cellCapacity).map(({ item, done }) => (
-                  <li key={item.id} className={`month-item ${done ? "is-done" : ""}`}>
-                    <ItemMark category={categoryOf(item)} task={item.kind === "task"} done={done} />
-                    <span className="month-item-title">{item.title}</span>
+                  <li key={item.id}>
+                    <button type="button" className={`month-item item-open ${done ? "is-done" : ""}`} onClick={() => props.onEdit(item)}>
+                      <ItemMark category={categoryOf(item)} task={item.kind === "task"} done={done} />
+                      <span className="month-item-title">{item.title}</span>
+                    </button>
                   </li>
                 ))}
                 {occurrences.length > props.cellCapacity && (
@@ -121,10 +124,12 @@ export function MonthPane(props: MonthPaneProps) {
               {occurrences.length > props.cellCapacity && (
                 <ul className="month-full" aria-label={`${month}월 ${day}일 전체`}>
                   {occurrences.map(({ item, done }) => (
-                    <li key={item.id} className={`month-item ${done ? "is-done" : ""}`}>
-                      <ItemMark category={categoryOf(item)} task={item.kind === "task"} done={done} />
-                      <span className="month-item-time num">{startLabel(item.time)}</span>
-                      <span className="month-item-title">{item.title}</span>
+                    <li key={item.id}>
+                      <button type="button" className={`month-item item-open ${done ? "is-done" : ""}`} onClick={() => props.onEdit(item)}>
+                        <ItemMark category={categoryOf(item)} task={item.kind === "task"} done={done} />
+                        <span className="month-item-time num">{startLabel(item.time)}</span>
+                        <span className="month-item-title">{item.title}</span>
+                      </button>
                     </li>
                   ))}
                 </ul>

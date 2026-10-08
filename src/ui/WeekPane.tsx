@@ -14,6 +14,7 @@ type WeekPaneProps = {
   categories: Category[];
   holidays: Map<IsoDate, string>;
   onSelect: (date: IsoDate) => void;
+  onEdit: (item: Item) => void;
   onPrev: () => void;
   onNext: () => void;
   onReset: (() => void) | undefined;
@@ -55,14 +56,16 @@ export function WeekPane(props: WeekPaneProps) {
               {holiday !== undefined && <span className="week-holiday">{holiday}</span>}
               <ul className="week-items">
                 {occurrences.slice(0, VISIBLE_PER_DAY).map(({ item, done }) => (
-                  <li key={item.id} className={`week-item ${done ? "is-done" : ""}`}>
-                    <ItemMark
-                      category={props.categories.find((c) => c.id === item.categoryId)}
-                      task={item.kind === "task"}
-                      done={done}
-                    />
-                    <span className="week-item-time num">{startLabel(item.time)}</span>
-                    <span className="week-item-title">{item.title}</span>
+                  <li key={item.id}>
+                    <button type="button" className={`week-item item-open ${done ? "is-done" : ""}`} onClick={() => props.onEdit(item)}>
+                      <ItemMark
+                        category={props.categories.find((c) => c.id === item.categoryId)}
+                        task={item.kind === "task"}
+                        done={done}
+                      />
+                      <span className="week-item-time num">{startLabel(item.time)}</span>
+                      <span className="week-item-title">{item.title}</span>
+                    </button>
                   </li>
                 ))}
                 {occurrences.length > VISIBLE_PER_DAY && (
