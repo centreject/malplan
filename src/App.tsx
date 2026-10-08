@@ -1,9 +1,10 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { addDays, partsOf, type IsoDate, type Weekday } from "./domain/date";
 import type { Item } from "./domain/item";
+import { koreanHolidays } from "./domain/holidays";
 import { overdueTasks, weekDates } from "./domain/schedule";
 import { MonthPane, type CalendarTab } from "./ui/MonthPane";
-import { SAMPLE_CATEGORIES, SAMPLE_HOLIDAYS, sampleItems } from "./ui/sampleData";
+import { SAMPLE_CATEGORIES, sampleItems } from "./ui/sampleData";
 import { loadTheme, saveTheme, type ThemeId } from "./ui/themes";
 import { SettingsDialog } from "./ui/SettingsDialog";
 import { TodayPane } from "./ui/TodayPane";
@@ -50,6 +51,7 @@ export default function App() {
     : items.filter((item) => tab.categoryIds?.includes(item.categoryId));
 
   const todayMonth = partsOf(now.today);
+  const holidays = useMemo(() => new Map([-1, 0, 1].flatMap((d) => [...koreanHolidays(todayMonth.year + d)])), [todayMonth.year]);
   const isCurrentMonth = monthCursor.year === todayMonth.year && monthCursor.month === todayMonth.month;
   const week = weekDates(weekAnchor, WEEK_START);
 
@@ -84,7 +86,7 @@ export default function App() {
           nowMinutes={now.minutes}
           items={visible}
           categories={SAMPLE_CATEGORIES}
-          holiday={SAMPLE_HOLIDAYS.get(selected)}
+          holiday={holidays.get(selected)}
           overdue={overdueTasks(visible, now.today)}
           undated={visible.filter((item) => item.when.kind === "none" && !item.done.includes("done"))}
           onToggle={toggleDone}
@@ -99,7 +101,7 @@ export default function App() {
             selected={selected}
             items={visible}
             categories={SAMPLE_CATEGORIES}
-            holidays={SAMPLE_HOLIDAYS}
+            holidays={holidays}
             onSelect={select}
             onPrev={() => setWeekAnchor(addDays(weekAnchor, -7))}
             onNext={() => setWeekAnchor(addDays(weekAnchor, 7))}
@@ -113,7 +115,7 @@ export default function App() {
             selected={selected}
             items={visible}
             categories={SAMPLE_CATEGORIES}
-            holidays={SAMPLE_HOLIDAYS}
+            holidays={holidays}
             cellCapacity={theme === "desk" ? 2 : 3}
             tabs={INITIAL_TABS}
             activeTab={activeTab}

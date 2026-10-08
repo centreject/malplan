@@ -12,15 +12,6 @@ export const SAMPLE_CATEGORIES: Category[] = [
   { id: "fitness", name: "운동", colorSlot: 6 },
 ];
 
-/** Sample public holidays (real 2026–2027 dates); computed holidays come later. */
-export const SAMPLE_HOLIDAYS = new Map<IsoDate, string>([
-  ["2026-10-03", "개천절"],
-  ["2026-10-05", "대체공휴일"],
-  ["2026-10-09", "한글날"],
-  ["2026-12-25", "성탄절"],
-  ["2027-01-01", "신정"],
-]);
-
 export function sampleItems(today: IsoDate): Item[] {
   const day = (offset: number) => addDays(today, offset);
   const lastWednesday = addDays(today, -((weekdayOf(today) - 3 + 7) % 7) - 7);
