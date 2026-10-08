@@ -78,19 +78,22 @@ export function nextUp(items: Item[], today: IsoDate, nowMinutes: number): NextU
 
 /** Unfinished task occurrences before `today`, one entry per item. */
 export function overdueTasks(items: Item[], today: IsoDate): OverdueTask[] {
-  const from = addDays(today, -OVERDUE_LOOKBACK_DAYS);
-  const to = addDays(today, -1);
-
   return items.flatMap((item) => {
-    if (item.kind !== "task") {
-      return [];
-    }
+    const missed = missedDates(item, today);
+    const latest = missed.at(-1);
 
-    const missedDates = datesBetween(item, from, to).filter((date) => !item.done.includes(date));
-    const latest = missedDates.at(-1);
-
-    return latest === undefined ? [] : [{ item, latest, missed: missedDates.length }];
+    return latest === undefined ? [] : [{ item, latest, missed: missed.length }];
   });
+}
+
+/** Unfinished occurrence dates of a task before `today` (within the lookback window). */
+export function missedDates(item: Item, today: IsoDate): IsoDate[] {
+  if (item.kind !== "task") {
+    return [];
+  }
+
+  return datesBetween(item, addDays(today, -OVERDUE_LOOKBACK_DAYS), addDays(today, -1))
+    .filter((date) => !item.done.includes(date));
 }
 
 function datesBetween(item: Item, from: IsoDate, to: IsoDate): IsoDate[] {

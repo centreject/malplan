@@ -1910,3 +1910,66 @@ ul {
 }
 
 /* ───────── end Settings: 저장 위치 ───────── */
+
+/* ───────── Overdue reschedule (OverdueList.tsx) ───────── */
+
+.reschedule-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 4px 8px;
+}
+
+.reschedule-all {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-right: 4px;
+  color: var(--ink-2);
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.reschedule-bar input[type="checkbox"],
+.overdue-row input[type="checkbox"] {
+  margin: 0;
+  accent-color: var(--accent);
+}
+
+.chip-button {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  height: 26px;
+  padding: 0 10px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--surface);
+  color: var(--ink);
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.chip-button:hover {
+  background: var(--surface-2);
+}
+
+/* The native date input covers the chip, so a click opens the date picker. */
+.reschedule-date input {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  cursor: pointer;
+}
+
+.reschedule-date:focus-within {
+  outline: 2px solid var(--focus);
+  outline-offset: 2px;
+}
+
+.overdue-row {
+  grid-template-columns: auto minmax(0, 1fr) auto auto;
+}
+
+/* ───────── end Overdue reschedule ───────── */

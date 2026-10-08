@@ -3,6 +3,7 @@ import { cardFromItem, cardFromParse, commitCards, splitInput, type Draft } from
 import { addDays, partsOf, type IsoDate, type Weekday } from "./domain/date";
 import type { Category, Item } from "./domain/item";
 import { holidaysForYears } from "./domain/holidays";
+import { reschedule } from "./domain/reschedule";
 import { overdueTasks, weekDates } from "./domain/schedule";
 import { parseKorean } from "./parse/parseKorean";
 import { ConfirmDialog } from "./ui/ConfirmDialog";
@@ -179,6 +180,9 @@ export default function App() {
           undated={visible.filter((item) => item.when.kind === "none" && !item.done.includes("done"))}
           onToggle={toggleDone}
           onEdit={openEdit}
+          today={now.today}
+          onReschedule={(ids, target) =>
+            setItems((current) => reschedule(current, ids, target, now.today, () => crypto.randomUUID()))}
           onPrev={() => select(addDays(selected, -1))}
           onNext={() => select(addDays(selected, 1))}
           onReset={selected === now.today ? undefined : () => select(now.today)}

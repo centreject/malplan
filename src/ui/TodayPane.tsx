@@ -3,6 +3,7 @@ import { addDays, partsOf, weekdayOf, type IsoDate } from "../domain/date";
 import type { Category, Item } from "../domain/item";
 import { nextUp, occurrencesOn, sortKey, type Occurrence, type OverdueTask } from "../domain/schedule";
 import { monthDay, shortDate, timeLabel, untilLabel, weekdayName } from "./format";
+import { OverdueList } from "./OverdueList";
 import { CategoryTag, PaneHeader } from "./parts";
 
 type TodayPaneProps = {
@@ -16,6 +17,9 @@ type TodayPaneProps = {
   undated: Item[];
   onToggle: (item: Item, date: string) => void;
   onEdit: (item: Item) => void;
+  /** The real today (the pane may show another day). */
+  today: IsoDate;
+  onReschedule: (ids: string[], target: IsoDate) => void;
   onPrev: () => void;
   onNext: () => void;
   onReset: (() => void) | undefined;
@@ -110,27 +114,13 @@ export function TodayPane(props: TodayPaneProps) {
           </ol>
         )}
 
-        <details className="side-list" open={props.overdue.length > 0}>
-          <summary>
-            밀린 할 일 <span className="count num">{props.overdue.length}</span>
-          </summary>
-          {props.overdue.length === 0 ? (
-            <p className="empty">밀린 할 일이 없습니다.</p>
-          ) : (
-            <ul>
-              {props.overdue.map(({ item, latest, missed }) => (
-                <li key={item.id} className="side-row">
-                  <button type="button" className="side-title item-open" onClick={() => props.onEdit(item)}>{item.title}</button>
-                  <span className="side-meta num">
-                    {shortDate(latest)}
-                    {missed > 1 && ` 등 ${missed}회`}
-                  </span>
-                  <CategoryTag category={categoryOf(item)} />
-                </li>
-              ))}
-            </ul>
-          )}
-        </details>
+        <OverdueList
+          overdue={props.overdue}
+          today={props.today}
+          categoryOf={categoryOf}
+          onEdit={props.onEdit}
+          onReschedule={props.onReschedule}
+        />
 
         <details className="side-list">
           <summary>
