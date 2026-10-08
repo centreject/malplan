@@ -2011,3 +2011,102 @@ ul {
 }
 
 /* ───────── end Series scope ───────── */
+
+/* Settings "보기": hide finished tasks everywhere. */
+.hide-done .agenda-row.is-done,
+.hide-done li:has(> .is-done) {
+  display: none;
+}
+
+/* ───────── Top-bar actions + search dialog ───────── */
+
+.top-actions {
+  display: flex;
+  gap: 2px;
+}
+
+.search-body {
+  display: grid;
+  gap: 10px;
+  padding: 0 20px 20px;
+}
+
+.search-input {
+  width: 100%;
+  border-right: 1px solid var(--line);
+  border-radius: var(--radius-pane);
+}
+
+.search-results {
+  display: grid;
+  max-height: min(60vh, 520px);
+  overflow-y: auto;
+}
+
+.search-row {
+  display: grid;
+  grid-template-columns: 92px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 8px 6px;
+  border: 0;
+  border-bottom: 1px solid var(--line);
+  background: transparent;
+  text-align: left;
+}
+
+.search-row:hover {
+  background: var(--surface-2);
+}
+
+.search-date {
+  color: var(--ink-2);
+  font-size: 13px;
+}
+
+.search-title {
+  display: grid;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.search-sub {
+  color: var(--ink-3);
+  font-size: 12px;
+}
+
+/* ───────── end search ───────── */
+
+/* ───────── Undo toast ───────── */
+
+.toast {
+  position: fixed;
+  bottom: 20px;
+  left: 50%;
+  z-index: 10;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 8px 8px 16px;
+  border-radius: 10px;
+  background: var(--ink);
+  color: var(--surface);
+  box-shadow: 0 8px 24px color-mix(in srgb, var(--ink) 25%, transparent);
+  font-size: 14px;
+  transform: translateX(-50%);
+}
+
+.toast .text-button {
+  color: var(--surface);
+  font-weight: 700;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.toast .text-button:hover {
+  background: color-mix(in srgb, var(--surface) 15%, transparent);
+  color: var(--surface);
+}

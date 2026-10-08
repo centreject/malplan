@@ -1,4 +1,4 @@
-import { CornerDownLeft, Settings } from "lucide-react";
+import { CornerDownLeft, Search, Settings } from "lucide-react";
 import type { IsoDate } from "../domain/date";
 import { parseKorean } from "../parse/parseKorean";
 import { parseSummary } from "./format";
@@ -10,9 +10,10 @@ type TopBarProps = {
   /** Opens the confirm screen for the current text. */
   onSubmit: () => void;
   onSettings: () => void;
+  onSearch: () => void;
 };
 
-export function TopBar({ today, text, onText, onSubmit, onSettings }: TopBarProps) {
+export function TopBar({ today, text, onText, onSubmit, onSettings, onSearch }: TopBarProps) {
   const summary = text.trim() === "" ? "" : parseSummary(parseKorean(text, today));
 
   return (
@@ -48,9 +49,14 @@ export function TopBar({ today, text, onText, onSubmit, onSettings }: TopBarProp
         </output>
       </form>
 
-      <button type="button" className="icon-button settings-button" onClick={onSettings} aria-label="설정">
-        <Settings size={20} strokeWidth={2} />
-      </button>
+      <div className="top-actions">
+        <button type="button" className="icon-button settings-button" onClick={onSearch} aria-label="검색 (Ctrl+F)" title="검색 (Ctrl+F)">
+          <Search size={20} strokeWidth={2} />
+        </button>
+        <button type="button" className="icon-button settings-button" onClick={onSettings} aria-label="설정">
+          <Settings size={20} strokeWidth={2} />
+        </button>
+      </div>
     </header>
   );
 }

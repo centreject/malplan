@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { cardFromItem, cardFromParse, commitCards, splitInput, type Draft } from "./domain/card";
-import { addDays, partsOf, type IsoDate, type Weekday } from "./domain/date";
+import { addDays, partsOf, type IsoDate } from "./domain/date";
 import type { Category, Item } from "./domain/item";
 import { holidaysForYears } from "./domain/holidays";
 import { reschedule } from "./domain/reschedule";
@@ -13,11 +13,14 @@ import { ALL_TAB_ID, addTab, deleteTab, moveTab, updateTab, type CalendarTab } f
 import { CategorySettings } from "./ui/CategorySettings";
 import { MonthPane } from "./ui/MonthPane";
 import { SAMPLE_CATEGORIES, sampleItems } from "./ui/sampleData";
+import { DisplaySettings, loadDisplay, saveDisplay } from "./ui/DisplaySettings";
 import { NotificationSettings } from "./ui/NotificationSettings";
 import { loadNotificationSettings, saveNotificationSettings, useReminders } from "./ui/notifications";
+import { SearchDialog } from "./ui/SearchDialog";
 import { StorageSettings } from "./ui/StorageSettings";
 import { TabEditor } from "./ui/TabEditor";
 import { useBoard } from "./ui/useBoard";
+import type { Board } from "./storage/board";
 import { loadTheme, saveTheme, type ThemeId } from "./ui/themes";
 import { SettingsDialog } from "./ui/SettingsDialog";
 import { TodayPane } from "./ui/TodayPane";
@@ -25,8 +28,6 @@ import { TopBar } from "./ui/TopBar";
 import { useNow } from "./ui/useNow";
 import { WeekPane } from "./ui/WeekPane";
 import "./styles.css";
-
-const WEEK_START: Weekday = 0;
 
 const ALL_TAB: CalendarTab = { id: ALL_TAB_ID, name: "전체", categoryIds: undefined };
 
@@ -45,6 +46,9 @@ function firstBoard(today: IsoDate) {
     : { items: [], categories: SAMPLE_CATEGORIES, tabs: [ALL_TAB] };
 }
 
+/** How long the undo toast stays. */
+const UNDO_MS = 8000;
+
 type MonthCursor = { year: number; month: number };
 
 function shiftMonth(cursor: MonthCursor, delta: number): MonthCursor {
@@ -62,6 +66,21 @@ export default function App() {
   const setCategories = (next: Category[]) => persisted.update((b) => ({ ...b, categories: next }));
   const setTabs = (next: CalendarTab[]) => persisted.update((b) => ({ ...b, tabs: next }));
   const [notifications, setNotifications] = useState(loadNotificationSettings);
+  const [display, setDisplay] = useState(loadDisplay);
+  const [searchOpen, setSearchOpen] = useState(false);
+
+  useEffect(() => {
+    const onKey = (event: KeyboardEvent) => {
+      if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === "f") {
+        event.preventDefault();
+        setSearchOpen(true);
+      }
+    };
+
+    window.addEventListener("keydown", onKey);
+
+    return () => window.removeEventListener("keydown", onKey);
+  }, []);
 
   useReminders(items, now, notifications);
 
@@ -91,7 +110,23 @@ export default function App() {
     setConfirm({ drafts: [{ id: item.id, card: cardFromItem(item, now.today) }], editing: true, occurrence });
   };
 
+  const [undo, setUndo] = useState<{ label: string; board: Board }>();
+
+  useEffect(() => {
+    if (undo === undefined) {
+      return;
+    }
+
+    const timer = window.setTimeout(() => setUndo(undefined), UNDO_MS);
+
+    return () => window.clearTimeout(timer);
+  }, [undo]);
+
+  /** Remember the board before a change so the toast can restore it. */
+  const remember = (label: string) => setUndo({ label, board: persisted.board });
+
   const saveDrafts = (drafts: Draft[], scope: SeriesScope) => {
+    remember(confirm?.editing === true ? "수정했습니다" : `${drafts.length}개 추가했습니다`);
     const result = commitCards(drafts, items, categories, () => crypto.randomUUID());
     const original = items.find((item) => item.id === drafts[0]?.id);
     const edited = result.items.find((item) => item.id === original?.id);
@@ -112,6 +147,7 @@ export default function App() {
   };
 
   const deleteItem = (id: string, scope: SeriesScope) => {
+    remember("삭제했습니다");
     const original = items.find((item) => item.id === id);
     const occurrence = confirm?.occurrence;
 
@@ -143,6 +179,7 @@ export default function App() {
   };
 
   const removeCategory = (id: string) => {
+    remember("분류를 삭제했습니다");
     const result = deleteCategory(categories, tabs, items, id);
 
     setCategories(result.categories);
@@ -159,7 +196,7 @@ export default function App() {
 
   const holidays = useMemo(() => holidaysForYears(holidayYears.split(",").map(Number)), [holidayYears]);
   const isCurrentMonth = monthCursor.year === todayMonth.year && monthCursor.month === todayMonth.month;
-  const week = weekDates(weekAnchor, WEEK_START);
+  const week = weekDates(weekAnchor, display.weekStart);
 
   const select = (date: IsoDate) => {
     setSelected(date);
@@ -190,8 +227,9 @@ export default function App() {
         onText={setQuickText}
         onSubmit={openNew}
         onSettings={() => setSettingsOpen(true)}
+        onSearch={() => setSearchOpen(true)}
       />
-      <main className="board">
+      <main className={display.hideDone ? "board hide-done" : "board"}>
         <TodayPane
           date={selected}
           isToday={selected === now.today}
@@ -204,8 +242,10 @@ export default function App() {
           onToggle={toggleDone}
           onEdit={openEdit}
           today={now.today}
-          onReschedule={(ids, target) =>
-            setItems((current) => reschedule(current, ids, target, now.today, () => crypto.randomUUID()))}
+          onReschedule={(ids, target) => {
+            remember(`${ids.length}개를 옮겼습니다`);
+            setItems((current) => reschedule(current, ids, target, now.today, () => crypto.randomUUID()));
+          }}
           onPrev={() => select(addDays(selected, -1))}
           onNext={() => select(addDays(selected, 1))}
           onReset={selected === now.today ? undefined : () => select(now.today)}
@@ -227,7 +267,7 @@ export default function App() {
           <MonthPane
             year={monthCursor.year}
             month={monthCursor.month}
-            weekStart={WEEK_START}
+            weekStart={display.weekStart}
             today={now.today}
             selected={selected}
             items={visible}
@@ -256,6 +296,13 @@ export default function App() {
         onTheme={setTheme}
         onClose={() => setSettingsOpen(false)}
       >
+        <DisplaySettings
+          display={display}
+          onChange={(next) => {
+            setDisplay(next);
+            saveDisplay(next);
+          }}
+        />
         <NotificationSettings
           settings={notifications}
           onChange={(next) => {
@@ -297,12 +344,42 @@ export default function App() {
             setEditing(undefined);
           }}
           onDelete={() => {
+            remember("탭을 삭제했습니다");
             setTabs(deleteTab(tabs, editing));
             chooseTab(ALL_TAB_ID);
             setEditing(undefined);
           }}
           onMove={(delta) => setTabs(moveTab(tabs, editing, tabs.findIndex((t) => t.id === editing) + delta))}
           onClose={() => setEditing(undefined)}
+        />
+      )}
+      {undo !== undefined && (
+        <div className="toast" role="status">
+          <span>{undo.label}</span>
+          <button
+            type="button"
+            className="text-button"
+            onClick={() => {
+              const before = undo.board;
+
+              persisted.update(() => before);
+              setUndo(undefined);
+            }}
+          >
+            되돌리기
+          </button>
+        </div>
+      )}
+      {searchOpen && (
+        <SearchDialog
+          items={items}
+          categories={categories}
+          today={now.today}
+          onOpen={(item, date) => {
+            setSearchOpen(false);
+            openEdit(item, date);
+          }}
+          onClose={() => setSearchOpen(false)}
         />
       )}
       {confirm !== undefined && (
