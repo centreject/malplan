@@ -2110,3 +2110,31 @@ ul {
   background: color-mix(in srgb, var(--surface) 15%, transparent);
   color: var(--surface);
 }
+
+/* ───────── Settings: 공휴일 (HolidaySettings.tsx) ───────── */
+
+.holiday-key input {
+  flex: 1;
+  min-width: 0;
+  height: 32px;
+  padding: 0 10px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: var(--surface);
+  color: var(--ink);
+  font: inherit;
+}
+
+.holiday-guide summary {
+  color: var(--ink-2);
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.holiday-guide ol {
+  margin: 6px 0 0;
+  padding-left: 20px;
+  color: var(--ink-2);
+  font-size: 13px;
+  line-height: 1.6;
+}

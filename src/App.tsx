@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { cardFromItem, cardFromParse, commitCards, splitInput, type Draft } from "./domain/card";
 import { addDays, partsOf, type IsoDate } from "./domain/date";
 import type { Category, Item } from "./domain/item";
-import { holidaysForYears } from "./domain/holidays";
+import { holidaysForYears, mergeHolidays } from "./domain/holidays";
 import { reschedule } from "./domain/reschedule";
 import { deleteOccurrence, editOccurrence, type SeriesScope } from "./domain/series";
 import { overdueTasks, weekDates } from "./domain/schedule";
@@ -14,6 +14,8 @@ import { CategorySettings } from "./ui/CategorySettings";
 import { MonthPane } from "./ui/MonthPane";
 import { SAMPLE_CATEGORIES, sampleItems } from "./ui/sampleData";
 import { BackupSettings } from "./ui/BackupSettings";
+import { HolidaySettings } from "./ui/HolidaySettings";
+import { loadApiKey, saveApiKey, useSpecialDays } from "./ui/specialDays";
 import { DisplaySettings, loadDisplay, saveDisplay } from "./ui/DisplaySettings";
 import { NotificationSettings } from "./ui/NotificationSettings";
 import { loadNotificationSettings, saveNotificationSettings, useReminders } from "./ui/notifications";
@@ -195,7 +197,16 @@ export default function App() {
     .flatMap((year) => [year - 1, year, year + 1])
     .join(",");
 
-  const holidays = useMemo(() => holidaysForYears(holidayYears.split(",").map(Number)), [holidayYears]);
+  const [holidayKey, setHolidayKey] = useState(loadApiKey);
+  const thisYear = partsOf(now.today).year;
+  // Re-checked at most once a day: the day's start is the clock the hook sees.
+  const special = useSpecialDays(holidayKey, [thisYear, thisYear + 1], Date.parse(now.today));
+
+  const holidays = useMemo(
+    () => mergeHolidays(holidaysForYears(holidayYears.split(",").map(Number)), special.supplement),
+    [holidayYears, special.supplement],
+  );
+
   const isCurrentMonth = monthCursor.year === todayMonth.year && monthCursor.month === todayMonth.month;
   const week = weekDates(weekAnchor, display.weekStart);
 
@@ -312,6 +323,14 @@ export default function App() {
           }}
         />
         <StorageSettings dir={persisted.dir} errors={persisted.errors} onSwitch={persisted.switchFolder} />
+        <HolidaySettings
+          apiKey={holidayKey}
+          status={special.status}
+          onSave={(key) => {
+            saveApiKey(key);
+            setHolidayKey(loadApiKey());
+          }}
+        />
         <BackupSettings board={persisted.board} today={now.today} />
         <CategorySettings
           categories={categories}
