@@ -1,6 +1,7 @@
 import { describe, expect, test } from "vitest";
 import type { Item } from "./item";
 import {
+  daysAround,
   formatClock,
   monthCells,
   nextUp,
@@ -136,4 +137,10 @@ describe("calendar grids", () => {
 test("clock shows minutes only when present", () => {
   expect(formatClock({ hour: 16, minute: 0 })).toBe("16시");
   expect(formatClock({ hour: 16, minute: 30 })).toBe("16:30");
+});
+
+test("days around a center: 3 before, the day, 3 after", () => {
+  expect(daysAround("2026-10-10")).toEqual([
+    "2026-10-07", "2026-10-08", "2026-10-09", "2026-10-10", "2026-10-11", "2026-10-12", "2026-10-13",
+  ]);
 });

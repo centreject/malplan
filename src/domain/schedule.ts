@@ -110,6 +110,11 @@ function datesBetween(item: Item, from: IsoDate, to: IsoDate): IsoDate[] {
   }
 }
 
+/** The week pane's rolling window: 3 days before `center`, the day itself, 3 days after. */
+export function daysAround(center: IsoDate): IsoDate[] {
+  return Array.from({ length: 7 }, (_, index) => addDays(center, index - 3));
+}
+
 export function weekDates(anchor: IsoDate, weekStart: Weekday): IsoDate[] {
   const first = addDays(anchor, -((weekdayOf(anchor) - weekStart + 7) % 7));
 

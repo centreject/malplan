@@ -5,7 +5,7 @@ import type { Category, Item } from "./domain/item";
 import { holidaysForYears, mergeHolidays } from "./domain/holidays";
 import { reschedule } from "./domain/reschedule";
 import { deleteOccurrence, editOccurrence, type SeriesScope } from "./domain/series";
-import { overdueTasks, weekDates } from "./domain/schedule";
+import { daysAround, overdueTasks } from "./domain/schedule";
 import { parseKorean } from "./parse/parseKorean";
 import { ConfirmDialog } from "./ui/ConfirmDialog";
 import { addCategory, deleteCategory, recolorCategory, renameCategory } from "./domain/categories";
@@ -208,7 +208,7 @@ export default function App() {
   );
 
   const isCurrentMonth = monthCursor.year === todayMonth.year && monthCursor.month === todayMonth.month;
-  const week = weekDates(weekAnchor, display.weekStart);
+  const week = daysAround(weekAnchor);
 
   const select = (date: IsoDate) => {
     setSelected(date);
@@ -274,7 +274,7 @@ export default function App() {
             onEdit={openEdit}
             onPrev={() => setWeekAnchor(addDays(weekAnchor, -7))}
             onNext={() => setWeekAnchor(addDays(weekAnchor, 7))}
-            onReset={week.includes(now.today) ? undefined : () => setWeekAnchor(now.today)}
+            onReset={weekAnchor === now.today ? undefined : () => setWeekAnchor(now.today)}
           />
           <MonthPane
             year={monthCursor.year}

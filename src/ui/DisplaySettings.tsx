@@ -35,7 +35,7 @@ export function DisplaySettings({ display, onChange }: DisplaySettingsProps) {
     <fieldset className="settings-section window-settings">
       <legend>보기</legend>
       <label className="window-option">
-        주 시작 요일
+        달력 주 시작 요일
         <select
           value={display.weekStart}
           onChange={(event) => onChange({ ...display, weekStart: event.target.value === "1" ? 1 : 0 })}

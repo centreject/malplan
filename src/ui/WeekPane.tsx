@@ -26,16 +26,16 @@ export function WeekPane(props: WeekPaneProps) {
   const last = props.dates.at(-1) ?? props.today;
 
   return (
-    <section className="pane pane-week" aria-label="이번 주 할 일">
+    <section className="pane pane-week" aria-label="앞뒤 3일 할 일">
       <PaneHeader
         unit="주"
-        resetLabel="이번 주"
+        resetLabel="오늘"
         onPrev={props.onPrev}
         onNext={props.onNext}
         onReset={props.onReset}
         title={
           <>
-            이번 주 <span className="pane-range num">{shortDate(first)} – {shortDate(last)}</span>
+            앞뒤 3일 <span className="pane-range num">{shortDate(first)} – {shortDate(last)}</span>
           </>
         }
       />
