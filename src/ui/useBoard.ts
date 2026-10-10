@@ -9,6 +9,9 @@ const EMPTY: Board = { items: [], categories: [], tabs: [{ id: ALL_TAB_ID, name:
 /** How often other devices' changes are picked up while the window is open. */
 const REFRESH_MS = 60_000;
 
+/** Pending log entries (all devices) before the designated device compacts on startup. */
+const COMPACT_THRESHOLD = 2000;
+
 export type FolderMode = "merge" | "replace";
 
 /**
@@ -86,6 +89,8 @@ export function useBoard(seed: () => Board) {
       const target = new SyncStore(backend, deviceId(), Date.now);
 
       await target.load();
+      // Keep the folder small: the designated device folds logs into the snapshot now and then.
+      await target.compactIfDue(COMPACT_THRESHOLD).catch(() => false);
 
       if (cancelled) {
         return;

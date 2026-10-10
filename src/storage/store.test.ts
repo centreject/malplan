@@ -231,3 +231,21 @@ test("a corrupt snapshot is reported and never overwritten by compaction", async
   await expect(a.compact()).rejects.toThrow(/snapshot/);
   expect(await backend.read("snapshot.json")).toBe("{oops");
 });
+
+test("compactIfDue: only the designated device (smallest id) compacts, and only past the threshold", async () => {
+  const { backend, device, tick } = setup();
+  const a = await device("a", 1_000);
+  const b = await device("b", 1_000);
+
+  for (let i = 0; i < 5; i++) {
+    tick("a", 10);
+    await a.set("item", `i${i}`, "title", `t${i}`);
+  }
+
+  await b.load();
+  expect(await b.compactIfDue(3)).toBe(false);
+  expect(await a.compactIfDue(100)).toBe(false);
+  expect(await a.compactIfDue(3)).toBe(true);
+  expect(await backend.read("snapshot.json")).toBeDefined();
+  expect(a.entities().item).toHaveLength(5);
+});

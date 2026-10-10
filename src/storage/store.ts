@@ -140,6 +140,25 @@ export class SyncStore {
     await this.load();
   }
 
+  /**
+   * Compact when the logs hold more than `threshold` changes, but only on the designated
+   * compactor: the device with the smallest id among those with a log. Returns whether it ran.
+   */
+  async compactIfDue(threshold: number): Promise<boolean> {
+    await this.load();
+
+    const devices = [...new Set([...this.#logs.keys(), this.#deviceId])].toSorted();
+    const pending = [...this.#logs.values()].reduce((sum, log) => sum + log.length, 0);
+
+    if (devices[0] !== this.#deviceId || pending <= threshold || this.#snapshotCorrupt) {
+      return false;
+    }
+
+    await this.compact();
+
+    return true;
+  }
+
   entities(): Entities {
     return materialize(this.#state);
   }
