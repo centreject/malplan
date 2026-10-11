@@ -44,8 +44,11 @@ export type Card = {
   remindMinutes: number | undefined;
   done: string[];
   /** Parser guesses to badge as "추정". */
-  flags: Flag[];
+  flags: CardFlag[];
 };
+
+/** Parser guesses plus LLM guesses, each badged "추정" on the confirm screen. */
+export type CardFlag = Flag | "placeGuessed";
 
 export type Draft = { id: string; card: Card };
 

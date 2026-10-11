@@ -1,5 +1,9 @@
-import { useEffect, useMemo, useState } from "react";
-import { cardFromItem, cardFromParse, commitCards, splitInput, type Draft } from "./domain/card";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { NEW_CATEGORY, cardFromItem, cardFromParse, commitCards, splitInput, type Draft } from "./domain/card";
+import { addCorrections, loadCorrections } from "./llm/corrections";
+import { buildPrompt, parseExtraction, type Extraction } from "./llm/extract";
+import { complete, loadLlmSettings, saveLlmSettings } from "./llm/providers";
+import { AiSettings } from "./ui/AiSettings";
 import { addDays, partsOf, type IsoDate } from "./domain/date";
 import type { Category, Item } from "./domain/item";
 import { holidaysForYears, mergeHolidays } from "./domain/holidays";
@@ -54,6 +58,8 @@ const UNDO_MS = 8000;
 
 type MonthCursor = { year: number; month: number };
 
+type AiState = { extractions: Map<string, Extraction>; inputs: Map<string, string>; note: string | undefined };
+
 function shiftMonth(cursor: MonthCursor, delta: number): MonthCursor {
   const index = cursor.year * 12 + (cursor.month - 1) + delta;
 
@@ -98,13 +104,51 @@ export default function App() {
   const [quickText, setQuickText] = useState("");
   const [confirm, setConfirm] = useState<{ drafts: Draft[]; editing: boolean; occurrence?: IsoDate | undefined }>();
 
+  const [llm, setLlm] = useState(loadLlmSettings);
+  const [ai, setAi] = useState<AiState>({ extractions: new Map(), inputs: new Map(), note: undefined });
+  /** Bumped per dialog so late AI answers for a closed dialog are dropped. */
+  const aiSession = useRef(0);
+
   const openNew = () => {
-    const drafts = splitInput(quickText).map((part) => ({
-      id: crypto.randomUUID(),
-      card: cardFromParse(parseKorean(part, now.today), now.today, categories),
-    }));
+    const parts = splitInput(quickText).map((part) => ({ part, id: crypto.randomUUID() }));
+    const drafts = parts.map(({ part, id }) => ({ id, card: cardFromParse(parseKorean(part, now.today), now.today, categories) }));
+    const session = ++aiSession.current;
 
     setConfirm({ drafts, editing: false });
+    setAi({
+      extractions: new Map(),
+      inputs: new Map(parts.map(({ part, id }) => [id, part])),
+      note: llm.provider === "off" ? undefined : "AI가 제목·분류·장소를 정리하는 중…",
+    });
+
+    if (llm.provider === "off") {
+      return;
+    }
+
+    void Promise.all(
+      parts.map(async ({ part, id }) => {
+        const reply = await complete(llm, buildPrompt(part, categories, loadCorrections(), now.today));
+        const extraction = parseExtraction(reply);
+
+        if (extraction !== undefined && aiSession.current === session) {
+          setAi((current) => ({ ...current, extractions: new Map(current.extractions).set(id, extraction) }));
+        }
+      }),
+    )
+      .then(() => {
+        if (aiSession.current === session) {
+          setAi((current) => ({ ...current, note: undefined }));
+        }
+      })
+      .catch((error: Error) => {
+        if (aiSession.current === session) {
+          const note = llm.provider === "local"
+            ? "로컬 AI 모델이 아직 준비되지 않아 규칙 기반으로만 정리했습니다."
+            : `AI 정리 실패 (${error.message}). 규칙 기반 결과를 확인하세요.`;
+
+          setAi((current) => ({ ...current, note }));
+        }
+      });
   };
 
   const openEdit = (item: Item, date?: IsoDate) => {
@@ -129,6 +173,21 @@ export default function App() {
   const remember = (label: string) => setUndo({ label, board: persisted.board });
 
   const saveDrafts = (drafts: Draft[], scope: SeriesScope) => {
+    // Learn from category fixes: what the AI proposed vs what the user kept.
+    addCorrections(
+      drafts.flatMap((draft) => {
+        const proposed = ai.extractions.get(draft.id)?.category;
+        const input = ai.inputs.get(draft.id);
+
+        const kept = draft.card.categoryId === NEW_CATEGORY
+          ? draft.card.newCategory
+          : categories.find((c) => c.id === draft.card.categoryId)?.name;
+
+        return proposed !== undefined && input !== undefined && kept !== undefined && kept !== proposed
+          ? [{ input, category: kept }]
+          : [];
+      }),
+    );
     remember(confirm?.editing === true ? "수정했습니다" : `${drafts.length}개 추가했습니다`);
     const result = commitCards(drafts, items, categories, () => crypto.randomUUID());
     const original = items.find((item) => item.id === drafts[0]?.id);
@@ -308,6 +367,13 @@ export default function App() {
         onTheme={setTheme}
         onClose={() => setSettingsOpen(false)}
       >
+        <AiSettings
+          settings={llm}
+          onChange={(next) => {
+            setLlm(next);
+            saveLlmSettings(next);
+          }}
+        />
         <DisplaySettings
           display={display}
           onChange={(next) => {
@@ -408,10 +474,15 @@ export default function App() {
           drafts={confirm.drafts}
           editing={confirm.editing}
           occurrence={confirm.occurrence}
+          extractions={confirm.editing ? undefined : ai.extractions}
+          aiNote={confirm.editing ? undefined : ai.note}
           categories={categories}
           onConfirm={saveDrafts}
           onDelete={deleteItem}
-          onCancel={() => setConfirm(undefined)}
+          onCancel={() => {
+            aiSession.current += 1;
+            setConfirm(undefined);
+          }}
         />
       )}
     </div>

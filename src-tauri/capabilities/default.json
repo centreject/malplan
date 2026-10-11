@@ -23,6 +23,18 @@
       "allow": [
         {
           "url": "https://apis.data.go.kr/*"
+        },
+        {
+          "url": "https://generativelanguage.googleapis.com/*"
+        },
+        {
+          "url": "https://openrouter.ai/*"
+        },
+        {
+          "url": "https://api.anthropic.com/*"
+        },
+        {
+          "url": "http://127.0.0.1:*"
         }
       ]
     }

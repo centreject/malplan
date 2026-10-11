@@ -5,6 +5,7 @@ import type { IsoDate, Weekday } from "../domain/date";
 import type { Category, ItemTime } from "../domain/item";
 import type { SeriesScope } from "../domain/series";
 import type { Slot } from "../parse/parseKorean";
+import { applyExtraction, type EditedField, type Extraction } from "../llm/extract";
 import { SLOT_NAMES, WEEKDAY_NAMES, shortDate } from "./format";
 
 type ConfirmDialogProps = {
@@ -18,6 +19,10 @@ type ConfirmDialogProps = {
   onConfirm: (drafts: Draft[], scope: SeriesScope) => void;
   onDelete: (id: string, scope: SeriesScope) => void;
   onCancel: () => void;
+  /** AI results by draft id; merged into fields the user hasn't touched. */
+  extractions?: ReadonlyMap<string, Extraction> | undefined;
+  /** One-line AI status ("AI가 정리하는 중…", errors). */
+  aiNote?: string | undefined;
 };
 
 const KINDS: [CardKind, string][] = [["event", "일정"], ["task", "할 일"], ["undated", "날짜 없는 할 일"]];
@@ -39,6 +44,9 @@ const REMINDERS: [string, string][] = [["", "없음"], ["10", "10분 전"], ["30
 
 const WEEKDAYS: Weekday[] = [0, 1, 2, 3, 4, 5, 6];
 
+/** Fields whose manual edits the AI must not overwrite. */
+const TRACKED: EditedField[] = ["title", "kind", "categoryId", "place", "note"];
+
 const SCOPES: [SeriesScope, string][] = [["this", "이 일정만"], ["future", "이후 전부"], ["all", "전체"]];
 
 const DAYS = Array.from({ length: 31 }, (_, index) => index + 1);
@@ -47,9 +55,20 @@ const MONTHS = DAYS.slice(0, 12);
 
 /** The confirm screen (= edit screen): one card per parsed part, saved only on 확인. */
 export function ConfirmDialog(props: ConfirmDialogProps) {
-  const { drafts: initial, editing, categories, occurrence, onConfirm, onDelete, onCancel } = props;
+  const { drafts: initial, editing, categories, occurrence, onConfirm, onDelete, onCancel, extractions, aiNote } = props;
   const dialog = useRef<HTMLDialogElement>(null);
-  const [drafts, setDrafts] = useState(initial);
+  const [stored, setDrafts] = useState(initial);
+  const [edited, setEdited] = useState<Record<string, EditedField[]>>({});
+
+  // AI answers arrive after the dialog opens; show them merged, without overwriting the user's edits.
+  const drafts = stored.map((draft) => {
+    const extraction = extractions?.get(draft.id);
+
+    return extraction === undefined
+      ? draft
+      : { id: draft.id, card: applyExtraction(draft.card, extraction, categories, edited[draft.id] ?? []) };
+  });
+
   const [scope, setScope] = useState<SeriesScope>(occurrence === undefined ? "all" : "this");
 
   useEffect(() => {
@@ -61,6 +80,13 @@ export function ConfirmDialog(props: ConfirmDialogProps) {
   const errors = drafts.map((draft) => cardErrors(draft.card));
 
   const update = (id: string, card: Card) => {
+    const before = drafts.find((draft) => draft.id === id)?.card;
+    const touched = TRACKED.filter((field) => before !== undefined && before[field] !== card[field]);
+
+    if (touched.length > 0) {
+      setEdited((current) => ({ ...current, [id]: [...new Set([...(current[id] ?? []), ...touched])] }));
+    }
+
     setDrafts((current) => current.map((draft) => (draft.id === id ? { id, card } : draft)));
   };
 
@@ -103,6 +129,7 @@ export function ConfirmDialog(props: ConfirmDialogProps) {
         </header>
 
         <div className="confirm-body">
+          {aiNote !== undefined && <p className="confirm-note ai-note" role="status">{aiNote}</p>}
           {recurring && occurrence === undefined && <p className="confirm-note">반복 일정 전체에 적용됩니다.</p>}
           {recurring && occurrence !== undefined && (
             <fieldset className="scope-choice">
@@ -321,7 +348,11 @@ function CardEditor({ card, errors, categories, heading, onChange, onExclude }: 
         {error("newCategory")}
       </Field>
 
-      <Field label="장소" htmlFor={id("place")}>
+      <Field
+        label="장소"
+        htmlFor={id("place")}
+        badge={card.flags.includes("placeGuessed") ? <Guess text="AI가 추측한 장소" /> : undefined}
+      >
         <input id={id("place")} className="cf-input" value={card.place} onChange={(event) => set({ place: event.target.value })} autoComplete="off" />
       </Field>
 
