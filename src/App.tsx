@@ -23,6 +23,7 @@ import { loadApiKey, saveApiKey, useSpecialDays } from "./ui/specialDays";
 import { DisplaySettings, loadDisplay, saveDisplay } from "./ui/DisplaySettings";
 import { NotificationSettings } from "./ui/NotificationSettings";
 import { loadNotificationSettings, saveNotificationSettings, useReminders } from "./ui/notifications";
+import { ListPage } from "./ui/ListPage";
 import { SearchDialog } from "./ui/SearchDialog";
 import { StorageSettings } from "./ui/StorageSettings";
 import { TabEditor } from "./ui/TabEditor";
@@ -77,6 +78,7 @@ export default function App() {
   const [notifications, setNotifications] = useState(loadNotificationSettings);
   const [display, setDisplay] = useState(loadDisplay);
   const [searchOpen, setSearchOpen] = useState(false);
+  const [view, setView] = useState<"board" | "list">("board");
 
   useEffect(() => {
     const onKey = (event: KeyboardEvent) => {
@@ -301,8 +303,42 @@ export default function App() {
         onSubmit={openNew}
         onSettings={() => setSettingsOpen(true)}
         onSearch={() => setSearchOpen(true)}
+        listOpen={view === "list"}
+        onList={() => setView(view === "list" ? "board" : "list")}
       />
-      <main className={display.hideDone ? "board hide-done" : "board"}>
+      {view === "list" && (
+        <main className="board list-view">
+          <ListPage
+            items={visible}
+            categories={categories}
+            today={now.today}
+            weekStart={display.weekStart}
+            onEdit={openEdit}
+            onToggle={toggleDone}
+            onEndSeries={(target) => {
+              remember("반복을 끝냈습니다");
+              setItems((current) =>
+                current.map((item) =>
+                  item.id === target.id && item.when.kind === "recurring"
+                    ? { ...item, when: { kind: "recurring", rule: { ...item.when.rule, until: now.today } } }
+                    : item,
+                ),
+              );
+            }}
+            onDelete={(target) => {
+              remember("삭제했습니다");
+              setItems((current) => current.filter((item) => item.id !== target.id));
+            }}
+            onAddRecurring={() => {
+              const base = cardFromParse(parseKorean("", now.today), now.today, categories);
+
+              setConfirm({ drafts: [{ id: crypto.randomUUID(), card: { ...base, kind: "task", repeat: true } }], editing: false });
+              setAi({ extractions: new Map(), inputs: new Map(), note: undefined });
+            }}
+          />
+        </main>
+      )}
+      <main className={display.hideDone ? "board hide-done" : "board"} hidden={view === "list"}>
         <TodayPane
           date={selected}
           isToday={selected === now.today}

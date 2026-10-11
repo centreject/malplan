@@ -1,4 +1,4 @@
-import { CornerDownLeft, Search, Settings } from "lucide-react";
+import { CornerDownLeft, LayoutGrid, ListChecks, Search, Settings } from "lucide-react";
 import type { IsoDate } from "../domain/date";
 import { parseKorean } from "../parse/parseKorean";
 import { parseSummary } from "./format";
@@ -11,9 +11,12 @@ type TopBarProps = {
   onSubmit: () => void;
   onSettings: () => void;
   onSearch: () => void;
+  /** The list page is showing; the button then leads back to the board. */
+  listOpen: boolean;
+  onList: () => void;
 };
 
-export function TopBar({ today, text, onText, onSubmit, onSettings, onSearch }: TopBarProps) {
+export function TopBar({ today, text, onText, onSubmit, onSettings, onSearch, listOpen, onList }: TopBarProps) {
   const summary = text.trim() === "" ? "" : parseSummary(parseKorean(text, today));
 
   return (
@@ -50,6 +53,15 @@ export function TopBar({ today, text, onText, onSubmit, onSettings, onSearch }: 
       </form>
 
       <div className="top-actions">
+        <button
+          type="button"
+          className="icon-button settings-button"
+          onClick={onList}
+          aria-label={listOpen ? "보드로 돌아가기" : "목록 보기"}
+          title={listOpen ? "보드로 돌아가기" : "목록 보기 (모든 할 일, 주기적 일정)"}
+        >
+          {listOpen ? <LayoutGrid size={20} strokeWidth={2} /> : <ListChecks size={20} strokeWidth={2} />}
+        </button>
         <button type="button" className="icon-button settings-button" onClick={onSearch} aria-label="검색 (Ctrl+F)" title="검색 (Ctrl+F)">
           <Search size={20} strokeWidth={2} />
         </button>

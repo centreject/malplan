@@ -2192,3 +2192,109 @@ ul {
 .cf-interval input {
   width: 56px;
 }
+
+/* ───────── List page (ListPage.tsx) ───────── */
+
+.board.list-view {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.board[hidden] {
+  display: none;
+}
+
+.list-page .pane-body {
+  padding-top: 4px;
+}
+
+.list-body {
+  max-width: 960px;
+}
+
+.list-section {
+  margin-top: 18px;
+}
+
+.list-section h3 {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0 0 4px;
+  color: var(--ink-2);
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.list-row {
+  display: grid;
+  grid-template-columns: auto 92px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 4px;
+  border-bottom: 1px solid var(--line);
+}
+
+.recurring-row {
+  grid-template-columns: 140px minmax(0, 1fr) auto auto;
+}
+
+.list-row.is-late {
+  background: var(--late-bg);
+}
+
+.list-row.is-done .list-title,
+.list-row.is-past .list-title {
+  color: var(--ink-3);
+}
+
+.list-row.is-done .list-title {
+  text-decoration: line-through;
+}
+
+.list-date {
+  color: var(--ink-2);
+  font-size: 13px;
+}
+
+.list-title {
+  display: grid;
+  min-width: 0;
+  overflow: hidden;
+  font-size: 15px;
+  text-align: left;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.list-sub {
+  color: var(--ink-3);
+  font-size: 12px;
+}
+
+.row-actions {
+  display: flex;
+  gap: 2px;
+}
+
+.list-actions {
+  align-items: center;
+  margin-top: 8px;
+}
+
+@media (max-width: 600px) {
+  .list-row {
+    grid-template-columns: auto minmax(0, 1fr) auto;
+  }
+
+  .list-row .list-date {
+    display: none;
+  }
+
+  .recurring-row {
+    grid-template-columns: minmax(0, 1fr) auto;
+  }
+
+  .recurring-row .cat-tag {
+    display: none;
+  }
+}
