@@ -105,6 +105,34 @@ describe("recurrence", () => {
     });
   });
 
+  test("every N weeks", () => {
+    expect(parseKorean("3주마다 금요일 보고", today).date).toEqual({
+      kind: "recurring",
+      rule: { freq: "weekly", weekdays: [5], interval: 3, start: today },
+    });
+  });
+
+  test("every N months on a day", () => {
+    const expected = { kind: "recurring", rule: { freq: "monthly", day: 10, interval: 3, start: today } };
+
+    expect(parseKorean("3개월마다 10일 정기점검", today).date).toEqual(expected);
+    expect(parseKorean("3개월에 한 번 10일 정기점검", today).date).toEqual(expected);
+  });
+
+  test("every N months without a day uses today's day of month", () => {
+    expect(parseKorean("2개월에 한 번 머리 자르기", today).date).toEqual({
+      kind: "recurring",
+      rule: { freq: "monthly", day: 5, interval: 2, start: today },
+    });
+  });
+
+  test("every N days", () => {
+    expect(parseKorean("3일마다 화분 물주기", today).date).toEqual({
+      kind: "recurring",
+      rule: { freq: "daily", interval: 3, start: today },
+    });
+  });
+
   test("yearly", () => {
     expect(parseKorean("매년 3월 2일 개강", today).date).toEqual({
       kind: "recurring",

@@ -32,9 +32,18 @@ const TIME_MODES: [ItemTime["kind"], string][] = [
 ];
 
 const FREQS: [RepeatFreq, string][] = [
-  ["daily", "매일"], ["weekly", "매주"], ["biweekly", "격주"],
+  ["daily", "매일"], ["weekly", "매주"],
   ["monthlyDay", "매월 (N일)"], ["monthlyNth", "매월 (N번째·마지막 X요일)"], ["yearly", "매년"],
 ];
+
+/** "2주마다", "3개월마다": the unit for the interval field. */
+const INTERVAL_UNITS: Record<RepeatFreq, string> = {
+  daily: "일",
+  weekly: "주",
+  monthlyDay: "개월",
+  monthlyNth: "개월",
+  yearly: "년",
+};
 
 const NTHS: [number, string][] = [[1, "첫째"], [2, "둘째"], [3, "셋째"], [4, "넷째"], [-1, "마지막"]];
 
@@ -387,7 +396,7 @@ type RepeatFieldsProps = {
 };
 
 function RepeatFields({ card, set, id, invalid, error }: RepeatFieldsProps) {
-  const weekly = card.freq === "weekly" || card.freq === "biweekly";
+  const weekly = card.freq === "weekly";
 
   const toggleWeekday = (weekday: Weekday, on: boolean) => {
     set({ weekdays: on ? [...card.weekdays, weekday] : card.weekdays.filter((d) => d !== weekday) });
@@ -407,6 +416,19 @@ function RepeatFields({ card, set, id, invalid, error }: RepeatFieldsProps) {
               <option key={freq} value={freq}>{label}</option>
             ))}
           </select>
+
+          <label className="cf-interval">
+            <input
+              type="number"
+              className="cf-input"
+              min={1}
+              max={99}
+              value={card.interval}
+              aria-label="반복 간격"
+              onChange={(event) => set({ interval: Math.min(99, Math.max(1, Math.round(Number(event.target.value) || 1))) })}
+            />
+            {INTERVAL_UNITS[card.freq]}마다
+          </label>
 
           {card.freq === "monthlyDay" && (
             <NumberSelect label="매월 며칠" values={DAYS} suffix="일" value={card.monthDay} onChange={(monthDay) => set({ monthDay })} />

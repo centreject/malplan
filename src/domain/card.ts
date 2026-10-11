@@ -7,7 +7,7 @@ import type { Recurrence } from "./recurrence";
 
 export type CardKind = "event" | "task" | "undated";
 
-export type RepeatFreq = "daily" | "weekly" | "biweekly" | "monthlyDay" | "monthlyNth" | "yearly";
+export type RepeatFreq = "daily" | "weekly" | "monthlyDay" | "monthlyNth" | "yearly";
 
 /** `categoryId` value meaning "create the category named in `newCategory` on confirm". */
 export const NEW_CATEGORY = "+new";
@@ -21,6 +21,8 @@ export type Card = {
   endDate: string;
   repeat: boolean;
   freq: RepeatFreq;
+  /** Every N days/weeks/months/years (1 = every time). 격주 = weekly with 2. */
+  interval: number;
   weekdays: Weekday[];
   /** Day of month for monthlyDay and yearly. */
   monthDay: number;
@@ -119,6 +121,7 @@ export function cardFromItem(item: Item, today: IsoDate): Card {
     endDate: when.kind === "range" ? when.end : "",
     repeat: when.kind === "recurring",
     freq: "weekly",
+    interval: 1,
     ...repeatSeed(date),
     until: "",
     except: [],
@@ -139,13 +142,13 @@ export function cardFromItem(item: Item, today: IsoDate): Card {
 }
 
 function repeatFields(rule: Recurrence): Partial<Card> {
-  const common = { until: rule.until ?? "", except: rule.except ?? [] };
+  const common = { until: rule.until ?? "", except: rule.except ?? [], interval: rule.interval ?? 1 };
 
   switch (rule.freq) {
     case "daily":
       return { ...common, freq: "daily" };
     case "weekly":
-      return { ...common, freq: rule.interval === 2 ? "biweekly" : "weekly", weekdays: rule.weekdays };
+      return { ...common, freq: "weekly", weekdays: rule.weekdays };
     case "monthly":
       return "day" in rule
         ? { ...common, freq: "monthlyDay", monthDay: rule.day }
@@ -193,9 +196,12 @@ function whenFromCard(card: Card): ItemWhen {
   return card.endDate === "" ? { kind: "single", date: card.date } : { kind: "range", start: card.date, end: card.endDate };
 }
 
-// ponytail: only weekly carries an interval (격주 = 2); other intervals are dropped on edit until the editor offers them.
 function ruleFromCard(card: Card): Recurrence {
   const rule = baseRule(card);
+
+  if (card.interval > 1) {
+    rule.interval = card.interval;
+  }
 
   if (card.until !== "") {
     rule.until = card.until;
@@ -217,8 +223,6 @@ function baseRule(card: Card): Recurrence {
       return { freq: "daily", start };
     case "weekly":
       return { freq: "weekly", weekdays, start };
-    case "biweekly":
-      return { freq: "weekly", weekdays, start, interval: 2 };
     case "monthlyDay":
       return { freq: "monthly", day: card.monthDay, start };
     case "monthlyNth":
@@ -281,7 +285,7 @@ export function cardErrors(card: Card): CardErrors {
     errors.until = "종료일이 시작일보다 빠릅니다.";
   }
 
-  if (card.repeat && (card.freq === "weekly" || card.freq === "biweekly") && card.weekdays.length === 0) {
+  if (card.repeat && card.freq === "weekly" && card.weekdays.length === 0) {
     errors.weekdays = "요일을 하나 이상 고르세요.";
   }
 

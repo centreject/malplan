@@ -108,6 +108,20 @@ function takeRule(scanner: Scanner, today: IsoDate): Recurrence | undefined {
     return { freq: "daily", start };
   }
 
+  const everyDays = scanner.take(/(\d{1,2})일\s*마다/);
+
+  if (everyDays !== undefined) {
+    return { freq: "daily", interval: Number(everyDays[1]), start };
+  }
+
+  const everyMonths = scanner.take(/(\d{1,2})개월\s*(?:마다|에\s*한\s*번)(?:\s*(\d{1,2})일)?/);
+
+  if (everyMonths !== undefined) {
+    const day = everyMonths[2] === undefined ? partsOf(today).day : Number(everyMonths[2]);
+
+    return { freq: "monthly", day, interval: Number(everyMonths[1]), start };
+  }
+
   const lastWeekday = scanner.take(/매(?:월|달)\s*마지막\s*(?:주\s*)?([일월화수목금토])요일/);
   const lastWeekdayValue = WEEKDAY_BY_CHAR.get(lastWeekday?.[1] ?? "");
 
@@ -135,7 +149,7 @@ function takeRule(scanner: Scanner, today: IsoDate): Recurrence | undefined {
     return { freq: "yearly", month: Number(yearly[1]), day: Number(yearly[2]), start };
   }
 
-  const weekly = scanner.take(new RegExp(`(매주|격주)\\s*((?:${WEEKDAY_TOKEN}[,\\s·]*)+)`));
+  const weekly = scanner.take(new RegExp(`(매주|격주|\\d{1,2}주\\s*마다)\\s*((?:${WEEKDAY_TOKEN}[,\\s·]*)+)`));
 
   if (weekly === undefined) {
     return undefined;
@@ -150,8 +164,12 @@ function takeRule(scanner: Scanner, today: IsoDate): Recurrence | undefined {
 
   const rule: Recurrence = { freq: "weekly", weekdays, start };
 
+  const everyWeeks = /^(\d{1,2})주/.exec(weekly[1] ?? "");
+
   if (weekly[1] === "격주") {
     rule.interval = 2;
+  } else if (everyWeeks !== null) {
+    rule.interval = Number(everyWeeks[1]);
   }
 
   return rule;

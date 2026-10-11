@@ -1,5 +1,6 @@
 import { partsOf, weekdayOf, type IsoDate } from "../domain/date";
 import type { ItemTime } from "../domain/item";
+import type { Recurrence } from "../domain/recurrence";
 import { formatClock } from "../domain/schedule";
 import type { ParseResult, Slot } from "../parse/parseKorean";
 
@@ -91,25 +92,28 @@ export function parseSummary(result: ParseResult): string {
   return parts.join(" · ");
 }
 
-function recurrenceLabel(rule: NonNullable<Extract<ParseResult["date"], { kind: "recurring" }>>["rule"]): string {
+/** "매주 월·목", "3개월마다 10일", "격주 수 (12/28까지)". */
+export function recurrenceLabel(rule: Recurrence): string {
   const until = rule.until === undefined ? "" : ` (${shortDate(rule.until)}까지)`;
+  const n = rule.interval ?? 1;
+  const every = (unit: string, plain: string) => (n > 1 ? `${n}${unit}마다` : plain);
 
   switch (rule.freq) {
     case "daily":
-      return `매일${until}`;
+      return `${every("일", "매일")}${until}`;
     case "weekly": {
       const days = rule.weekdays.map((weekday) => WEEKDAY_NAMES[weekday]).join("·");
 
-      return `${rule.interval === 2 ? "격주" : "매주"} ${days}${until}`;
+      return `${n === 2 ? "격주" : every("주", "매주")} ${days}${until}`;
     }
 
-    case "monthly":
-      if ("day" in rule) {
-        return `매월 ${rule.day}일${until}`;
-      }
+    case "monthly": {
+      const on = "day" in rule ? `${rule.day}일` : `${rule.nth === -1 ? "마지막" : `${rule.nth}째`} ${WEEKDAY_NAMES[rule.weekday]}요일`;
 
-      return `매월 ${rule.nth === -1 ? "마지막" : `${rule.nth}째`} ${WEEKDAY_NAMES[rule.weekday]}요일${until}`;
+      return `${every("개월", "매월")} ${on}${until}`;
+    }
+
     case "yearly":
-      return `매년 ${rule.month}/${rule.day}${until}`;
+      return `${every("년", "매년")} ${rule.month}/${rule.day}${until}`;
   }
 }
