@@ -1,3 +1,4 @@
+import { AppWindow, Bell, CalendarDays, HardDrive, Palette, Sparkles, Tags } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { NEW_CATEGORY, cardFromItem, cardFromParse, commitCards, splitInput, type Draft } from "./domain/card";
 import { addCorrections, loadCorrections } from "./llm/corrections";
@@ -30,7 +31,8 @@ import { TabEditor } from "./ui/TabEditor";
 import { useBoard } from "./ui/useBoard";
 import type { Board } from "./storage/board";
 import { loadTheme, saveTheme, type ThemeId } from "./ui/themes";
-import { SettingsDialog } from "./ui/SettingsDialog";
+import { SettingsDialog, ThemeSettings } from "./ui/SettingsDialog";
+import { WindowSettings } from "./ui/WindowSettings";
 import { TodayPane } from "./ui/TodayPane";
 import { TopBar } from "./ui/TopBar";
 import { useNow } from "./ui/useNow";
@@ -401,57 +403,104 @@ export default function App() {
       </main>
       <SettingsDialog
         open={settingsOpen}
-        theme={theme}
-        onTheme={setTheme}
         onClose={() => setSettingsOpen(false)}
-      >
-        <AiSettings
-          settings={llm}
-          onChange={(next) => {
-            setLlm(next);
-            saveLlmSettings(next);
-          }}
-        />
-        <DisplaySettings
-          display={display}
-          onChange={(next) => {
-            setDisplay(next);
-            saveDisplay(next);
-          }}
-        />
-        <NotificationSettings
-          settings={notifications}
-          onChange={(next) => {
-            setNotifications(next);
-            saveNotificationSettings(next);
-          }}
-        />
-        <StorageSettings dir={persisted.dir} errors={persisted.errors} onSwitch={persisted.switchFolder} />
-        <HolidaySettings
-          apiKey={holidayKey}
-          status={special.status}
-          onSave={(key) => {
-            saveApiKey(key);
-            setHolidayKey(loadApiKey());
-          }}
-        />
-        <BackupSettings board={persisted.board} today={now.today} />
-        <CategorySettings
-          categories={categories}
-          tabs={tabs}
-          onAdd={() => {
-            const id = crypto.randomUUID();
+        pages={[
+          {
+            id: "screen",
+            label: "화면",
+            icon: Palette,
+            content: (
+              <>
+                <ThemeSettings theme={theme} onTheme={setTheme} />
+                <DisplaySettings
+                  display={display}
+                  onChange={(next) => {
+                    setDisplay(next);
+                    saveDisplay(next);
+                  }}
+                />
+              </>
+            ),
+          },
+          {
+            id: "categories",
+            label: "분류",
+            icon: Tags,
+            content: (
+              <CategorySettings
+                categories={categories}
+                tabs={tabs}
+                onAdd={() => {
+                  const id = crypto.randomUUID();
 
-            setCategories(addCategory(categories, id));
+                  setCategories(addCategory(categories, id));
 
-            return id;
-          }}
-          onRename={(id, name) => setCategories(renameCategory(categories, id, name))}
-          onRecolor={(id, slot) => setCategories(recolorCategory(categories, id, slot))}
-          onCustomColor={(id, hex) => setCategories(setCustomColor(categories, id, hex))}
-          onDelete={removeCategory}
-        />
-      </SettingsDialog>
+                  return id;
+                }}
+                onRename={(id, name) => setCategories(renameCategory(categories, id, name))}
+                onRecolor={(id, slot) => setCategories(recolorCategory(categories, id, slot))}
+                onCustomColor={(id, hex) => setCategories(setCustomColor(categories, id, hex))}
+                onDelete={removeCategory}
+              />
+            ),
+          },
+          {
+            id: "ai",
+            label: "AI 변환",
+            icon: Sparkles,
+            content: (
+              <AiSettings
+                settings={llm}
+                onChange={(next) => {
+                  setLlm(next);
+                  saveLlmSettings(next);
+                }}
+              />
+            ),
+          },
+          {
+            id: "notifications",
+            label: "알림",
+            icon: Bell,
+            content: (
+              <NotificationSettings
+                settings={notifications}
+                onChange={(next) => {
+                  setNotifications(next);
+                  saveNotificationSettings(next);
+                }}
+              />
+            ),
+          },
+          { id: "window", label: "시작 · 창", icon: AppWindow, content: <WindowSettings /> },
+          {
+            id: "storage",
+            label: "저장 · 백업",
+            icon: HardDrive,
+            content: (
+              <>
+                <StorageSettings dir={persisted.dir} errors={persisted.errors} onSwitch={persisted.switchFolder} />
+                <BackupSettings board={persisted.board} today={now.today} />
+              </>
+            ),
+          },
+          {
+            id: "holidays",
+            label: "공휴일",
+            icon: CalendarDays,
+            content: (
+              <HolidaySettings
+                apiKey={holidayKey}
+                status={special.status}
+                onSave={(key) => {
+                  saveApiKey(key);
+                  setHolidayKey(loadApiKey());
+                }}
+              />
+            ),
+          },
+        ]}
+      />
       {editing !== undefined && (
         <TabEditor
           tab={editedTab}
