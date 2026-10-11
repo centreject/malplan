@@ -57,7 +57,13 @@ const ItemSchema = v.object({
   remindMinutes: v.exactOptional(v.number()),
 });
 
-const CategorySchema = v.object({ id: v.string(), name: v.string(), colorSlot: v.number(), order: v.number() });
+const CategorySchema = v.object({
+  id: v.string(),
+  name: v.string(),
+  colorSlot: v.number(),
+  color: v.exactOptional(v.pipe(v.string(), v.regex(/^#[0-9a-f]{6}$/))),
+  order: v.number(),
+});
 
 const TabSchema = v.object({
   id: v.string(),
@@ -156,7 +162,7 @@ export function boardFromEntities(entities: Entities): LoadedBoard {
 
   const categories = parse("category", CategorySchema, entities.category)
     .toSorted((a, b) => a.order - b.order)
-    .map(({ id, name, colorSlot }): Category => ({ id, name, colorSlot }));
+    .map(({ order: _order, ...category }): Category => category);
 
   return {
     board: { items: parse("item", ItemSchema, entities.item), categories, tabs: [ALL_TAB, ...tabs] },

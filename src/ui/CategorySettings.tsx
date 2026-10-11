@@ -10,13 +10,15 @@ type CategorySettingsProps = {
   onAdd: () => string;
   onRename: (id: string, name: string) => void;
   onRecolor: (id: string, slot: number) => void;
+  /** Any "#rrggbb" colour instead of a palette slot. */
+  onCustomColor: (id: string, hex: string) => void;
   onDelete: (id: string) => void;
 };
 
 const SLOTS = [1, 2, 3, 4, 5, 6];
 
 /** "분류" section of the settings dialog: rename, recolour, delete and add categories. */
-export function CategorySettings({ categories, tabs, onAdd, onRename, onRecolor, onDelete }: CategorySettingsProps) {
+export function CategorySettings({ categories, tabs, onAdd, onRename, onRecolor, onCustomColor, onDelete }: CategorySettingsProps) {
   const [added, setAdded] = useState<string>();
   const emptyTabs = tabs.filter((t) => t.id !== ALL_TAB_ID && t.categoryIds?.length === 0);
 
@@ -41,11 +43,42 @@ export function CategorySettings({ categories, tabs, onAdd, onRename, onRecolor,
                     type="radio"
                     name={`cat-slot-${c.id}`}
                     className={`cat-slot cat-${slot}`}
-                    checked={c.colorSlot === slot}
+                    checked={c.color === undefined && c.colorSlot === slot}
                     onChange={() => onRecolor(c.id, slot)}
                     aria-label={`색 ${slot}`}
                   />
                 ))}
+                <label className={`cat-custom ${c.color === undefined ? "" : "is-on"}`} title="직접 지정">
+                  <input
+                    type="color"
+                    value={c.color ?? "#888888"}
+                    aria-label={`${c.name} 색 직접 지정`}
+                    onChange={(event) => onCustomColor(c.id, event.target.value)}
+                  />
+                </label>
+                <input
+                  key={c.color ?? "none"}
+                  className="cat-hex"
+                  defaultValue={c.color?.toUpperCase() ?? ""}
+                  placeholder="#RRGGBB"
+                  aria-label={`${c.name} 색상 코드`}
+                  maxLength={7}
+                  autoComplete="off"
+                  onBlur={(event) => {
+                    const raw = event.currentTarget.value.trim();
+                    const hex = raw.startsWith("#") ? raw : `#${raw}`;
+
+                    if (raw !== "") {
+                      onCustomColor(c.id, hex);
+                    }
+                  }}
+                  onKeyDown={(event) => {
+                    if (event.key === "Enter") {
+                      event.preventDefault();
+                      event.currentTarget.blur();
+                    }
+                  }}
+                />
               </span>
               <input
                 key={c.name}

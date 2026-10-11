@@ -38,4 +38,6 @@ export type Category = {
   name: string;
   /** Palette slot 1..6; each theme maps slots to its own colours. */
   colorSlot: number;
+  /** Custom "#rrggbb"; overrides the slot in every theme. */
+  color?: string;
 };

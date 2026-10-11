@@ -12,7 +12,7 @@ import { deleteOccurrence, editOccurrence, type SeriesScope } from "./domain/ser
 import { daysAround, overdueTasks } from "./domain/schedule";
 import { parseKorean } from "./parse/parseKorean";
 import { ConfirmDialog } from "./ui/ConfirmDialog";
-import { addCategory, deleteCategory, recolorCategory, renameCategory } from "./domain/categories";
+import { addCategory, customColorCss, deleteCategory, recolorCategory, renameCategory, setCustomColor } from "./domain/categories";
 import { ALL_TAB_ID, addTab, deleteTab, moveTab, updateTab, type CalendarTab } from "./domain/tabs";
 import { CategorySettings } from "./ui/CategorySettings";
 import { MonthPane } from "./ui/MonthPane";
@@ -292,6 +292,8 @@ export default function App() {
 
   return (
     <div className="app">
+      {/* Custom category colours: one rule per category, generated from validated hex values. */}
+      <style>{customColorCss(categories)}</style>
       <TopBar
         today={now.today}
         text={quickText}
@@ -410,6 +412,7 @@ export default function App() {
           }}
           onRename={(id, name) => setCategories(renameCategory(categories, id, name))}
           onRecolor={(id, slot) => setCategories(recolorCategory(categories, id, slot))}
+          onCustomColor={(id, hex) => setCategories(setCustomColor(categories, id, hex))}
           onDelete={removeCategory}
         />
       </SettingsDialog>

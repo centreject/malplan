@@ -1,5 +1,6 @@
 import { ChevronLeft, ChevronRight, Square, SquareCheck } from "lucide-react";
 import type { ReactNode } from "react";
+import { categoryClass } from "../domain/categories";
 import type { Category } from "../domain/item";
 
 export function CategoryTag({ category }: { category: Category | undefined }) {
@@ -7,11 +8,11 @@ export function CategoryTag({ category }: { category: Category | undefined }) {
     return null;
   }
 
-  return <span className={`cat-tag cat-${category.colorSlot}`}>{category.name}</span>;
+  return <span className={`cat-tag ${categoryClass(category)}`}>{category.name}</span>;
 }
 
 export function CategoryDot({ category }: { category: Category | undefined }) {
-  return <span className={`cat-dot cat-${category?.colorSlot ?? 0}`} aria-hidden="true" />;
+  return <span className={`cat-dot ${categoryClass(category)}`} aria-hidden="true" />;
 }
 
 /** Calendar-cell marker: a checkbox for tasks, a dot for events, in the category colour. */
@@ -24,7 +25,7 @@ export function ItemMark({ category, task, done }: { category: Category | undefi
 
   return (
     <Icon
-      className={`task-mark cat-${category?.colorSlot ?? 0}`}
+      className={`task-mark ${categoryClass(category)}`}
       size={12}
       strokeWidth={2.5}
       aria-label={done ? "완료한 할 일" : "할 일"}

@@ -1,6 +1,7 @@
 import { ListFilter, Pencil, Plus } from "lucide-react";
 import { Fragment, useState } from "react";
 import { partsOf, weekdayOf, type IsoDate, type Weekday } from "../domain/date";
+import { categoryClass } from "../domain/categories";
 import type { Category, Item } from "../domain/item";
 import { monthCells, occurrencesOn } from "../domain/schedule";
 import { ALL_TAB_ID, type CalendarTab } from "../domain/tabs";
@@ -40,12 +41,12 @@ export function MonthPane(props: MonthPaneProps) {
   const cells = monthCells(props.year, props.month, props.weekStart);
   const headers = Array.from({ length: 7 }, (_, index) => (props.weekStart + index) % 7);
   const tab = props.tabs.find((t) => t.id === props.activeTab);
-  const tabSlot = tabColorSlot(tab, props.categories);
+  const tabColor = tabClass(tab, props.categories);
   const categoryOf = (item: Item) => props.categories.find((c) => c.id === item.categoryId);
   const [dragged, setDragged] = useState<string>();
 
   return (
-    <section className={`pane pane-month tab-frame cat-${tabSlot}`} aria-label="이번 달 할 일">
+    <section className={`pane pane-month tab-frame ${tabColor}`} aria-label="이번 달 할 일">
       <PaneHeader
         unit="달"
         resetLabel="이번 달"
@@ -65,7 +66,7 @@ export function MonthPane(props: MonthPaneProps) {
                 type="button"
                 role="tab"
                 aria-selected={t.id === props.activeTab}
-                className={`tab cat-${tabColorSlot(t, props.categories)}`}
+                className={`tab ${tabClass(t, props.categories)}`}
                 draggable={t.id !== ALL_TAB_ID}
                 onClick={() => props.onTab(t.id)}
                 onDragStart={(event) => {
@@ -200,10 +201,11 @@ export function MonthPane(props: MonthPaneProps) {
   );
 }
 
-function tabColorSlot(tab: CalendarTab | undefined, categories: Category[]): number {
+/** A tab takes its first category's colour; 전체 stays neutral. */
+function tabClass(tab: CalendarTab | undefined, categories: Category[]): string {
   const firstId = tab?.categoryIds?.[0];
 
-  return categories.find((c) => c.id === firstId)?.colorSlot ?? 0;
+  return categoryClass(categories.find((c) => c.id === firstId));
 }
 
 function toneOf(weekday: number, holiday: boolean): string {

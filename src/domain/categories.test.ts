@@ -1,5 +1,9 @@
 import { describe, expect, test } from "vitest";
 import {
+  categoryClass,
+  customColorCss,
+  inkOn,
+  setCustomColor,
   UNCATEGORIZED_ID,
   addCategory,
   deleteCategory,
@@ -96,5 +100,43 @@ describe("deleteCategory", () => {
     const result = deleteCategory([uncategorized], tabs, [], UNCATEGORIZED_ID);
 
     expect(result.categories).toEqual([uncategorized]);
+  });
+});
+
+describe("custom colours", () => {
+  const base: Category[] = [{ id: "work", name: "회사", colorSlot: 1 }];
+
+  test("a valid hex colour is stored normalised; a palette slot clears it", () => {
+    const custom = setCustomColor(base, "work", "#AbCdEf");
+
+    expect(custom[0]?.color).toBe("#abcdef");
+    expect(recolorCategory(custom, "work", 2)[0]).toEqual({ id: "work", name: "회사", colorSlot: 2 });
+  });
+
+  test("invalid hex is ignored", () => {
+    expect(setCustomColor(base, "work", "red")).toEqual(base);
+    expect(setCustomColor(base, "work", "#12345")).toEqual(base);
+  });
+
+  test("ink on a colour: dark text on light colours, white on dark", () => {
+    expect(inkOn("#ffd200")).toBe("#111111");
+    expect(inkOn("#1b5fb5")).toBe("#ffffff");
+    expect(inkOn("#ffffff")).toBe("#111111");
+    expect(inkOn("#000000")).toBe("#ffffff");
+  });
+
+  test("css class: palette slot, or a per-category class for custom colours", () => {
+    expect(categoryClass({ id: "work", name: "회사", colorSlot: 1 })).toBe("cat-1");
+    expect(categoryClass({ id: "a-1", name: "x", colorSlot: 1, color: "#123456" })).toBe("catc-a-1");
+    expect(categoryClass(undefined)).toBe("cat-0");
+  });
+
+  test("custom colour rules are generated only for safe ids and valid colours", () => {
+    const css = customColorCss([
+      { id: "a-1", name: "x", colorSlot: 1, color: "#123456" },
+      { id: "bad}id", name: "y", colorSlot: 1, color: "#123456" },
+    ]);
+
+    expect(css).toBe(".catc-a-1{--c:#123456;--c-ink:#ffffff}");
   });
 });

@@ -2138,3 +2138,44 @@ ul {
   font-size: 13px;
   line-height: 1.6;
 }
+
+/* ───────── Custom category colour (CategorySettings) ───────── */
+
+.cat-custom {
+  position: relative;
+  display: inline-grid;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: conic-gradient(#e0402b, #f2b705, #2f9a43, #00918f, #1b5fb5, #7c3aed, #e0402b);
+  cursor: pointer;
+}
+
+.cat-custom.is-on {
+  outline: 2px solid var(--ink);
+  outline-offset: 2px;
+}
+
+.cat-custom input {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  cursor: pointer;
+}
+
+.cat-custom:focus-within {
+  outline: 2px solid var(--focus);
+  outline-offset: 2px;
+}
+
+.cat-hex {
+  width: 78px;
+  height: 26px;
+  padding: 0 6px;
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  background: var(--surface);
+  color: var(--ink);
+  font-family: var(--font-num);
+  font-size: 12px;
+}
