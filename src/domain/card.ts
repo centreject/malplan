@@ -60,7 +60,7 @@ export type CardErrors = Partial<
   Record<"title" | "date" | "endDate" | "until" | "weekdays" | "start" | "end" | "newCategory", string>
 >;
 
-const TASK_ENDINGS = ["하기", "제출", "발송", "보내기", "마감", "예약", "신청", "반납", "사기"];
+const TASK_ENDINGS = ["하기", "제출", "발송", "보내기", "마감", "신청", "반납", "사기"];
 
 /** Default kind from the title's ending verb. The LLM replaces this later. */
 export function guessKind(title: string): "event" | "task" {

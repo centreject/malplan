@@ -55,6 +55,8 @@ describe("guessKind", () => {
 
   test("everything else is an event", () => {
     expect(guessKind("김철수와 저녁")).toBe("event");
+    // "치과 예약" is usually the appointment itself, not a booking chore.
+    expect(guessKind("치과 예약")).toBe("event");
     expect(guessKind("")).toBe("event");
   });
 });

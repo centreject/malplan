@@ -2,7 +2,7 @@ import { describe, expect, test } from "vitest";
 import { cardFromParse, NEW_CATEGORY, type Card } from "../domain/card";
 import type { Category } from "../domain/item";
 import { parseKorean } from "../parse/parseKorean";
-import { applyExtraction, buildPrompt, parseExtraction, type Extraction } from "./extract";
+import { applyExtraction, buildPrompt, guardExtraction, parseExtraction, type Extraction } from "./extract";
 
 const today = "2026-10-11";
 
@@ -57,6 +57,48 @@ describe("parseExtraction", () => {
   test("garbage or wrong shapes give undefined, never throw", () => {
     expect(parseExtraction("모르겠습니다")).toBeUndefined();
     expect(parseExtraction('{"title": 3}')).toBeUndefined();
+  });
+});
+
+function guard(input: string, extraction: Extraction): Extraction {
+  return guardExtraction(extraction, input, cardFromParse(parseKorean(input, today), today, categories), categories, today);
+}
+
+describe("guardExtraction", () => {
+  test("a title still carrying dates or times falls back to the rule title", () => {
+    const input = "내일 오후 3시 팀 회의";
+
+    expect(guard(input, { title: "내일 3시 팀 회의", kind: "event", category: "회사" }).title).toBe("팀 회의");
+    expect(guard(input, { title: "팀 회의", kind: "event", category: "회사" }).title).toBe("팀 회의");
+  });
+
+  test("a task ending wins over the model's kind", () => {
+    expect(guard("금요일까지 보고서 제출", { title: "보고서 제출", kind: "event", category: "회사" }).kind).toBe("task");
+    expect(guard("내일 민수랑 저녁", { title: "민수랑 저녁", kind: "event", category: "약속" }).kind).toBe("event");
+  });
+
+  test("a category named in the sentence wins", () => {
+    expect(guard("회사 우편물 발송", { title: "우편물 발송", kind: "task", category: "개인" }).category).toBe("회사");
+    expect(guard("우편물 발송", { title: "우편물 발송", kind: "task", category: "개인" }).category).toBe("개인");
+  });
+
+  test("a place not written in the sentence is dropped", () => {
+    const kept = guard("토요일 한강 러닝", { title: "러닝", kind: "event", category: "약속", place: "한강", placeGuessed: true });
+    const dropped = guard("엄마 선물 사기", { title: "엄마 선물 사기", kind: "task", category: "약속", place: "집", placeGuessed: true });
+
+    expect([kept.place, kept.placeGuessed]).toEqual(["한강", true]);
+    expect([dropped.place, dropped.placeGuessed]).toEqual([undefined, undefined]);
+  });
+
+  test("a place that is really a date or time is dropped", () => {
+    expect(guard("월요일 오전 9시 주간 회의", { title: "주간 회의", kind: "event", category: "회사", place: "월요일 오전 9시" }).place).toBeUndefined();
+  });
+
+  test("a note that just repeats the title is dropped", () => {
+    const input = "이번 주 토요일 엄마 선물 사기";
+
+    expect(guard(input, { title: "엄마 선물 사기", kind: "task", category: "약속", note: input }).note).toBeUndefined();
+    expect(guard(input, { title: "엄마 선물 사기", kind: "task", category: "약속", note: "포장 부탁" }).note).toBe("포장 부탁");
   });
 });
 

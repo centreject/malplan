@@ -2,7 +2,7 @@ import { AppWindow, Bell, CalendarDays, HardDrive, Palette, Sparkles, Tags } fro
 import { useEffect, useMemo, useRef, useState } from "react";
 import { NEW_CATEGORY, cardFromItem, cardFromParse, commitCards, splitInput, type Draft } from "./domain/card";
 import { addCorrections, loadCorrections } from "./llm/corrections";
-import { buildPrompt, parseExtraction, type Extraction } from "./llm/extract";
+import { buildPrompt, guardExtraction, parseExtraction, type Extraction } from "./llm/extract";
 import { complete, loadLlmSettings, saveLlmSettings } from "./llm/providers";
 import { AiSettings } from "./ui/AiSettings";
 import { addDays, partsOf, type IsoDate } from "./domain/date";
@@ -130,12 +130,15 @@ export default function App() {
     }
 
     void Promise.all(
-      parts.map(async ({ part, id }) => {
+      parts.map(async ({ part, id }, index) => {
         const reply = await complete(llm, buildPrompt(part, categories, loadCorrections(), now.today));
         const extraction = parseExtraction(reply);
+        const ruleCard = drafts[index]?.card;
 
-        if (extraction !== undefined && aiSession.current === session) {
-          setAi((current) => ({ ...current, extractions: new Map(current.extractions).set(id, extraction) }));
+        if (extraction !== undefined && ruleCard !== undefined && aiSession.current === session) {
+          const guarded = guardExtraction(extraction, part, ruleCard, categories, now.today);
+
+          setAi((current) => ({ ...current, extractions: new Map(current.extractions).set(id, guarded) }));
         }
       }),
     )
