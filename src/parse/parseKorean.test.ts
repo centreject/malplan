@@ -192,3 +192,28 @@ describe("times", () => {
     expect(parseKorean("내일 장보기", today).time).toBeUndefined();
   });
 });
+
+// Cases found by running the korean-datetime (MIT) gold phrases through this parser.
+describe("impossible dates and times are left as text", () => {
+  test.each(["13월 1일 회의", "12월 99일 회의", "2월 30일 회의"])("%s", (text) => {
+    const result = parseKorean(text, today);
+
+    expect(result.date).toBeUndefined();
+    expect(result.rest).toBe(text);
+  });
+
+  test("hour 25 is not a time", () => {
+    expect(parseKorean("25시 회의", today).time).toBeUndefined();
+  });
+
+  test("a duration is not a clock time", () => {
+    const result = parseKorean("1시간 운동", today);
+
+    expect(result.time).toBeUndefined();
+    expect(result.rest).toBe("1시간 운동");
+  });
+
+  test("Feb 29 goes to the next leap year", () => {
+    expect(parseKorean("2월 29일 회의", today).date).toEqual({ kind: "single", date: "2028-02-29" });
+  });
+});

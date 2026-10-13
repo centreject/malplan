@@ -1,7 +1,7 @@
 // Rule-based extraction of dates, recurrence and times from Korean text.
 // Title, category, place and notes are left to the LLM; this module only
 // handles what must be computed exactly.
-import { addDays, dayNumber, makeDate, partsOf, weekdayOf, type IsoDate, type Weekday } from "../domain/date";
+import { addDays, dayNumber, daysInMonth, makeDate, partsOf, weekdayOf, type IsoDate, type Weekday } from "../domain/date";
 import type { Recurrence } from "../domain/recurrence";
 
 export type Slot = "morning" | "lunch" | "dinner" | "night";
@@ -48,10 +48,11 @@ class Scanner {
     this.rest = text;
   }
 
-  take(pattern: RegExp): RegExpExecArray | undefined {
+  /** Cuts the first match out of `rest`; a match `accept` rejects stays in the text. */
+  take(pattern: RegExp, accept: (match: RegExpExecArray) => boolean = () => true): RegExpExecArray | undefined {
     const match = pattern.exec(this.rest);
 
-    if (match === null) {
+    if (match === null || !accept(match)) {
       return undefined;
     }
 
@@ -92,7 +93,7 @@ function takeRecurrence(scanner: Scanner, today: IsoDate): ParsedDate | undefine
     return undefined;
   }
 
-  const until = scanner.take(/(\d{1,2})월\s*(\d{1,2})일\s*까지/);
+  const until = scanner.take(/(\d{1,2})월\s*(\d{1,2})일\s*까지/, (m) => validMonthDay(m[1], m[2]));
 
   if (until !== undefined) {
     rule.until = upcoming(Number(until[1]), Number(until[2]), today).date;
@@ -137,13 +138,13 @@ function takeRule(scanner: Scanner, today: IsoDate): Recurrence | undefined {
     return { freq: "monthly", nth, weekday: nthWeekdayValue, start };
   }
 
-  const monthlyDay = scanner.take(/매(?:월|달)\s*(\d{1,2})일/);
+  const monthlyDay = scanner.take(/매(?:월|달)\s*(\d{1,2})일/, (m) => validMonthDay("1", m[1]));
 
   if (monthlyDay !== undefined) {
     return { freq: "monthly", day: Number(monthlyDay[1]), start };
   }
 
-  const yearly = scanner.take(/매년\s*(\d{1,2})월\s*(\d{1,2})일/);
+  const yearly = scanner.take(/매년\s*(\d{1,2})월\s*(\d{1,2})일/, (m) => validMonthDay(m[1], m[2]));
 
   if (yearly !== undefined) {
     return { freq: "yearly", month: Number(yearly[1]), day: Number(yearly[2]), start };
@@ -176,7 +177,10 @@ function takeRule(scanner: Scanner, today: IsoDate): Recurrence | undefined {
 }
 
 function takeDate(scanner: Scanner, today: IsoDate, flags: Flag[]): ParsedDate | undefined {
-  const range = scanner.take(/(\d{1,2})월\s*(\d{1,2})일\s*부터\s*(?:(\d{1,2})월\s*)?(\d{1,2})일\s*까지/);
+  const range = scanner.take(
+    /(\d{1,2})월\s*(\d{1,2})일\s*부터\s*(?:(\d{1,2})월\s*)?(\d{1,2})일\s*까지/,
+    (m) => validMonthDay(m[1], m[2]) && validMonthDay(m[3] ?? m[1], m[4]),
+  );
 
   if (range !== undefined) {
     const startMonth = Number(range[1]);
@@ -191,7 +195,10 @@ function takeDate(scanner: Scanner, today: IsoDate, flags: Flag[]): ParsedDate |
     return { kind: "range", start: start.date, end: end.date };
   }
 
-  const monthDay = scanner.take(/(?:(\d{4})년\s*)?(\d{1,2})월\s*(\d{1,2})일/);
+  const monthDay = scanner.take(
+    /(?:(\d{4})년\s*)?(\d{1,2})월\s*(\d{1,2})일/,
+    (m) => validMonthDay(m[2], m[3]) && (m[1] === undefined || Number(m[3]) <= daysInMonth(Number(m[1]), Number(m[2]))),
+  );
 
   if (monthDay !== undefined) {
     const month = Number(monthDay[2]);
@@ -238,24 +245,39 @@ function takeDate(scanner: Scanner, today: IsoDate, flags: Flag[]): ParsedDate |
 
 type Upcoming = { date: IsoDate; rolled: boolean };
 
-/** This year's month/day, or next year's if it has already passed. */
-function upcoming(month: number, day: number, today: IsoDate): Upcoming {
-  const thisYear = makeDate(partsOf(today).year, month, day);
+/** Month 1-12 and a day that month has in some year (2/29 counts). */
+function validMonthDay(monthText: string | undefined, dayText: string | undefined): boolean {
+  const month = Number(monthText);
+  const day = Number(dayText);
 
-  if (dayNumber(thisYear) >= dayNumber(today)) {
-    return { date: thisYear, rolled: false };
+  return month >= 1 && month <= 12 && day >= 1 && day <= daysInMonth(2028, month);
+}
+
+/** The first year from this one where month/day exists and has not passed (2/29 waits for a leap year). */
+function upcoming(month: number, day: number, today: IsoDate): Upcoming {
+  const { year } = partsOf(today);
+
+  for (let next = year; next < year + 8; next++) {
+    const date = makeDate(next, month, day);
+
+    if (day <= daysInMonth(next, month) && dayNumber(date) >= dayNumber(today)) {
+      return { date, rolled: next !== year };
+    }
   }
 
-  return { date: makeDate(partsOf(today).year + 1, month, day), rolled: true };
+  // Unreachable for validMonthDay input: a leap year comes within 8 years.
+  return { date: makeDate(year + 1, month, day), rolled: true };
 }
 
 const MERIDIEM = "(오전|오후|새벽|아침|점심|저녁|밤)";
 
-const CLOCK = "(\\d{1,2})시(?:\\s*(\\d{1,2})분|\\s*(반))?";
+// "시(?!간)": "1시간" is a duration, not 1 o'clock.
+const CLOCK = "(\\d{1,2})시(?!간)(?:\\s*(\\d{1,2})분|\\s*(반))?";
 
 function takeTime(scanner: Scanner, flags: Flag[]): ParsedTime | undefined {
   const range = scanner.take(
     new RegExp(`(?:${MERIDIEM}\\s*)?${CLOCK}\\s*(?:부터|~|-)\\s*(?:${MERIDIEM}\\s*)?${CLOCK}(?:\\s*까지)?`),
+    (m) => validClock(m[2], m[3]) && validClock(m[6], m[7]),
   );
 
   if (range !== undefined) {
@@ -266,13 +288,13 @@ function takeTime(scanner: Scanner, flags: Flag[]): ParsedTime | undefined {
     return { kind: "exact", start, end };
   }
 
-  const single = scanner.take(new RegExp(`(?:${MERIDIEM}\\s*)?${CLOCK}`));
+  const single = scanner.take(new RegExp(`(?:${MERIDIEM}\\s*)?${CLOCK}`), (m) => validClock(m[2], m[3]));
 
   if (single !== undefined) {
     return { kind: "exact", start: toClock(single[1], single[2], single[3], single[4], flags) };
   }
 
-  const colon = scanner.take(/(\d{1,2}):(\d{2})/);
+  const colon = scanner.take(/(\d{1,2}):(\d{2})/, (m) => validClock(m[1], m[2]));
 
   if (colon !== undefined) {
     return { kind: "exact", start: { hour: Number(colon[1]), minute: Number(colon[2]) } };
@@ -282,6 +304,11 @@ function takeTime(scanner: Scanner, flags: Flag[]): ParsedTime | undefined {
   const slot = SLOT_BY_WORD.get(slotWord?.[0] ?? "");
 
   return slot === undefined ? undefined : { kind: "slot", slot };
+}
+
+/** Hour 0-24 and minute 0-59; "25시" is not a time. */
+function validClock(hourText: string | undefined, minuteText: string | undefined): boolean {
+  return Number(hourText) <= 24 && Number(minuteText ?? 0) <= 59;
 }
 
 function toClock(
