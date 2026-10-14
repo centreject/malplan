@@ -169,15 +169,18 @@ export function MonthPane(props: MonthPaneProps) {
               <span className="month-head">
                 <span className={`month-day num ${toneOf(weekdayOf(date), holiday !== undefined)}`}>{day}</span>
                 {holiday !== undefined && <span className="month-holiday">{holiday}</span>}
-                {occurrences.length > limit && <span className="month-more">+{occurrences.length - limit}</span>}
               </span>
               <ul className="month-items">
-                {occurrences.slice(0, limit).map(({ item, done }) => (
-                  <li key={item.id}>
+                {occurrences.slice(0, limit).map(({ item, done }, index) => (
+                  <li key={item.id} className="month-row">
                     <button type="button" className={`month-item item-open ${done ? "is-done" : ""}`} onClick={() => props.onEdit(item, date)}>
                       <ItemMark category={categoryOf(item)} task={item.kind === "task"} done={done} />
                       <span className="month-item-title">{item.title}</span>
                     </button>
+                    {/* "+n" ends the last row it continues, so it reads as "and n more". */}
+                    {index === limit - 1 && occurrences.length > limit && (
+                      <span className="month-more" aria-label={`외 ${occurrences.length - limit}개`}>+{occurrences.length - limit}</span>
+                    )}
                   </li>
                 ))}
               </ul>

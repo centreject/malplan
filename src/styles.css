@@ -844,10 +844,34 @@ ul {
   text-decoration: line-through;
 }
 
-.week-more,
-.month-more {
+.week-more {
   color: var(--ink-3);
   font-size: 11px;
+}
+
+.month-row {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  min-width: 0;
+}
+
+.month-row .month-item {
+  flex: 1;
+  min-width: 0;
+}
+
+/* Count of hidden items, as a pill at the end of the last row. */
+.month-more {
+  flex: none;
+  padding: 0 5px;
+  border-radius: 999px;
+  background: var(--surface-2);
+  border: 1px solid var(--line);
+  color: var(--ink-2);
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 16px;
 }
 
 /* ───────── Month ───────── */
@@ -942,12 +966,6 @@ ul {
   align-items: center;
   gap: 5px;
   min-width: 0;
-}
-
-/* "+n" sits beside the date so a short cell still shows one item. */
-.month-head .month-more {
-  flex: none;
-  margin-left: auto;
 }
 
 .month-day {
