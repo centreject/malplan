@@ -1,5 +1,5 @@
 import { ListFilter, Pencil, Plus } from "lucide-react";
-import { Fragment, useState } from "react";
+import { Fragment, useEffect, useRef, useState, type RefObject } from "react";
 import { partsOf, weekdayOf, type IsoDate, type Weekday } from "../domain/date";
 import { categoryClass } from "../domain/categories";
 import type { Category, Item } from "../domain/item";
@@ -44,6 +44,9 @@ export function MonthPane(props: MonthPaneProps) {
   const tabColor = tabClass(tab, props.categories);
   const categoryOf = (item: Item) => props.categories.find((c) => c.id === item.categoryId);
   const [dragged, setDragged] = useState<string>();
+  const grid = useRef<HTMLDivElement>(null);
+  const rows = useRowsThatFit(grid);
+  const limit = Math.min(props.cellCapacity, rows ?? props.cellCapacity);
 
   return (
     <section className={`pane pane-month tab-frame ${tabColor}`} aria-label="이번 달 할 일">
@@ -133,7 +136,7 @@ export function MonthPane(props: MonthPaneProps) {
         </div>
       </PaneHeader>
 
-      <div className="month-grid" role="grid" aria-label={`${props.year}년 ${props.month}월`}>
+      <div ref={grid} className="month-grid" role="grid" aria-label={`${props.year}년 ${props.month}월`}>
         {headers.map((weekday) => (
           <span key={weekday} role="columnheader" className={`month-weekday ${toneOf(weekday, false)}`}>
             {WEEKDAY_NAMES[weekday]}
@@ -166,9 +169,10 @@ export function MonthPane(props: MonthPaneProps) {
               <span className="month-head">
                 <span className={`month-day num ${toneOf(weekdayOf(date), holiday !== undefined)}`}>{day}</span>
                 {holiday !== undefined && <span className="month-holiday">{holiday}</span>}
+                {occurrences.length > limit && <span className="month-more">+{occurrences.length - limit}</span>}
               </span>
               <ul className="month-items">
-                {occurrences.slice(0, props.cellCapacity).map(({ item, done }) => (
+                {occurrences.slice(0, limit).map(({ item, done }) => (
                   <li key={item.id}>
                     <button type="button" className={`month-item item-open ${done ? "is-done" : ""}`} onClick={() => props.onEdit(item, date)}>
                       <ItemMark category={categoryOf(item)} task={item.kind === "task"} done={done} />
@@ -176,11 +180,8 @@ export function MonthPane(props: MonthPaneProps) {
                     </button>
                   </li>
                 ))}
-                {occurrences.length > props.cellCapacity && (
-                  <li className="month-more">+{occurrences.length - props.cellCapacity}</li>
-                )}
               </ul>
-              {occurrences.length > props.cellCapacity && (
+              {occurrences.length > limit && (
                 <ul className="month-full" aria-label={`${month}월 ${day}일 전체`}>
                   {occurrences.map(({ item, done }) => (
                     <li key={item.id}>
@@ -214,4 +215,52 @@ function toneOf(weekday: number, holiday: boolean): string {
   }
 
   return weekday === 6 ? "is-blue" : "";
+}
+
+/**
+ * How many item rows fit in a month cell at the current window size and text size.
+ * A fixed count cut the last row in half on short windows and hid the "+n" line.
+ */
+function useRowsThatFit(grid: RefObject<HTMLDivElement | null>): number | undefined {
+  const [rows, setRows] = useState<number>();
+
+  useEffect(() => {
+    const element = grid.current;
+
+    if (element === null) {
+      return undefined;
+    }
+
+    const measure = () => setRows(rowsIn(element));
+    const resized = new ResizeObserver(measure);
+    // A row height needs a rendered item, so measure again when the month or its items change.
+    const changed = new MutationObserver(measure);
+
+    resized.observe(element);
+    changed.observe(element, { childList: true, subtree: true });
+
+    return () => {
+      resized.disconnect();
+      changed.disconnect();
+    };
+  }, [grid]);
+
+  return rows;
+}
+
+const ROW_GAP_PX = 2;
+
+function rowsIn(grid: HTMLElement): number | undefined {
+  const cell = grid.querySelector<HTMLElement>(".month-cell");
+  const head = cell?.querySelector<HTMLElement>(".month-head");
+  const row = grid.querySelector<HTMLElement>(".month-items li");
+
+  if (cell === null || head === null || head === undefined || row === null) {
+    return undefined;
+  }
+
+  const style = getComputedStyle(cell);
+  const free = cell.clientHeight - Number.parseFloat(style.paddingTop) - Number.parseFloat(style.paddingBottom) - head.offsetHeight - ROW_GAP_PX;
+
+  return Math.max(1, Math.floor((free + ROW_GAP_PX) / (row.offsetHeight + ROW_GAP_PX)));
 }

@@ -944,6 +944,12 @@ ul {
   min-width: 0;
 }
 
+/* "+n" sits beside the date so a short cell still shows one item. */
+.month-head .month-more {
+  flex: none;
+  margin-left: auto;
+}
+
 .month-day {
   flex: none;
   font-size: 14px;

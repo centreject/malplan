@@ -19,6 +19,8 @@ export function SettingsDialog({ open, pages, onClose }: SettingsDialogProps) {
   useEffect(() => {
     if (open) {
       dialog.current?.showModal();
+      // showModal focuses the first menu item, which then looks selected next to the current page.
+      dialog.current?.querySelector<HTMLElement>('[aria-current="page"]')?.focus();
     } else {
       dialog.current?.close();
     }
