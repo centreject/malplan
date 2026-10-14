@@ -4,7 +4,7 @@ import * as v from "valibot";
 import { guessKind, NEW_CATEGORY, type Card } from "../domain/card";
 import type { IsoDate } from "../domain/date";
 import type { Category } from "../domain/item";
-import { parseKorean } from "../parse/parseKorean";
+import { hasDateOrTime } from "../parse/parseKorean";
 
 const ExtractionSchema = v.object({
   title: v.pipe(v.string(), v.trim(), v.minLength(1)),
@@ -110,12 +110,6 @@ export function guardExtraction(
   }
 
   return guarded;
-}
-
-function hasDateOrTime(text: string, today: IsoDate): boolean {
-  const parsed = parseKorean(text, today);
-
-  return parsed.date !== undefined || parsed.time !== undefined;
 }
 
 /** Merge the model's answer into the card, skipping fields the user already edited. */

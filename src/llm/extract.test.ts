@@ -72,6 +72,10 @@ describe("guardExtraction", () => {
     expect(guard(input, { title: "팀 회의", kind: "event", category: "회사" }).title).toBe("팀 회의");
   });
 
+  test("a meal word in the title is not a time", () => {
+    expect(guard("내일 저녁 7시 강남역에서 민수랑 저녁 약속", { title: "민수랑 저녁 약속", kind: "event", category: "약속" }).title).toBe("민수랑 저녁 약속");
+  });
+
   test("a task ending wins over the model's kind", () => {
     expect(guard("금요일까지 보고서 제출", { title: "보고서 제출", kind: "event", category: "회사" }).kind).toBe("task");
     expect(guard("내일 민수랑 저녁", { title: "민수랑 저녁", kind: "event", category: "약속" }).kind).toBe("event");

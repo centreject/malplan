@@ -11,7 +11,9 @@
     "lint": "oxlint",
     "typecheck": "tsc --noEmit",
     "test": "vitest run --dir src",
-    "check": "npm run lint && npm run typecheck && npm run test"
+    "check": "npm run lint && npm run typecheck && npm run test",
+    "bench:parse": "vitest run --dir src src/parse/gold.test.ts --silent=false",
+    "bench:llm": "vitest run --config vitest.eval.config.ts --silent=false"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.133.0",

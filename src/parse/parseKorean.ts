@@ -86,6 +86,13 @@ export function parseKorean(text: string, today: IsoDate): ParseResult {
   return result;
 }
 
+/** A date or a clock time in the text. Meal words alone ("저녁 약속") do not count: they are often just nouns. */
+export function hasDateOrTime(text: string, today: IsoDate): boolean {
+  const parsed = parseKorean(text, today);
+
+  return parsed.date !== undefined || parsed.time?.kind === "exact";
+}
+
 function takeRecurrence(scanner: Scanner, today: IsoDate): ParsedDate | undefined {
   const rule = takeRule(scanner, today);
 
