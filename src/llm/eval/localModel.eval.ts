@@ -2,9 +2,9 @@
 // Start the server, then: npm run bench:llm   (only one set: npm run bench:llm -- -t held)
 import { describe, test } from "vitest";
 import { buildPrompt, parseExtraction } from "../extract";
-import { LOCAL_ENDPOINT } from "../providers";
+import { chatBody, LOCAL_ENDPOINT } from "../providers";
 import { DEV, HELD, type EvalRow } from "./cases";
-import { EVAL_CATEGORY_LIST, FIELDS, grade, guardedFields, modelFields, ruleFields, type Field, type Fields } from "./score";
+import { EVAL_CATEGORY_LIST, FIELDS, grade, guardedFields, modelFields, otherRowsAsItems, ruleFields, type Field, type Fields } from "./score";
 
 const today = "2026-10-12";
 
@@ -12,17 +12,11 @@ async function ask(input: string): Promise<{ reply: string; ms: number }> {
   const prompt = buildPrompt(input, EVAL_CATEGORY_LIST, [], today);
   const started = performance.now();
 
+  // Same request as the app, reply schema included.
   const response = await fetch(LOCAL_ENDPOINT, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      model: "local",
-      temperature: 0,
-      messages: [
-        { role: "system", content: prompt.system },
-        { role: "user", content: prompt.user },
-      ],
-    }),
+    body: chatBody(LOCAL_ENDPOINT, "local", prompt),
   });
 
   // SAFETY: llama-server's OpenAI-compatible reply; a malformed one just scores as unreadable.
@@ -48,7 +42,7 @@ function add(tally: Tally, row: EvalRow, fields: Fields): string[] {
 }
 
 async function run(name: string, rows: EvalRow[]): Promise<void> {
-  const tallies = { rules: emptyTally(), model: emptyTally(), app: emptyTally() };
+  const tallies = { rules: emptyTally(), model: emptyTally(), app: emptyTally(), "app+history": emptyTally() };
   const times: number[] = [];
   const misses: string[] = [];
 
@@ -56,11 +50,12 @@ async function run(name: string, rows: EvalRow[]): Promise<void> {
     const input = row[0];
     const { reply, ms } = await ask(input);
     const extraction = parseExtraction(reply);
-    const shown = guardedFields(input, extraction, today);
+    const shown = guardedFields(input, extraction, [], today);
 
     times.push(ms);
     add(tallies.rules, row, ruleFields(input, today));
     add(tallies.model, row, modelFields(input, extraction, today));
+    add(tallies["app+history"], row, guardedFields(input, extraction, otherRowsAsItems(rows, row), today));
 
     const missed = add(tallies.app, row, shown);
 

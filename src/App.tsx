@@ -136,7 +136,7 @@ export default function App() {
         const ruleCard = drafts[index]?.card;
 
         if (extraction !== undefined && ruleCard !== undefined && aiSession.current === session) {
-          const guarded = guardExtraction(extraction, part, ruleCard, categories, now.today);
+          const guarded = guardExtraction(extraction, part, ruleCard, categories, items, now.today);
 
           setAi((current) => ({ ...current, extractions: new Map(current.extractions).set(id, guarded) }));
         }
@@ -180,18 +180,21 @@ export default function App() {
   const remember = (label: string) => setUndo({ label, board: persisted.board });
 
   const saveDrafts = (drafts: Draft[], scope: SeriesScope) => {
-    // Learn from category fixes: what the AI proposed vs what the user kept.
+    // Learn from category and kind fixes: what the AI proposed vs what the user kept.
     addCorrections(
       drafts.flatMap((draft) => {
-        const proposed = ai.extractions.get(draft.id)?.category;
+        const proposed = ai.extractions.get(draft.id);
         const input = ai.inputs.get(draft.id);
+        const kind = draft.card.kind === "undated" ? undefined : draft.card.kind;
 
         const kept = draft.card.categoryId === NEW_CATEGORY
           ? draft.card.newCategory
           : categories.find((c) => c.id === draft.card.categoryId)?.name;
 
-        return proposed !== undefined && input !== undefined && kept !== undefined && kept !== proposed
-          ? [{ input, category: kept }]
+        const fixed = kept !== proposed?.category || (kind !== undefined && kind !== proposed?.kind);
+
+        return proposed !== undefined && input !== undefined && kept !== undefined && fixed
+          ? [{ input, category: kept, kind }]
           : [];
       }),
     );

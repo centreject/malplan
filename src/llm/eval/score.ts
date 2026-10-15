@@ -3,7 +3,7 @@ import { cardFromParse } from "../../domain/card";
 import type { IsoDate } from "../../domain/date";
 import type { Category } from "../../domain/item";
 import { hasDateOrTime, parseKorean } from "../../parse/parseKorean";
-import { guardExtraction, type Extraction } from "../extract";
+import { guardExtraction, type Extraction, type SavedItem } from "../extract";
 import { EVAL_CATEGORIES, type EvalRow } from "./cases";
 
 export const FIELDS = ["title", "kind", "category", "place"] as const;
@@ -50,13 +50,22 @@ export function modelFields(input: string, extraction: Extraction | undefined, t
   return extraction === undefined ? ruleFields(input, today) : fromExtraction(extraction);
 }
 
-/** What the app shows: the model's answer after the rule guards. */
-export function guardedFields(input: string, extraction: Extraction | undefined, today: IsoDate): Fields {
+/** What the app shows: the model's answer after the rule guards, with these items already saved. */
+export function guardedFields(input: string, extraction: Extraction | undefined, items: SavedItem[], today: IsoDate): Fields {
   if (extraction === undefined) {
     return ruleFields(input, today);
   }
 
   const card = cardFromParse(parseKorean(input, today), today, EVAL_CATEGORY_LIST);
 
-  return fromExtraction(guardExtraction(extraction, input, card, EVAL_CATEGORY_LIST, today));
+  return fromExtraction(guardExtraction(extraction, input, card, EVAL_CATEGORY_LIST, items, today));
+}
+
+/** A used app, simulated: every other row of the set saved with its gold title words under its first gold category. */
+export function otherRowsAsItems(rows: EvalRow[], row: EvalRow): SavedItem[] {
+  return rows.flatMap((other) => {
+    const category = EVAL_CATEGORY_LIST.find((c) => c.name === options(other[3])[0]);
+
+    return other === row || category === undefined ? [] : [{ title: options(other[1]).join(" "), categoryId: category.id }];
+  });
 }

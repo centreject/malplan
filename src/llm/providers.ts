@@ -3,7 +3,7 @@
 import { isTauri } from "@tauri-apps/api/core";
 import { fetch as tauriFetch } from "@tauri-apps/plugin-http";
 import * as v from "valibot";
-import type { Prompt } from "./extract";
+import type { Prompt, ReplyJsonSchema } from "./extract";
 
 export const PROVIDERS = [
   { id: "local", name: "로컬 (이 PC에서 처리)" },
@@ -70,6 +70,31 @@ const ChatReply = v.object({
   choices: v.pipe(v.array(v.object({ message: v.object({ content: v.nullable(v.string()) }) })), v.minLength(1)),
 });
 
+type ChatBody = {
+  model: string;
+  temperature: number;
+  messages: { role: "system" | "user"; content: string }[];
+  response_format?: { type: "json_schema"; json_schema: { name: string; schema: ReplyJsonSchema } };
+};
+
+/** Request body. Only the local server gets the reply schema (it constrains sampling); others keep plain JSON. */
+export function chatBody(url: string, model: string, prompt: Prompt): string {
+  const body: ChatBody = {
+    model,
+    temperature: 0,
+    messages: [
+      { role: "system", content: prompt.system },
+      { role: "user", content: prompt.user },
+    ],
+  };
+
+  if (url === LOCAL_ENDPOINT) {
+    body.response_format = { type: "json_schema", json_schema: { name: "extraction", schema: prompt.schema } };
+  }
+
+  return JSON.stringify(body);
+}
+
 async function openAiCompatible(url: string, apiKey: string, model: string, prompt: Prompt): Promise<string> {
   const headers = new Headers({ "Content-Type": "application/json" });
 
@@ -80,14 +105,7 @@ async function openAiCompatible(url: string, apiKey: string, model: string, prom
   const response = await httpFetch(url, {
     method: "POST",
     headers,
-    body: JSON.stringify({
-      model,
-      temperature: 0,
-      messages: [
-        { role: "system", content: prompt.system },
-        { role: "user", content: prompt.user },
-      ],
-    }),
+    body: chatBody(url, model, prompt),
     signal: AbortSignal.timeout(TIMEOUT_MS),
   });
 
