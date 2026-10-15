@@ -46,6 +46,9 @@ const WEEKDAY_TOKEN = "[일월화수목금토](?:요일)?(?=[,\\s·]|$)";
 class Scanner {
   rest: string;
 
+  /** Where the last cut left its space, so a following phrase ("의 다음 날") can be matched right there. */
+  private lastCut = -1;
+
   constructor(text: string) {
     this.rest = text;
   }
@@ -58,16 +61,42 @@ class Scanner {
       return undefined;
     }
 
-    this.rest = `${this.rest.slice(0, match.index)} ${this.rest.slice(match.index + match[0].length)}`;
+    this.cut(match.index, match[0].length);
 
     return match;
+  }
+
+  /** Like take, but only directly after the last cut. */
+  takeAfter(pattern: RegExp): RegExpExecArray | undefined {
+    if (this.lastCut < 0) {
+      return undefined;
+    }
+
+    const sticky = new RegExp(pattern.source, "y");
+
+    sticky.lastIndex = this.lastCut;
+
+    const match = sticky.exec(this.rest);
+
+    if (match === null) {
+      return undefined;
+    }
+
+    this.cut(match.index, match[0].length);
+
+    return match;
+  }
+
+  private cut(index: number, length: number): void {
+    this.rest = `${this.rest.slice(0, index)} ${this.rest.slice(index + length)}`;
+    this.lastCut = index;
   }
 }
 
 export function parseKorean(text: string, today: IsoDate): ParseResult {
   const scanner = new Scanner(normalizeNumbers(text));
   const flags: Flag[] = [];
-  let date = takeRecurrence(scanner, today) ?? takeDate(scanner, today, flags);
+  let date = takeRecurrence(scanner, today) ?? takeDateRange(scanner, today, flags) ?? takeDate(scanner, today, flags);
   const time = takeTime(scanner, flags);
 
   // 밤 12시 / 자정 is 0:00 at the start of the next day.
@@ -202,15 +231,71 @@ function takeDate(scanner: Scanner, today: IsoDate, flags: Flag[]): ParsedDate |
     const date = rule(scanner, today, flags);
 
     if (date !== undefined) {
-      return date;
+      return date.kind === "single" ? { kind: "single", date: shiftedDate(scanner, date.date) } : date;
     }
   }
 
   return undefined;
 }
 
+/** "크리스마스 전날", "다음 달 첫날 다음 날", "마지막 금요일에서 2일 뒤": a shift right after a date. */
+function shiftedDate(scanner: Scanner, date: IsoDate): IsoDate {
+  const neighbour = scanner.takeAfter(/\s*(?:의\s*)?(다음\s*날|이튿날|전날)(?![가-힣])/);
+
+  if (neighbour !== undefined) {
+    return shiftedDate(scanner, addDays(date, neighbour[1] === "전날" ? -1 : 1));
+  }
+
+  const offset = scanner.takeAfter(/\s*(?:에서|로부터)\s*(\d{1,3})\s*(일|주|개월|달)\s*(뒤|후|전)(?![가-힣])/);
+
+  if (offset === undefined) {
+    return date;
+  }
+
+  const sign = offset[3] === "전" ? -1 : 1;
+  const n = sign * Number(offset[1]);
+
+  return offset[2] === "일" ? addDays(date, n) : offset[2] === "주" ? addDays(date, n * 7) : addMonths(date, n);
+}
+
+/**
+ * "A부터 B까지" with any two dates: 다음주 월요일부터 금요일까지, 내일부터 3일 뒤까지.
+ * A time range ("3시부터 5시까지") is left alone.
+ */
+function takeDateRange(scanner: Scanner, today: IsoDate, flags: Flag[]): ParsedDate | undefined {
+  const match = /^(.*?)\s*부터\s*(.+?)\s*까지/.exec(scanner.rest);
+
+  if (match === null) {
+    return undefined;
+  }
+
+  const left = new Scanner(match[1] ?? "");
+  const right = new Scanner(match[2] ?? "");
+  const startFlags: Flag[] = [];
+  const start = takeDate(left, today, startFlags);
+  // "3일 뒤까지" counts from the start; 모레, 금요일, 15일 count from today as usual.
+  const base = start?.kind === "single" && /뒤|후/.test(match[2] ?? "") ? start.date : today;
+  let end = start?.kind === "single" ? takeDate(right, base, []) : undefined;
+
+  // "다음주 월요일부터 금요일까지": a bare end that falls before the start is the one after it.
+  if (start?.kind === "single" && end?.kind === "single" && dayNumber(end.date) < dayNumber(start.date)) {
+    right.rest = match[2] ?? "";
+    end = takeDate(right, start.date, []);
+  }
+
+  if (start?.kind !== "single" || end?.kind !== "single" || right.rest.trim() !== "" || dayNumber(end.date) < dayNumber(start.date)) {
+    return undefined;
+  }
+
+  flags.push(...startFlags);
+  scanner.rest = `${left.rest} ${scanner.rest.slice(match[0].length)}`;
+
+  return { kind: "range", start: start.date, end: end.date };
+}
+
 /** A word ends here: end, space, punctuation, or a particle that itself ends. "내일신문", "오늘의집" do not. */
-const WORD_END = "(?=$|[\\s,.!?~·)\\-]|(?:은|는|이|가|에|에는|에도|엔|까지|부터|도|로|의|쯤|중|안에|날)(?=$|[\\s,.!?~]))";
+// Time words may follow with no space: "오늘저녁", "내일아침 9시", "내일3시".
+const WORD_END = "(?=$|[\\s\\d,.!?~·)\\-]|아침|점심|저녁|밤|새벽|오전|오후|낮|(?:은|는|이|가|에|에는|에도|엔|까지|부터|도|로|의|쯤|중|안에|날)(?=$|[\\s,.!?~]))";
 
 const RELATIVE_DAY = new Map([
   ["그그글피", 5], ["그글피", 4], ["글피", 3], ["내일모레", 2], ["모레", 2], ["명후일", 2], ["익익일", 2],
@@ -300,7 +385,8 @@ function validYearMonthDay(yearText: string | undefined, monthText: string | und
 /** 3일 뒤, 2주 3일 후, 1년 2개월 뒤, 하루 전 (number words were turned into digits first). */
 function takeOffset(scanner: Scanner, today: IsoDate): ParsedDate | undefined {
   // "하루 전날" is "the day before", not an offset from today.
-  const match = scanner.take(/(?:(?:오늘|지금)\s*(?:으로|로)?\s*부터\s*)?((?:\d{1,3}\s*(?:년|개월|달|주|일)\s*)+)(뒤|후|전|있다가)(?:(?![가-힣])|(?=에|까지|부터|쯤|엔))/);
+  // Not "10월 9일 전" (a date) nor "…에서 2일 뒤" (a shift of another date).
+  const match = scanner.take(/(?:(?:오늘|지금)\s*(?:으로|로)?\s*부터\s*)?(?<![\d월]\s*|(?:에서|로부터)\s*)((?:\d{1,3}\s*(?:년|개월|달|주|일)\s*)+)(뒤|후|전|있다가)(?:(?![가-힣])|(?=에|까지|부터|쯤|엔))/);
 
   if (match === undefined) {
     return undefined;
@@ -370,23 +456,40 @@ const HOLIDAYS = new Map<string, [month: number, day: number, lunar: boolean]>([
   ["광복절", [8, 15, false]], ["개천절", [10, 3, false]], ["한글날", [10, 9, false]],
   ["설날", [1, 1, true]], ["설", [1, 1, true]], ["구정", [1, 1, true]], ["추석", [8, 15, true]],
   ["부처님오신날", [4, 8, true]], ["석가탄신일", [4, 8, true]],
+  ["발렌타인데이", [2, 14, false]], ["밸런타인데이", [2, 14, false]], ["화이트데이", [3, 14, false]], ["근로자의날", [5, 1, false]],
+  ["어버이날", [5, 8, false]], ["스승의날", [5, 15, false]], ["할로윈", [10, 31, false]], ["핼러윈", [10, 31, false]], ["빼빼로데이", [11, 11, false]],
 ]);
 
-/** Holiday names; "연휴" spans the day before to the day after. Bare "설" only with 연휴 ("설명" is not a holiday). */
+const HOLIDAY_NAME =
+  "크리스마스\\s*이브|크리스마스|성탄절|신정|삼일절|어린이날|현충일|제헌절|광복절|개천절|한글날|설날|구정|추석|부처님\\s*오신\\s*날|석가탄신일|" +
+  "발렌타인데이|밸런타인데이|화이트데이|근로자의\\s*날|어버이날|스승의\\s*날|할로윈|핼러윈|빼빼로데이";
+
+/**
+ * Holiday names; "연휴" spans the day before to the day after. Bare "설" only with 연휴 ("설명" is not a holiday).
+ * A year word fixes the year ("올해 추석" even if it has passed); otherwise the next one to come.
+ */
 function takeHoliday(scanner: Scanner, today: IsoDate): ParsedDate | undefined {
   const match = scanner.take(
-    new RegExp(`(?<![가-힣])(?:(크리스마스\\s*이브|크리스마스|성탄절|신정|삼일절|어린이날|현충일|제헌절|광복절|개천절|한글날|설날|구정|추석|부처님\\s*오신\\s*날|석가탄신일)|(설))(\\s*연휴)?${WORD_END}`),
-    (m) => m[2] === undefined || m[3] !== undefined,
+    new RegExp(`(?<![가-힣])(?:(올해|올|금년|내년|명년|내후년|작년|재작년)\\s*)?(?:(${HOLIDAY_NAME})|(설))(\\s*연휴)?${WORD_END}`),
+    (m) => m[3] === undefined || m[4] !== undefined,
   );
 
-  const holiday = HOLIDAYS.get((match?.[1] ?? match?.[2] ?? "").replace(/\s/g, ""));
+  const holiday = HOLIDAYS.get((match?.[2] ?? match?.[3] ?? "").replace(/\s/g, ""));
 
   if (match === undefined || holiday === undefined) {
     return undefined;
   }
 
   const [month, day, lunar] = holiday;
-  const holidayDays = match[3] === undefined ? 0 : 1;
+  const holidayDays = match[4] === undefined ? 0 : 1;
+  const yearWord = match[1] === "올" ? "올해" : match[1];
+  const fixedYear = yearWord === undefined ? undefined : partsOf(today).year + (YEAR_OFFSET.get(yearWord) ?? 0);
+
+  if (fixedYear !== undefined) {
+    const date = holidayIn(fixedYear, month, day, lunar);
+
+    return date === undefined ? undefined : holidayDays === 0 ? { kind: "single", date } : { kind: "range", start: addDays(date, -1), end: addDays(date, 1) };
+  }
 
   for (let year = partsOf(today).year; year <= partsOf(today).year + 1; year++) {
     const date = holidayIn(year, month, day, lunar);
@@ -416,7 +519,7 @@ function takeMonthDay(scanner: Scanner, today: IsoDate, flags: Flag[]): ParsedDa
   const yearOf = (m: RegExpExecArray) => (m[1] === undefined ? m[2] === undefined ? undefined : partsOf(today).year + (YEAR_OFFSET.get(m[2]) ?? 0) : Number(m[1]));
 
   const monthDay = scanner.take(
-    /(?:(\d{4})년\s*|(올해|금년|내년|명년|내후년|작년|재작년)\s*)?(\d{1,2})월\s*(\d{1,2})일/,
+    /(?:(\d{4})년\s*|(올해|금년|내년|명년|내후년|작년|재작년)\s*)?(\d{1,2})\s*월(?:달)?\s*(\d{1,2})\s*일/,
     (m) => {
       const year = yearOf(m);
 
@@ -451,22 +554,26 @@ function takeMonthDay(scanner: Scanner, today: IsoDate, flags: Flag[]): ParsedDa
  */
 function takeMonthPart(scanner: Scanner, today: IsoDate): ParsedDate | undefined {
   const pattern = new RegExp(
-    `(?:${MONTH_PREFIX}|(?<![\\d가-힣]|[년해]\\s*)(\\d{1,2})월)?\\s*(?:의\\s*)?` +
+    `(?:${MONTH_PREFIX}|(올해|금년|내년|명년|내후년|작년|재작년)\\s*(\\d{1,2})월|(?<![\\d가-힣]|[년해]\\s*)(\\d{1,2})월)?\\s*(?:의\\s*)?` +
       `(?:(\\d{1,2})일|(말일|마지막\\s*날)|(첫\\s*날)|${NTH}\\s*(주\\s*)?(?:의\\s*)?([일월화수목금토])요일|([일월화수목금토])요일)`,
   );
 
   let resolved: IsoDate | undefined;
 
   const match = scanner.take(pattern, (m) => {
-    const [, prefix, explicit, day, last, first, nth, row, nthDay, bareDay] = m;
-    const hasMonth = prefix !== undefined || explicit !== undefined;
+    const [, prefix, yearWord, yearMonth, explicit, day, last, first, nth, row, nthDay, bareDay] = m;
+    const hasMonth = prefix !== undefined || yearMonth !== undefined || explicit !== undefined;
 
     // Bare "15일" and bare weekdays belong to other rules; bare 말일 / 둘째주 금요일 count.
     if (!hasMonth && (day !== undefined || first !== undefined || bareDay !== undefined || (nth !== undefined && row === undefined))) {
       return false;
     }
 
-    resolved = monthPart(today, prefix, explicit, { day, last, first, nth, row, weekday: nthDay ?? bareDay });
+    const spec = { day, last, first, nth, row, weekday: nthDay ?? bareDay };
+
+    resolved = yearMonth === undefined
+      ? monthPart(today, prefix, explicit, spec)
+      : validMonthDay(yearMonth, "1") ? dayIn(partsOf(today).year + (YEAR_OFFSET.get(yearWord ?? "") ?? 0), Number(yearMonth), spec) : undefined;
 
     return resolved !== undefined;
   });
@@ -573,11 +680,19 @@ function takeWeekPart(scanner: Scanner, today: IsoDate): ParsedDate | undefined 
 /** 금요일, 다음주 화요일, 지난주 금요일, 차주 화요일, 목욜. */
 function takeWeekday(scanner: Scanner, today: IsoDate): ParsedDate | undefined {
   // A bare weekday right after an unknown "…주" / "…째" ("그다음 주 토요일", "올해 다섯째 금요일") is not guessed.
-  const match = scanner.take(new RegExp(`(?:(?<![가-힣])${WEEK_PREFIX}\\s*주\\s*|(?<![가-힣])(차|내|익)주\\s*|(?<![주째]\\s*))([일월화수목금토])(?:요일|욜)`));
-  const weekday = WEEKDAY_BY_CHAR.get(match?.[3] ?? "");
+  const match = scanner.take(
+    new RegExp(`(?:(?<![가-힣])${WEEK_PREFIX}\\s*주\\s*|(?<![가-힣])(차|내|익)주\\s*|(?<![가-힣])(지난|저번)\\s+|(?<![주째]\\s*))([일월화수목금토])(?:요일|욜)`),
+  );
+
+  const weekday = WEEKDAY_BY_CHAR.get(match?.[4] ?? "");
 
   if (match === undefined || weekday === undefined) {
     return undefined;
+  }
+
+  // 지난 금요일: the most recent one before today.
+  if (match[3] !== undefined) {
+    return { kind: "single", date: addDays(today, -((weekdayOf(today) - weekday + 6) % 7) - 1) };
   }
 
   const prefix = match[1] ?? match[2];
@@ -605,7 +720,7 @@ function takeWholeWeek(scanner: Scanner, today: IsoDate): ParsedDate | undefined
 /** Bare "15일": this month's, or the next month that has it. "3일간", "1일 1식", "30일 내로" are not dates. */
 function takeDayOfMonth(scanner: Scanner, today: IsoDate): ParsedDate | undefined {
   const match = scanner.take(
-    new RegExp(`(?<![\\d./\\-]|[월달]\\s*)(\\d{1,2})일${WORD_END}(?!\\s*(?:\\d|동안|간|이내|내로|내에|연속|째|마다))`),
+    new RegExp(`(?<![\\d./\\-]|[월달]\\s*)(\\d{1,2})일${WORD_END}(?!\\s*(?:\\d+\\s*(?![시:분])[가-힣]|동안|간|이내|내로|내에|연속|째|마다))`),
     (m) => validMonthDay("1", m[1]),
   );
 
@@ -657,7 +772,11 @@ function upcoming(month: number, day: number, today: IsoDate): Upcoming {
 const MERIDIEM = "(오전|오후|새벽|아침|점심|저녁|밤)";
 
 // "시(?!간)": "1시간" is a duration, not 1 o'clock.
-const CLOCK = "(\\d{1,2})시(?!간)(?:\\s*(\\d{1,2})분|\\s*(반))?";
+// Digits glued to letters are model names, not hours: "S22 시리즈".
+const CLOCK = "(?<![A-Za-z\\d])(\\d{1,2})\\s*시(?!간)(?:\\s*(\\d{1,2})분|\\s*(반))?";
+
+/** The start of a range may drop 시: "3~5시". */
+const RANGE_START = "(?<![A-Za-z\\d])(\\d{1,2})(?:\\s*시(?!간)(?:\\s*(\\d{1,2})분|\\s*(반))?)?";
 
 function takeTime(scanner: Scanner, flags: Flag[]): ParsedTime | undefined {
   const named = scanner.take(/(?<![가-힣])(정오|자정)/);
@@ -666,8 +785,32 @@ function takeTime(scanner: Scanner, flags: Flag[]): ParsedTime | undefined {
     return { kind: "exact", start: { hour: named[1] === "정오" ? 12 : 24, minute: 0 } };
   }
 
+  // 17시 5분 전 = 16:55.
+  const before = scanner.take(new RegExp(`(?:${MERIDIEM}\\s*)?(\\d{1,2})\\s*시\\s*(\\d{1,2})\\s*분\\s*전(?![가-힣])`), (m) => validClock(m[2], m[3]));
+
+  if (before !== undefined) {
+    const clock = toClock(before[1], before[2], undefined, undefined, flags);
+    const minutes = clock.hour * 60 - Number(before[3]);
+
+    return { kind: "exact", start: { hour: Math.floor(minutes / 60), minute: minutes % 60 } };
+  }
+
+  // PM 3:30, 3:30 pm, 3pm.
+  const english = scanner.take(/(?:(AM|PM|am|pm)\s*)?(?<![\d:])(\d{1,2})(?::(\d{2}))?\s*(?:(AM|PM|am|pm)(?![a-zA-Z]))?/, (m) => {
+    const marker = m[1] ?? m[4];
+
+    return marker !== undefined && validClock(m[2], m[3]) && Number(m[2]) <= 12;
+  });
+
+  if (english !== undefined) {
+    const pm = (english[1] ?? english[4] ?? "").toLowerCase() === "pm";
+    const hour = Number(english[2]) % 12 + (pm ? 12 : 0);
+
+    return { kind: "exact", start: { hour, minute: Number(english[3] ?? 0) } };
+  }
+
   const range = scanner.take(
-    new RegExp(`(?:${MERIDIEM}\\s*)?${CLOCK}\\s*(?:부터|~|-)\\s*(?:${MERIDIEM}\\s*)?${CLOCK}(?:\\s*까지)?`),
+    new RegExp(`(?:${MERIDIEM}\\s*)?${RANGE_START}\\s*(?:부터|~|-)\\s*(?:${MERIDIEM}\\s*)?${CLOCK}(?:\\s*까지)?`),
     (m) => validClock(m[2], m[3]) && validClock(m[6], m[7]),
   );
 

@@ -45,8 +45,9 @@ const RULES: [RegExp, (match: string, ...groups: string[]) => string][] = [
   [new RegExp(`(?<![가-힣])(${NATIVE_WORD})\\s*시${AFTER_CLOCK}`, "g"), (_, hour = "") => `${NATIVE.get(hour) ?? 0}시`],
   [new RegExp(`(\\d시\\s*)(${SINO})\\s*분`, "g"), (_, head = "", minute = "") => `${head}${sinoValue(minute)}분`],
   // 이틀 후, 보름 뒤, 일주일 후, 삼일 후, 한 달 뒤, 일 년 뒤.
-  [/(하루|이틀|사흘|나흘|닷새|엿새|이레|여드레|아흐레|열흘|보름)(?=\s*(?:뒤|후|전|있다가))/g, (word) => `${DAY_COUNT.get(word) ?? 0}일`],
-  [/일주일(?=\s*(?:뒤|후|전|있다가))/g, () => "1주"],
+  // Not "하루 전날" ("the day before").
+  [/(하루|이틀|사흘|나흘|닷새|엿새|이레|여드레|아흐레|열흘|보름)(?=\s*(?:뒤|후|전(?!날)|있다가))/g, (word) => `${DAY_COUNT.get(word) ?? 0}일`],
+  [/일주일(?=\s*(?:뒤|후|전(?!날)|있다가))/g, () => "1주"],
   [
     new RegExp(`(?<![가-힣])(${NATIVE_WORD}|${SINO})\\s*(년|개월|달|주|일)(?=\\s*(?:(?:\\d+|${NATIVE_WORD}|${SINO})\\s*(?:년|개월|달|주|일)\\s*)*(?:뒤|후|전|있다가))`, "g"),
     (_, count = "", unit = "") => `${countValue(count)}${unit}`,

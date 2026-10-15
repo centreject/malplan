@@ -377,3 +377,57 @@ describe("written dates, holidays and ranges", () => {
     expect(dateOf(text)).toEqual(span(start, end));
   });
 });
+
+describe("more gold-phrase gaps", () => {
+  test.each([
+    ["10월 9일 전까지 신청", "2026-10-09"],
+    ["4 월 14 일", "2027-04-14"],
+    ["4월달 14일", "2027-04-14"],
+    ["올해 추석", "2026-09-25"],
+    ["내년 크리스마스", "2027-12-25"],
+    ["내년 2월 마지막 일요일", "2027-02-28"],
+    ["지난 금요일", "2026-10-02"],
+    ["크리스마스 전날", "2026-12-24"],
+    ["다음 달 첫날 다음 날", "2026-11-02"],
+    ["다음 달 마지막 금요일에서 이틀 뒤", "2026-11-29"],
+    ["발렌타인데이", "2027-02-14"],
+  ])("%s", (text, date) => {
+    expect(dateOf(text)).toEqual(single(date));
+  });
+
+  test.each([
+    ["다음주 월요일부터 금요일까지 출장", "2026-10-12", "2026-10-16"],
+    ["이번 주 금요일부터 일요일까지", "2026-10-09", "2026-10-11"],
+    ["내일부터 3일 뒤까지", "2026-10-06", "2026-10-09"],
+    ["10일부터 15일까지 휴가", "2026-10-10", "2026-10-15"],
+  ])("%s", (text, start, end) => {
+    expect(dateOf(text)).toEqual(span(start, end));
+  });
+
+  test("dates written without spaces before a time word", () => {
+    expect(parseKorean("오늘저녁때 회식", today)).toMatchObject({ date: single("2026-10-05"), time: { kind: "slot", slot: "dinner" } });
+    expect(parseKorean("내일아침 9시", today)).toMatchObject({ date: single("2026-10-06"), time: { kind: "exact", start: { hour: 9, minute: 0 } } });
+  });
+
+  test.each([
+    ["PM 3:30", "15:30"],
+    ["3pm 회의", "15:00"],
+    ["3 시 회의", "15:00"],
+    ["17시 5분 전", "16:55"],
+    ["다섯시 십분전", "16:50"],
+  ])("%s", (text, clock) => {
+    expect(clockOf(text)).toBe(clock);
+  });
+
+  test("3~5시 is a range", () => {
+    expect(parseKorean("3~5시 회의", today).time).toEqual({ kind: "exact", start: { hour: 15, minute: 0 }, end: { hour: 17, minute: 0 } });
+  });
+
+  test("a time range is not a date range", () => {
+    expect(parseKorean("내일 3시부터 5시까지 회의", today)).toMatchObject({ date: single("2026-10-06"), time: { kind: "exact", start: { hour: 15, minute: 0 }, end: { hour: 17, minute: 0 } } });
+  });
+});
+
+test("a bare day followed by a time keeps both", () => {
+  expect(parseKorean("15일 3시 회의", today)).toMatchObject({ date: { kind: "single", date: "2026-10-15" }, time: { kind: "exact", start: { hour: 15, minute: 0 } } });
+});

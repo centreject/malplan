@@ -3,11 +3,11 @@ import goldText from "./fixtures/korean-datetime-gold.jsonl?raw";
 import { parseGold, scoreGold, type CategoryScore } from "./goldScore";
 
 // Ratchet: raise these when the parser improves; never lower them to pass.
-const MIN_CORRECT = 844;
+const MIN_CORRECT = 928;
 
 const MAX_FALSE_POSITIVES = 9;
 
-const MIN_SCHEDULE_RATE = 0.715;
+const MIN_SCHEDULE_RATE = 0.805;
 
 /**
  * Not counted in the schedule rate: whole months or years ("다음달" as a span; the app has no such item),
