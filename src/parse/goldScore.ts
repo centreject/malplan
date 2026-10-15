@@ -3,7 +3,7 @@
 // evaluator lives here: the comparison only maps their [start, end) spans onto our parse result.
 import * as v from "valibot";
 import { addDays, dayNumber } from "../domain/date";
-import { parseKorean, type ClockTime, type ParseResult } from "./parseKorean";
+import { parseKorean, type ClockTime, type ParseResult, type Slot } from "./parseKorean";
 
 const GoldRowSchema = v.object({
   category: v.string(),
@@ -59,10 +59,15 @@ function matches(kind: "date" | "time" | "datetime", start: string, end: string 
       : parsed.date?.kind === "range" && parsed.date.start === startDate && parsed.date.end === lastDate;
   }
 
-  const timeOk = parsed.time?.kind === "exact" && sameClock(parsed.time.start, start.slice(11, 16), expect.includes("nearest"));
+  const timeOk = parsed.time?.kind === "slot"
+    ? end !== undefined && SLOT_START[parsed.time.slot] === start.slice(11, 13)
+    : parsed.time?.kind === "exact" && sameClock(parsed.time.start, start.slice(11, 16), expect.includes("nearest"));
 
   return kind === "time" ? timeOk : timeOk && sameDay(parsed, startDate);
 }
+
+/** The app keeps 아침/점심/저녁/밤 as slots, not spans; a slot matches the gold span that starts at its hour. */
+const SLOT_START: Record<Slot, string> = { morning: "07", lunch: "12", dinner: "18", night: "21" };
 
 /** "3시" resolves to the nearest 3 o'clock there; this app guesses PM and lets the user confirm, so either half counts. */
 function sameClock(clock: ClockTime, expected: string, eitherHalf: boolean): boolean {

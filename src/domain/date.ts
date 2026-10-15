@@ -44,3 +44,13 @@ export function weekdayOf(date: IsoDate): Weekday {
 export function daysInMonth(year: number, month: number): number {
   return new Date(Date.UTC(year, month, 0)).getUTCDate();
 }
+
+/** Same day N months later, kept inside the target month: 1/31 + 1 month = 2/28. */
+export function addMonths(date: IsoDate, months: number): IsoDate {
+  const { year, month, day } = partsOf(date);
+  const index = year * 12 + (month - 1) + months;
+  const targetYear = Math.floor(index / 12);
+  const targetMonth = index - targetYear * 12 + 1;
+
+  return makeDate(targetYear, targetMonth, Math.min(day, daysInMonth(targetYear, targetMonth)));
+}
