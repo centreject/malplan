@@ -2,7 +2,16 @@ import { describe, expect, test } from "vitest";
 import { cardFromParse, NEW_CATEGORY, type Card } from "../domain/card";
 import type { Category } from "../domain/item";
 import { parseKorean } from "../parse/parseKorean";
-import { applyExtraction, buildPrompt, guardExtraction, parseExtraction, type Extraction } from "./extract";
+import {
+  applyExtraction,
+  buildPrompt,
+  guardExtraction,
+  NEW_CATEGORY_CHOICE,
+  parseExtraction,
+  pickCorrections,
+  type Extraction,
+  type SavedItem,
+} from "./extract";
 
 const today = "2026-10-11";
 
@@ -31,6 +40,35 @@ describe("buildPrompt", () => {
 
     expect(system).toContain("김철수 저녁");
   });
+
+  test("kind corrections show up in the example", () => {
+    const { system } = buildPrompt(text, categories, [{ input: "김철수 저녁", category: "약속", kind: "task" }], today);
+
+    expect(system).toContain('"김철수 저녁" → 분류 "약속", kind "task"');
+  });
+
+  test("the schema limits category to the user's names plus the new-category choice", () => {
+    const { schema } = buildPrompt(text, categories, [], today);
+
+    expect(schema.properties.category).toEqual({ enum: ["회사", "약속", NEW_CATEGORY_CHOICE] });
+    expect(schema.required).toEqual(["title", "kind", "category"]);
+  });
+});
+
+describe("pickCorrections", () => {
+  const unrelated = Array.from({ length: 30 }, (_, index) => ({ input: `택배 ${index}번 보내기`, category: "회사" }));
+  const wedding = { input: "토요일 사촌 결혼식", category: "약속" };
+
+  test("old corrections sharing a word come first, then a few recent ones", () => {
+    const picked = pickCorrections([wedding, ...unrelated], "다음 주 일요일 친구 결혼식", today);
+
+    expect(picked[0]).toEqual(wedding);
+    expect(picked.slice(1)).toEqual(unrelated.slice(-3));
+  });
+
+  test("date words alone do not make corrections similar", () => {
+    expect(pickCorrections([wedding, ...unrelated], "토요일 장보기", today)).not.toContainEqual(wedding);
+  });
 });
 
 describe("parseExtraction", () => {
@@ -58,10 +96,16 @@ describe("parseExtraction", () => {
     expect(parseExtraction("모르겠습니다")).toBeUndefined();
     expect(parseExtraction('{"title": 3}')).toBeUndefined();
   });
+
+  test("the new-category choice becomes the proposed name", () => {
+    expect(parseExtraction(`{"title":"동창회","kind":"event","category":"${NEW_CATEGORY_CHOICE}","newCategory":"친구"}`)?.category).toBe("친구");
+    expect(parseExtraction(`{"title":"동창회","kind":"event","category":"${NEW_CATEGORY_CHOICE}"}`)).toBeUndefined();
+    expect(parseExtraction('{"title":"동창회","kind":"event","category":"약속","newCategory":"친구"}')).toEqual({ title: "동창회", kind: "event", category: "약속" });
+  });
 });
 
-function guard(input: string, extraction: Extraction): Extraction {
-  return guardExtraction(extraction, input, cardFromParse(parseKorean(input, today), today, categories), categories, today);
+function guard(input: string, extraction: Extraction, items: SavedItem[] = []): Extraction {
+  return guardExtraction(extraction, input, cardFromParse(parseKorean(input, today), today, categories), categories, items, today);
 }
 
 describe("guardExtraction", () => {
@@ -84,6 +128,36 @@ describe("guardExtraction", () => {
   test("a category named in the sentence wins", () => {
     expect(guard("회사 우편물 발송", { title: "우편물 발송", kind: "task", category: "개인" }).category).toBe("회사");
     expect(guard("우편물 발송", { title: "우편물 발송", kind: "task", category: "개인" }).category).toBe("개인");
+  });
+
+  test("a word saved under only one category votes for it; words seen under several do not", () => {
+    const items: SavedItem[] = [
+      { title: "민지 결혼식장", categoryId: "meet" },
+      { title: "친구 생일", categoryId: "meet" },
+      { title: "친구 이사 돕기", categoryId: "work" },
+      { title: "친구 송별회", categoryId: "work" },
+    ];
+
+    expect(guard("토요일 친구 결혼식", { title: "친구 결혼식", kind: "event", category: "회사" }, items).category).toBe("약속");
+  });
+
+  test("history needs a clear winner and never beats a category named in the sentence", () => {
+    const tied: SavedItem[] = [
+      { title: "결혼식", categoryId: "meet" },
+      { title: "결혼식 준비", categoryId: "work" },
+    ];
+
+    expect(guard("친구 결혼식", { title: "친구 결혼식", kind: "event", category: "개인" }, tied).category).toBe("개인");
+    expect(guard("회사 동료 결혼식", { title: "동료 결혼식", kind: "event", category: "약속" }, [{ title: "결혼식", categoryId: "meet" }]).category).toBe("회사");
+  });
+
+  test("date words and generic words do not count as shared", () => {
+    const items: SavedItem[] = [
+      { title: "토요일 장보기", categoryId: "meet" },
+      { title: "선물 사기", categoryId: "meet" },
+    ];
+
+    expect(guard("토요일 책 사기", { title: "책 사기", kind: "task", category: "개인" }, items).category).toBe("개인");
   });
 
   test("a place not written in the sentence is dropped", () => {
