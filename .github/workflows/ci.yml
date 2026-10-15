@@ -23,4 +23,6 @@ jobs:
         with:
           workspaces: src-tauri
       - run: npm run build
+      # tauri-build checks that the bundled llama-server resources exist.
+      - run: npm run fetch:llama
       - run: cargo clippy --manifest-path src-tauri/Cargo.toml -- -D warnings
