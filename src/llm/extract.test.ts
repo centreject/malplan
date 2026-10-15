@@ -130,9 +130,11 @@ describe("guardExtraction", () => {
     expect(guard("우편물 발송", { title: "우편물 발송", kind: "task", category: "개인" }).category).toBe("개인");
   });
 
-  test("a word saved under only one category votes for it; words seen under several do not", () => {
+  test("a word saved 3+ times under only one category votes for it; words seen under several do not", () => {
     const items: SavedItem[] = [
       { title: "민지 결혼식장", categoryId: "meet" },
+      { title: "사촌 결혼식", categoryId: "meet" },
+      { title: "동기 결혼식 축가", categoryId: "meet" },
       { title: "친구 생일", categoryId: "meet" },
       { title: "친구 이사 돕기", categoryId: "work" },
       { title: "친구 송별회", categoryId: "work" },
@@ -227,4 +229,10 @@ describe("applyExtraction", () => {
 
     expect(next.kind).toBe("undated");
   });
+});
+
+test("history ignores a word seen only once", () => {
+  const once: SavedItem[] = [{ title: "민지 결혼식장", categoryId: "meet" }];
+
+  expect(guard("토요일 친구 결혼식", { title: "친구 결혼식", kind: "event", category: "회사" }, once).category).toBe("회사");
 });

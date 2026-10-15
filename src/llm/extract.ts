@@ -159,17 +159,20 @@ export function parseExtraction(reply: string): Extraction | undefined {
  * Each input word seen in saved titles of only one category votes for it ("결혼식" always 약속);
  * words seen across categories ("제출" in 회사 and 학교) say nothing. The most-voted category wins; none on a tie.
  */
+const MIN_HISTORY_HITS = 3;
+
 function historyCategory(input: string, items: SavedItem[], categories: Category[], today: IsoDate): Category | undefined {
   const known = items.filter((item) => categories.some((c) => c.id === item.categoryId));
   const titles = known.map((item) => topicWords(item.title, today));
   const votes = new Map<string, number>();
 
   for (const word of topicWords(input, today)) {
-    // ponytail: one sighting is enough, so a coincidental shared word can mislead; a minimum count if the bench says so.
-    const seenIn = new Set(known.flatMap((item, index) => (sharesWord([word], titles[index] ?? []) ? [item.categoryId] : [])));
+    // A word must recur (3+ saved titles, one category): with single sightings the rule cut HELD category 71 → 66 / 90.
+    const hits = known.flatMap((item, index) => (sharesWord([word], titles[index] ?? []) ? [item.categoryId] : []));
+    const seenIn = new Set(hits);
     const [only] = seenIn;
 
-    if (only !== undefined && seenIn.size === 1) {
+    if (only !== undefined && seenIn.size === 1 && hits.length >= MIN_HISTORY_HITS) {
       votes.set(only, (votes.get(only) ?? 0) + 1);
     }
   }
