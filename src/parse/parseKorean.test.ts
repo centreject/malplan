@@ -431,3 +431,36 @@ describe("more gold-phrase gaps", () => {
 test("a bare day followed by a time keeps both", () => {
   expect(parseKorean("15일 3시 회의", today)).toMatchObject({ date: { kind: "single", date: "2026-10-15" }, time: { kind: "exact", start: { hour: 15, minute: 0 } } });
 });
+
+describe("third round of gold-phrase gaps", () => {
+  test.each([
+    ["월요일 회의", "2026-10-12"],
+    ["다가오는 월요일", "2026-10-12"],
+    ["다음 월요일", "2026-10-12"],
+    ["오늘로부터 한 달 후", "2026-11-05"],
+    ["25년 3월 1일", "2025-03-01"],
+    ["99.03.01", "1999-03-01"],
+    ["10/7(수) 14:00", "2026-10-07"],
+    ["마지막 금요일", "2026-10-30"],
+    ["내년 마지막 금요일", "2027-12-31"],
+    ["올해 첫 월요일", "2026-01-05"],
+    ["작년 마지막 날", "2025-12-31"],
+    ["다음 해 첫날", "2027-01-01"],
+    ["다다다음주 금요일", "2026-10-30"],
+    ["다음 주 이맘때", "2026-10-12"],
+    ["내년 이맘때", "2027-10-05"],
+    ["저저번달 말일", "2026-08-31"],
+  ])("%s", (text, date) => {
+    expect(dateOf(text)).toEqual(single(date));
+  });
+});
+
+describe("date words left unread are flagged", () => {
+  test.each(["그날 오전 9시 알림", "마지막 영업일 오후 3시", "다섯째 주 회의 준비", "2월 30일 회의"])("%s", (text) => {
+    expect(parseKorean(text, today).flags).toContain("checkDate");
+  });
+
+  test.each(["내일 3시 회의", "주간 보고서 작성", "생일 선물 사기", "금요일까지 과제"])("%s", (text) => {
+    expect(parseKorean(text, today).flags).not.toContain("checkDate");
+  });
+});

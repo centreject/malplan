@@ -232,7 +232,11 @@ function CardEditor({ card, errors, categories, heading, onChange, onExclude }: 
         {error("title")}
       </Field>
 
-      <Field label="종류" groupId={id("kind")}>
+      <Field
+        label="종류"
+        groupId={id("kind")}
+        badge={!dated && card.flags.includes("checkDate") ? <Guess text="날짜 확인" /> : undefined}
+      >
         <Segmented name={id("kind-radio")} labelledBy={id("kind")} value={card.kind} options={KINDS} onChange={(kind) => set({ kind })} />
       </Field>
 
@@ -241,7 +245,7 @@ function CardEditor({ card, errors, categories, heading, onChange, onExclude }: 
           <Field
             label={card.repeat ? "시작일" : "날짜"}
             htmlFor={id("date")}
-            badge={card.flags.includes("rolledToNextYear") ? <Guess text="내년으로 해석함" /> : undefined}
+            badge={dateBadge(card)}
           >
             <span className="cf-row">
               <input
@@ -549,6 +553,15 @@ function FieldError({ id, message }: { id: string; message: string | undefined }
 }
 
 /** "추정" badge for parser guesses, with what was guessed. */
+/** Date words the rules could not read come first: the date shown may be wrong or missing. */
+function dateBadge(card: Card): ReactNode {
+  if (card.flags.includes("checkDate")) {
+    return <Guess text="날짜 확인" />;
+  }
+
+  return card.flags.includes("rolledToNextYear") ? <Guess text="내년으로 해석함" /> : undefined;
+}
+
 function Guess({ text }: { text: string }) {
   return (
     <span className="cf-guess">

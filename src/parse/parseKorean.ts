@@ -19,8 +19,11 @@ export type ParsedTime =
   | { kind: "exact"; start: ClockTime; end?: ClockTime }
   | { kind: "slot"; slot: Slot };
 
-/** Guesses the confirm screen should mark as "추정". */
-export type Flag = "rolledToNextYear" | "assumedPm";
+/** Guesses the confirm screen should mark as "추정"; checkDate = date words left that the rules could not read. */
+export type Flag = "rolledToNextYear" | "assumedPm" | "checkDate";
+
+/** Date-like words still in the text after parsing: "그날", "마지막 영업일", "다섯째 주", "2월 30일". */
+const UNREAD_DATE = /(?<![가-힣])(?:그날|전날|당일|이튿날|영업일|이맘때)|째\s*주|\d{1,2}\s*월\s*\d{1,2}\s*일|(?<![\d가-힣])\d{1,2}\s*일(?![가-힣])|[월화수목금토일]요일/;
 
 export type ParseResult = {
   date?: ParsedDate;
@@ -112,6 +115,10 @@ export function parseKorean(text: string, today: IsoDate): ParseResult {
     .replace(/(^|\s)(에|에는|부터|까지)(?=\s|$)/g, " ")
     .replace(/\s+/g, " ")
     .trim();
+
+  if (UNREAD_DATE.test(rest)) {
+    flags.push("checkDate");
+  }
 
   const result: ParseResult = { flags, rest };
 
@@ -295,7 +302,7 @@ function takeDateRange(scanner: Scanner, today: IsoDate, flags: Flag[]): ParsedD
 
 /** A word ends here: end, space, punctuation, or a particle that itself ends. "내일신문", "오늘의집" do not. */
 // Time words may follow with no space: "오늘저녁", "내일아침 9시", "내일3시".
-const WORD_END = "(?=$|[\\s\\d,.!?~·)\\-]|아침|점심|저녁|밤|새벽|오전|오후|낮|(?:은|는|이|가|에|에는|에도|엔|까지|부터|도|로|의|쯤|중|안에|날)(?=$|[\\s,.!?~]))";
+const WORD_END = "(?=$|[\\s\\d,.!?~·()\\-]|아침|점심|저녁|밤|새벽|오전|오후|낮|(?:은|는|이|가|에|에는|에도|엔|까지|부터|도|로|의|쯤|중|안에|날)(?=$|[\\s,.!?~]))";
 
 const RELATIVE_DAY = new Map([
   ["그그글피", 5], ["그글피", 4], ["글피", 3], ["내일모레", 2], ["모레", 2], ["명후일", 2], ["익익일", 2],
@@ -304,7 +311,26 @@ const RELATIVE_DAY = new Map([
 ]);
 
 // "낼" is left out: "보고서 낼 것" means "submit", not "tomorrow".
-const YEAR_OFFSET = new Map([["올해", 0], ["금년", 0], ["내년", 1], ["명년", 1], ["내후년", 2], ["작년", -1], ["재작년", -2]]);
+const YEAR_OFFSET = new Map([
+  ["올해", 0], ["금년", 0], ["내년", 1], ["명년", 1], ["다음해", 1], ["내후년", 2], ["작년", -1], ["지난해", -1], ["재작년", -2],
+]);
+
+const YEAR_WORD = "(올해|금년|내년|명년|다음\\s*해|내후년|작년|지난\\s*해|재작년)";
+
+function yearOffset(word: string | undefined): number {
+  return YEAR_OFFSET.get((word ?? "").replace(/\s/g, "")) ?? 0;
+}
+
+/** Two-digit years: up to 20 years ahead are this century ("25년" = 2025), the rest the last ("99" = 1999). */
+function fullYear(text: string, today: IsoDate): number {
+  const year = Number(text);
+
+  if (text.length === 4) {
+    return year;
+  }
+
+  return year <= (partsOf(today).year % 100) + 20 ? 2000 + year : 1900 + year;
+}
 
 // Longest first, so "내일모레" is not read as "내일".
 const RELATIVE_WORD = `(${[...RELATIVE_DAY.keys()].toSorted((a, b) => b.length - a.length).join("|")})`;
@@ -316,9 +342,10 @@ function relativeDay(word: string | undefined, today: IsoDate): IsoDate {
 const WEEK_OFFSET = new Map([
   ["이번주", 0], ["금주", 0], ["오는주", 0], ["다음주", 1], ["차주", 1], ["내주", 1], ["익주", 1],
   ["다다음주", 2], ["다음다음주", 2], ["저번주", -1], ["지난주", -1], ["지지난주", -2], ["저저번주", -2], ["전전주", -2],
+  ["다다다음주", 3], ["다다담주", 3], ["저저저번주", -3], ["지지지난주", -3], ["전전전주", -3],
 ]);
 
-const WEEK_PREFIX = "(이번|금|오는|다음|차|내|익|다다음|다음다음|저번|지난|지지난|저저번|전전)";
+const WEEK_PREFIX = "(이번|금|오는|다음|차|내|익|다다음|다음다음|다다다음|다다담|저번|지난|지지난|지지지난|저저번|저저저번|전전|전전전)";
 
 /** Weeks start on Monday, as Korean calendars and "다음주" usually mean. */
 function mondayOf(date: IsoDate, weeksAhead: number): IsoDate {
@@ -335,10 +362,10 @@ const NTH_VALUE = new Map([["첫", 1], ["둘", 2], ["두", 2], ["셋", 3], ["세
 
 const MONTH_OFFSET = new Map([
   ["이번달", 0], ["이달", 0], ["당월", 0], ["다음달", 1], ["다음월", 1], ["익월", 1],
-  ["다다음달", 2], ["다음다음달", 2], ["저번달", -1], ["지난달", -1], ["지지난달", -2],
+  ["다다음달", 2], ["다음다음달", 2], ["저번달", -1], ["지난달", -1], ["지지난달", -2], ["저저번달", -2],
 ]);
 
-const MONTH_PREFIX = "(이번\\s*달|이달|당월|다음\\s*달|다음\\s*월|익월|다다음\\s*달|다음다음\\s*달|저번\\s*달|지난\\s*달|지지난\\s*달)";
+const MONTH_PREFIX = "(이번\\s*달|이달|당월|다음\\s*달|다음\\s*월|익월|다다음\\s*달|다음다음\\s*달|저번\\s*달|지난\\s*달|지지난\\s*달|저저번\\s*달)";
 
 const DATE_RULES: DateRule[] = [
   takeWritten,
@@ -348,6 +375,8 @@ const DATE_RULES: DateRule[] = [
   takeDayRange,
   takeHoliday,
   takeMonthDay,
+  takeSameTime,
+  takeYearPart,
   takeMonthPart,
   takeRelativeWord,
   takeWeekPart,
@@ -367,10 +396,10 @@ function takeWritten(scanner: Scanner, today: IsoDate): ParsedDate | undefined {
     return { kind: "single", date: makeDate(Number(full[1] ?? full[4]), Number(full[2] ?? full[5]), Number(full[3] ?? full[6])) };
   }
 
-  const short = scanner.take(/(?<![\d.])(\d{2})\.(\d{1,2})\.(\d{1,2})(?![\d.])/, (m) => validYearMonthDay(`20${m[1] ?? ""}`, m[2], m[3]));
+  const short = scanner.take(/(?<![\d.])(\d{2})\.(\d{1,2})\.(\d{1,2})(?![\d.])/, (m) => validYearMonthDay(String(fullYear(m[1] ?? "", today)), m[2], m[3]));
 
   if (short !== undefined) {
-    return { kind: "single", date: makeDate(2000 + Number(short[1]), Number(short[2]), Number(short[3])) };
+    return { kind: "single", date: makeDate(fullYear(short[1] ?? "", today), Number(short[2]), Number(short[3])) };
   }
 
   const slash = scanner.take(new RegExp(`(?<![\\d/])(\\d{1,2})/(\\d{1,2})(?![\\d/])${WORD_END}`), (m) => validMonthDay(m[1], m[2]));
@@ -386,7 +415,7 @@ function validYearMonthDay(yearText: string | undefined, monthText: string | und
 function takeOffset(scanner: Scanner, today: IsoDate): ParsedDate | undefined {
   // "하루 전날" is "the day before", not an offset from today.
   // Not "10월 9일 전" (a date) nor "…에서 2일 뒤" (a shift of another date).
-  const match = scanner.take(/(?:(?:오늘|지금)\s*(?:으로|로)?\s*부터\s*)?(?<![\d월]\s*|(?:에서|로부터)\s*)((?:\d{1,3}\s*(?:년|개월|달|주|일)\s*)+)(뒤|후|전|있다가)(?:(?![가-힣])|(?=에|까지|부터|쯤|엔))/);
+  const match = scanner.take(/(?:(?:오늘|지금)\s*(?:으로|로)?\s*부터\s*|(?<![\d월]\s*|(?:에서|로부터)\s*))((?:\d{1,3}\s*(?:년|개월|달|주|일)\s*)+)(뒤|후|전|있다가)(?:(?![가-힣])|(?=에|까지|부터|쯤|엔))/);
 
   if (match === undefined) {
     return undefined;
@@ -516,10 +545,10 @@ function holidayIn(year: number, month: number, day: number, lunar: boolean): Is
 }
 
 function takeMonthDay(scanner: Scanner, today: IsoDate, flags: Flag[]): ParsedDate | undefined {
-  const yearOf = (m: RegExpExecArray) => (m[1] === undefined ? m[2] === undefined ? undefined : partsOf(today).year + (YEAR_OFFSET.get(m[2]) ?? 0) : Number(m[1]));
+  const yearOf = (m: RegExpExecArray) => (m[1] === undefined ? m[2] === undefined ? undefined : partsOf(today).year + yearOffset(m[2]) : fullYear(m[1], today));
 
   const monthDay = scanner.take(
-    /(?:(\d{4})년\s*|(올해|금년|내년|명년|내후년|작년|재작년)\s*)?(\d{1,2})\s*월(?:달)?\s*(\d{1,2})\s*일/,
+    /(?:(?<!\d)(\d{4}|\d{2})년\s*|(올해|금년|내년|명년|내후년|작년|재작년)\s*)?(\d{1,2})\s*월(?:달)?\s*(\d{1,2})\s*일/,
     (m) => {
       const year = yearOf(m);
 
@@ -548,6 +577,49 @@ function takeMonthDay(scanner: Scanner, today: IsoDate, flags: Flag[]): ParsedDa
   return undefined;
 }
 
+/** 다음 주 이맘때, 지난달 이맘때, 내년 이맘때: the same day a week, month or year away. */
+function takeSameTime(scanner: Scanner, today: IsoDate): ParsedDate | undefined {
+  const match = scanner.take(new RegExp(`(?<![가-힣])(?:${WEEK_PREFIX}\\s*주|${MONTH_PREFIX}|${YEAR_WORD})\\s*이맘때`));
+
+  if (match === undefined) {
+    return undefined;
+  }
+
+  const [, week, month, year] = match;
+
+  if (week !== undefined) {
+    return { kind: "single", date: addDays(today, weekOffset(week) * 7) };
+  }
+
+  const months = month === undefined ? yearOffset(year) * 12 : MONTH_OFFSET.get(month.replace(/\s/g, "")) ?? 0;
+
+  return { kind: "single", date: addMonths(today, months) };
+}
+
+/** 내년 마지막 금요일, 올해 첫 월요일, 작년 마지막 날, 다음 해 첫날: January for "first", December for "last". */
+function takeYearPart(scanner: Scanner, today: IsoDate): ParsedDate | undefined {
+  let resolved: IsoDate | undefined;
+
+  const match = scanner.take(
+    new RegExp(`(?<![가-힣])${YEAR_WORD}\\s*(?:의\\s*)?(?:(첫\\s*날)|(마지막\\s*날)|${NTH}\\s*(주\\s*)?(?:의\\s*)?([일월화수목금토])요일)`),
+    (m) => {
+      const [, word, first, last, nth, row, weekday] = m;
+      const fromEnd = last !== undefined || nth === "마지막";
+
+      // Only first or last: "올해 다섯째 금요일" has no clear meaning.
+      if (nth !== undefined && nth !== "첫" && nth !== "마지막") {
+        return false;
+      }
+
+      resolved = dayIn(partsOf(today).year + yearOffset(word), fromEnd ? 12 : 1, { first, last, nth, row, weekday });
+
+      return resolved !== undefined;
+    },
+  );
+
+  return match === undefined || resolved === undefined ? undefined : { kind: "single", date: resolved };
+}
+
 /**
  * Parts of a month: 다음달 15일, 이번 달 말일, 다음 달 첫날, 다음 달 셋째 토요일 (nth weekday),
  * 다음달 첫째주 금요일 (calendar row), 2월 말일, and bare 말일 / 둘째주 금요일 for this month.
@@ -565,7 +637,8 @@ function takeMonthPart(scanner: Scanner, today: IsoDate): ParsedDate | undefined
     const hasMonth = prefix !== undefined || yearMonth !== undefined || explicit !== undefined;
 
     // Bare "15일" and bare weekdays belong to other rules; bare 말일 / 둘째주 금요일 count.
-    if (!hasMonth && (day !== undefined || first !== undefined || bareDay !== undefined || (nth !== undefined && row === undefined))) {
+    // Bare "마지막 금요일" is this month's last Friday; bare "첫 월요일" is too vague to guess.
+    if (!hasMonth && (day !== undefined || first !== undefined || bareDay !== undefined || (nth !== undefined && row === undefined && nth !== "마지막"))) {
       return false;
     }
 
@@ -681,7 +754,7 @@ function takeWeekPart(scanner: Scanner, today: IsoDate): ParsedDate | undefined 
 function takeWeekday(scanner: Scanner, today: IsoDate): ParsedDate | undefined {
   // A bare weekday right after an unknown "…주" / "…째" ("그다음 주 토요일", "올해 다섯째 금요일") is not guessed.
   const match = scanner.take(
-    new RegExp(`(?:(?<![가-힣])${WEEK_PREFIX}\\s*주\\s*|(?<![가-힣])(차|내|익)주\\s*|(?<![가-힣])(지난|저번)\\s+|(?<![주째]\\s*))([일월화수목금토])(?:요일|욜)`),
+    new RegExp(`(?:(?<![가-힣])${WEEK_PREFIX}\\s*주\\s*|(?<![가-힣])(차|내|익)주\\s*|(?<![가-힣])(지난|저번)\\s+|(?<![가-힣])(?:다음|다가오는|오는)\\s+|(?<![주째]\\s*))([일월화수목금토])(?:요일|욜)`),
   );
 
   const weekday = WEEKDAY_BY_CHAR.get(match?.[4] ?? "");
@@ -698,7 +771,8 @@ function takeWeekday(scanner: Scanner, today: IsoDate): ParsedDate | undefined {
   const prefix = match[1] ?? match[2];
 
   if (prefix === undefined) {
-    return { kind: "single", date: addDays(today, (weekday - weekdayOf(today) + 7) % 7) };
+    // Said on a Monday, "월요일" means next Monday; today would be "오늘".
+    return { kind: "single", date: addDays(today, ((weekday - weekdayOf(today) + 6) % 7) + 1) };
   }
 
   return { kind: "single", date: addDays(mondayOf(today, weekOffset(prefix)), (weekday + 6) % 7) };
@@ -706,7 +780,9 @@ function takeWeekday(scanner: Scanner, today: IsoDate): ParsedDate | undefined {
 
 /** 다음주, 이번 주에, 지난주: the whole Monday-Sunday week. "금주" alone is left out: it also means not drinking. */
 function takeWholeWeek(scanner: Scanner, today: IsoDate): ParsedDate | undefined {
-  const match = scanner.take(new RegExp(`(?<![가-힣])(?:(이번|다음|다다음|다음다음|저번|지난|지지난|저저번)\\s*주|(내|익|전전)주)${WORD_END}`));
+  const match = scanner.take(
+    new RegExp(`(?<![가-힣])(?:(이번|다음|다다음|다음다음|다다다음|다다담|저번|지난|지지난|지지지난|저저번|저저저번)\\s*주|(내|익|전전|전전전)주)${WORD_END}`),
+  );
 
   if (match === undefined) {
     return undefined;
