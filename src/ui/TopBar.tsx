@@ -7,6 +7,8 @@ type TopBarProps = {
   today: IsoDate;
   text: string;
   onText: (text: string) => void;
+  /** The input got focus: a good moment to start the local AI. */
+  onFocus: () => void;
   /** Opens the confirm screen for the current text. */
   onSubmit: () => void;
   onSettings: () => void;
@@ -16,7 +18,7 @@ type TopBarProps = {
   onList: () => void;
 };
 
-export function TopBar({ today, text, onText, onSubmit, onSettings, onSearch, listOpen, onList }: TopBarProps) {
+export function TopBar({ today, text, onText, onFocus, onSubmit, onSettings, onSearch, listOpen, onList }: TopBarProps) {
   const summary = text.trim() === "" ? "" : parseSummary(parseKorean(text, today));
 
   return (
@@ -41,6 +43,7 @@ export function TopBar({ today, text, onText, onSubmit, onSettings, onSearch, li
           className="quick-add-input"
           value={text}
           onChange={(event) => onText(event.target.value)}
+          onFocus={onFocus}
           placeholder="예: 12월 28일까지 매주 수요일 오후 4시 회사 우편물 발송"
           autoComplete="off"
         />

@@ -33,3 +33,6 @@ dist-ssr
 
 # Claude Code agent worktrees
 .claude/worktrees/
+
+# llama-server binaries: `npm run fetch:llama`, bundled as Tauri resources
+src-tauri/binaries/

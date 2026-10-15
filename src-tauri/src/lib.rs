@@ -1,10 +1,12 @@
+mod llm_server;
+mod model_download;
 mod sync_files;
 
 use std::sync::atomic::{AtomicBool, Ordering};
 
 use tauri::menu::{Menu, MenuItem};
 use tauri::tray::{MouseButton, MouseButtonState, TrayIconBuilder, TrayIconEvent};
-use tauri::{AppHandle, Manager, WindowEvent};
+use tauri::{AppHandle, Manager, RunEvent, WindowEvent};
 
 /// Whether the window close button hides to the tray. The frontend owns the
 /// persisted setting and pushes it here on startup and on change.
@@ -46,6 +48,8 @@ pub fn run() {
                 .build(),
         )
         .manage(CloseToTray(AtomicBool::new(true)))
+        .manage(llm_server::LlmServer::default())
+        .manage(model_download::Download::default())
         .invoke_handler(tauri::generate_handler![
             set_close_to_tray,
             sync_files::sync_default_dir,
@@ -54,6 +58,13 @@ pub fn run() {
             sync_files::sync_write,
             sync_files::sync_append,
             sync_files::save_text_file,
+            llm_server::llm_start,
+            llm_server::llm_stop,
+            llm_server::llm_running,
+            llm_server::model_delete,
+            model_download::model_status,
+            model_download::model_download,
+            model_download::model_download_cancel,
         ])
         .setup(|app| {
             let open = MenuItem::with_id(app, "open", "열기", true, None::<&str>)?;
@@ -92,6 +103,12 @@ pub fn run() {
                 }
             }
         })
-        .run(tauri::generate_context!())
-        .expect("error while running tauri application");
+        .build(tauri::generate_context!())
+        .expect("error while building tauri application")
+        .run(|app, event| {
+            // Never leave llama-server running after the app is gone.
+            if let RunEvent::Exit = event {
+                llm_server::stop(app);
+            }
+        });
 }

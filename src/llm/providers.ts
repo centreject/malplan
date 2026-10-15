@@ -4,6 +4,7 @@ import { isTauri } from "@tauri-apps/api/core";
 import { fetch as tauriFetch } from "@tauri-apps/plugin-http";
 import * as v from "valibot";
 import type { Prompt } from "./extract";
+import { LOCAL_ORIGIN, localServer } from "./localServer";
 
 export const PROVIDERS = [
   { id: "local", name: "로컬 (이 PC에서 처리)" },
@@ -41,7 +42,7 @@ export type LlmSettings = v.InferOutput<typeof SettingsSchema>;
 const STORAGE_KEY = "malplan.llm";
 
 /** Local llama-server's OpenAI-compatible endpoint (started on demand once installed). */
-export const LOCAL_ENDPOINT = "http://127.0.0.1:8357/v1/chat/completions";
+export const LOCAL_ENDPOINT = `${LOCAL_ORIGIN}/v1/chat/completions`;
 
 const TIMEOUT_MS = 30_000;
 
@@ -132,6 +133,8 @@ export async function complete(settings: LlmSettings, prompt: Prompt): Promise<s
 
   switch (settings.provider) {
     case "local":
+      await localServer?.ensure();
+
       return openAiCompatible(LOCAL_ENDPOINT, "", "local", prompt);
     case "gemini":
       return openAiCompatible("https://generativelanguage.googleapis.com/v1beta/openai/chat/completions", settings.apiKey, model, prompt);

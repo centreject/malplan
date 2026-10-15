@@ -3,6 +3,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { NEW_CATEGORY, cardFromItem, cardFromParse, commitCards, splitInput, type Draft } from "./domain/card";
 import { addCorrections, loadCorrections } from "./llm/corrections";
 import { buildPrompt, guardExtraction, parseExtraction, type Extraction } from "./llm/extract";
+import { localServer, warmUpLocal } from "./llm/localServer";
 import { complete, loadLlmSettings, saveLlmSettings } from "./llm/providers";
 import { AiSettings } from "./ui/AiSettings";
 import { addDays, partsOf, type IsoDate } from "./domain/date";
@@ -149,9 +150,11 @@ export default function App() {
       })
       .catch((error: Error) => {
         if (aiSession.current === session) {
-          const note = llm.provider === "local"
-            ? "로컬 AI 모델이 아직 준비되지 않아 규칙 기반으로만 정리했습니다."
-            : `AI 정리 실패 (${error.message}). 규칙 기반 결과를 확인하세요.`;
+          const note = llm.provider !== "local"
+            ? `AI 정리 실패 (${error.message}). 규칙 기반 결과를 확인하세요.`
+            : localServer?.status() === "no-model"
+              ? "로컬 AI 모델이 없어 규칙 기반으로만 정리했습니다. 마이페이지 → AI 변환에서 받을 수 있습니다."
+              : "로컬 AI 모델이 아직 준비되지 않아 규칙 기반으로만 정리했습니다.";
 
           setAi((current) => ({ ...current, note }));
         }
@@ -305,6 +308,11 @@ export default function App() {
         today={now.today}
         text={quickText}
         onText={setQuickText}
+        onFocus={() => {
+          if (llm.provider === "local") {
+            localServer?.prestart(() => warmUpLocal(buildPrompt("", categories, loadCorrections(), now.today).system));
+          }
+        }}
         onSubmit={openNew}
         onSettings={() => setSettingsOpen(true)}
         onSearch={() => setSearchOpen(true)}
