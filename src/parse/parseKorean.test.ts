@@ -255,7 +255,6 @@ describe("offsets from today", () => {
     ["이틀 후", "2026-10-07"],
     ["열흘 뒤", "2026-10-15"],
     ["보름 뒤", "2026-10-20"],
-    ["하루 전", "2026-10-04"],
     ["일주일 후 재검사", "2026-10-12"],
     ["2주 뒤", "2026-10-19"],
     ["한 달 뒤", "2026-11-05"],
@@ -291,7 +290,7 @@ describe("days of the month", () => {
     ["다음 달 첫째 토요일", "2026-11-07"],
     ["다음 달 마지막 금요일", "2026-11-27"],
     ["이번 달 둘째 토요일", "2026-10-10"],
-    ["다음달 첫째주 금요일", "2026-10-30"],
+    ["다음달 첫째주 금요일", "2026-11-06"],
     ["삼월 오일", "2027-03-05"],
     ["시월 십오일", "2026-10-15"],
   ])("%s", (text, date) => {
@@ -462,5 +461,85 @@ describe("date words left unread are flagged", () => {
 
   test.each(["내일 3시 회의", "주간 보고서 작성", "생일 선물 사기", "금요일까지 과제"])("%s", (text) => {
     expect(parseKorean(text, today).flags).not.toContain("checkDate");
+  });
+});
+
+// Found by a review of ~420 everyday inputs against the expanded parser.
+function noDate(text: string): string {
+  const result = parseKorean(text, today);
+
+  return result.date === undefined ? "none" : JSON.stringify(result.date);
+}
+
+describe("everyday inputs that must not get a wrong date", () => {
+  test.each([
+    "30일 챌린지 시작",
+    "7일 무료체험 해지하기",
+    "2박 3일 제주 여행",
+    "회의 3일 전에 자료 공유",
+    "7일 전 알림 설정",
+    "이 일 후에 정리",
+    "추석 선물 사기",
+  ])("%s has no date", (text) => {
+    expect(noDate(text)).toBe("none");
+  });
+
+  test.each(["아이폰 15 시리즈 출시", "1 시청 앞 집회", "D-3 시험", "3시청 앞"])("%s has no time", (text) => {
+    expect(parseKorean(text, today).time).toBeUndefined();
+  });
+
+  test("3시회의 keeps its time", () => {
+    expect(clockOf("3시회의")).toBe("15:00");
+  });
+
+  test.each([
+    ["다음달 첫째주 금요일 회의", "2026-11-06"],
+    ["12월 마지막 주 금요일 종무식", "2026-12-25"],
+    ["다음주까지 견적서", "2026-10-18"],
+    ["다음주부터 출근", "2026-10-12"],
+    ["어제 주문한 택배 오늘 도착", "2026-10-05"],
+    ["담주 월요일", "2026-10-12"],
+    ["낼모레 회의", "2026-10-07"],
+  ])("%s", (text, date) => {
+    expect(dateOf(text)).toEqual(single(date));
+  });
+
+  test("이번주 토요일 said on a Sunday is the coming Saturday", () => {
+    expect(parseKorean("이번주 토요일", "2026-10-11").date).toEqual(single("2026-10-17"));
+  });
+
+  test("N일부터 M일간 is a range", () => {
+    expect(dateOf("10월 20일부터 3일간 워크샵")).toEqual(span("2026-10-20", "2026-10-22"));
+  });
+
+  test("월요일마다 repeats weekly", () => {
+    expect(dateOf("월요일마다 분리수거")).toMatchObject({ kind: "recurring", rule: { freq: "weekly", weekdays: [1] } });
+  });
+
+  test.each(["매달 말일 정산", "매주 주말 등산"])("%s: a repeat word with an unreadable rule gets no single date, only a flag", (text) => {
+    const result = parseKorean(text, today);
+
+    expect(result.date).toBeUndefined();
+    expect(result.flags).toContain("checkDate");
+  });
+
+  test.each(["1/2 진행상황 공유", "내일 회의 모레 발표"])("%s is flagged", (text) => {
+    expect(parseKorean(text, today).flags).toContain("checkDate");
+  });
+
+  test.each([
+    ["12월 25일 크리스마스 파티", "크리스마스 파티"],
+    ["토요일엔 쉬기", "쉬기"],
+    ["3시쯤 전화", "전화"],
+    ["10월 25일 일요일 결혼식", "결혼식"],
+    ["25일(일) 결혼식", "결혼식"],
+    ["2박 3일 제주 여행", "2박 3일 제주 여행"],
+  ])("%s keeps the title %s", (text, rest) => {
+    expect(parseKorean(text, today).rest).toBe(rest);
+  });
+
+  test("오후 3:30 and 14:00~16:00", () => {
+    expect(clockOf("오후 3:30 회의")).toBe("15:30");
+    expect(parseKorean("14:00~16:00 회의", today).time).toEqual({ kind: "exact", start: { hour: 14, minute: 0 }, end: { hour: 16, minute: 0 } });
   });
 });

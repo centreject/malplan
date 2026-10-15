@@ -48,9 +48,10 @@ const RULES: [RegExp, (match: string, ...groups: string[]) => string][] = [
   // Not "하루 전날" ("the day before").
   [/(하루|이틀|사흘|나흘|닷새|엿새|이레|여드레|아흐레|열흘|보름)(?=\s*(?:뒤|후|전(?!날)|있다가))/g, (word) => `${DAY_COUNT.get(word) ?? 0}일`],
   [/일주일(?=\s*(?:뒤|후|전(?!날)|있다가))/g, () => "1주"],
+  // Sino digits must touch the unit ("삼일 후"); "이 일 후에" is "after this job". "일 년" is the one spaced form.
   [
-    new RegExp(`(?<![가-힣])(${NATIVE_WORD}|${SINO})\\s*(년|개월|달|주|일)(?=\\s*(?:(?:\\d+|${NATIVE_WORD}|${SINO})\\s*(?:년|개월|달|주|일)\\s*)*(?:뒤|후|전|있다가))`, "g"),
-    (_, count = "", unit = "") => `${countValue(count)}${unit}`,
+    new RegExp(`(?<![가-힣])(?:(${NATIVE_WORD})\\s*|(${SINO})|(일)\\s+(?=년))(년|개월|달|주|일)(?=\\s*(?:(?:\\d+|${NATIVE_WORD}|${SINO})\\s*(?:년|개월|달|주|일)\\s*)*(?:뒤|후|전|있다가))`, "g"),
+    (_, native = "", sino = "", one = "", unit = "") => `${countValue(native || sino || one)}${unit}`,
   ],
 ];
 

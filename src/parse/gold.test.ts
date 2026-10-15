@@ -3,11 +3,15 @@ import goldText from "./fixtures/korean-datetime-gold.jsonl?raw";
 import { parseGold, scoreGold, type CategoryScore } from "./goldScore";
 
 // Ratchet: raise these when the parser improves; never lower them to pass.
-const MIN_CORRECT = 984;
+// Lowered once on 2026-10-15 (984 → 960, 86.4% → 84.0%) by deliberate choices that differ from the gold set, after a
+// review of ~420 everyday inputs: "N일 전" alone is no longer counted back from today ("회의 3일 전에 자료 공유"),
+// "첫째 주 금요일" is the first Friday rather than the Friday of the first calendar row, and "이번 주 X요일" already
+// past means the coming one.
+const MIN_CORRECT = 960;
 
 const MAX_FALSE_POSITIVES = 9;
 
-const MIN_SCHEDULE_RATE = 0.864;
+const MIN_SCHEDULE_RATE = 0.84;
 
 /**
  * Not counted in the schedule rate: whole months or years ("다음달" as a span; the app has no such item),
