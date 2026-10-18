@@ -208,7 +208,7 @@ components:
 
 **Creative North Star: "One Board, Three Liveries"**
 
-malplan is a single planning board that the user can repaint. The shell is fixed: a top bar dominated by the sentence input, Today as the wide lead column, the week above the month on the right. Each theme is a livery painted on that same chassis, and a livery may change only four things: type, palette, density, and one signature move. Bus (버스 안내판, the default) is a Seoul bus arrival board: navy route band, route-family category colours, capsule tags, one reversed arrival plate. Desk (탁상달력) is a bank desk calendar: warm paper ground, huge condensed numerals, red Sundays and holidays, index tabs hanging off the month frame. Standard (기본) is a neutral calendar: cool greys, one blue accent, soft tinted tags.
+malplan is a single planning board that the user can repaint. The shell is fixed: a top bar dominated by the sentence input, Today as the wide lead column, the week above the month on the right. Each theme is a livery painted on that same chassis, and a livery may change only these things: type family, palette, corner language, and one signature move. Spacing, text sizes and control sizes are shared by all three (unified 2026-10-18); only the date numerals scale per theme. Bus (버스 안내판, the default) is a Seoul bus arrival board: navy route band, route-family category colours, capsule tags, one reversed arrival plate. Desk (탁상달력) is a bank desk calendar: warm paper ground, huge condensed numerals, red Sundays and holidays, index tabs hanging off the month frame. Standard (기본) is a neutral calendar: cool greys, one blue accent, soft tinted tags.
 
 The board is built for a glance from an always-on window. Density is medium: rows sit at 8–10px vertical padding, panes are separated by a 14px gutter, and nothing decorates for its own sake. Information hierarchy comes from the numerals, the plate and row state, not from ornament. Every theme keeps the panes flat on a tinted ground; the only lifted surface is the unfolded crowded-day list.
 
@@ -309,7 +309,8 @@ Corner language is one of the four livery levers. Each theme sets two radii: a s
 - **Bus:** capsules (999px) for tags, tabs and the today marker, which read as route-number badges; panes at 14px.
 - **Desk:** nearly square, like printed paper (3px tags, 4px panes). Month tabs hang from the frame with only their bottom corners rounded (6px); desk tags are outlined, not filled.
 - **Standard:** gentle 6px tags and 10px panes.
-- **Shared:** the plate radius is the pane radius minus 4px; icon and text buttons use 8px; the task checkbox uses 6px; theme cards use the plate radius. Hairlines are always 1px; the checkbox border is 1.5px; done strikethrough is 2px.
+- **Controls:** buttons take `--radius-control` (bus capsule 999px, desk 3px, standard 8px) and fields `--radius-field` (bus 8px, desk 3px, standard 6px).
+- **Shared:** the plate radius is the pane radius minus 4px; the task checkbox uses 6px; theme cards use the plate radius. Hairlines are always 1px; the checkbox border is 1.5px; done strikethrough is 2px.
 
 ## Components
 
@@ -319,6 +320,9 @@ The one input that matters, and the widest thing in the top bar.
 - **Colour:** surface fill, line border, 15px text, accent caret. On bus the border goes transparent on the navy band and the submit turns Arrival Amber with dark ink.
 - **Focus:** the global 2px focus ring, drawn inset (-2px offset) so it stays inside the fused shape.
 - **Preview:** a 13px ink-2 line under the input shows the live parse; it reserves 20px so the layout doesn't jump.
+
+### Dialogs and Popovers (livery)
+Every dialog (settings, confirm, item detail, search) and popover (category filter, unfolded day) wears the theme: an inset top band `--band` / `--band-h` (bus: 4px navy route band; desk: 3px red printed rule; standard: none), the theme corners, and its controls. Inner side margin is 24px in every dialog.
 
 ### Settings Dialog (theme choice)
 Themes are chosen in settings, not on the board, so the top bar stays about the task. The gear button in the top bar opens it.
