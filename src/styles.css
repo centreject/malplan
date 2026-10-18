@@ -2436,9 +2436,12 @@ ul {
   }
 }
 
-/* Category picker: the calendar colour as a bar and on each option (custom colours come from .catc-*). */
+/* Category picker: the calendar's category dot inside the field and the colour on each option
+   (custom colours come from .catc-*). */
 .cf-category {
-  border-left: 8px solid var(--c, var(--line));
+  padding-left: 28px;
+  background-image: radial-gradient(circle at 14px 50%, var(--c, var(--line)) 5px, transparent 5.5px);
+  background-repeat: no-repeat;
 }
 
 .cf-category option[class] {
