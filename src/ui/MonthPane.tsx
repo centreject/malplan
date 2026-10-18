@@ -1,5 +1,5 @@
 import { ListFilter, Pencil, Plus } from "lucide-react";
-import { Fragment, useEffect, useRef, useState, type RefObject } from "react";
+import { Fragment, useEffect, useRef, useState, type MouseEvent, type RefObject } from "react";
 import { partsOf, weekdayOf, type IsoDate, type Weekday } from "../domain/date";
 import { categoryClass } from "../domain/categories";
 import type { Category, Item } from "../domain/item";
@@ -185,7 +185,7 @@ export function MonthPane(props: MonthPaneProps) {
                 ))}
               </ul>
               {occurrences.length > limit && (
-                <ul className="month-full" aria-label={`${month}월 ${day}일 전체`}>
+                <ul className="month-full" aria-label={`${month}월 ${day}일 전체`} onMouseLeave={closeFullList}>
                   {occurrences.map(({ item, done }) => (
                     <li key={item.id}>
                       <button type="button" className={`month-item item-open ${done ? "is-done" : ""}`} onClick={() => props.onEdit(item, date)}>
@@ -266,4 +266,12 @@ function rowsIn(grid: HTMLElement): number | undefined {
   const free = cell.clientHeight - Number.parseFloat(style.paddingTop) - Number.parseFloat(style.paddingBottom) - head.offsetHeight - ROW_GAP_PX;
 
   return Math.max(1, Math.floor((free + ROW_GAP_PX) / (row.offsetHeight + ROW_GAP_PX)));
+}
+
+/** The unfolded list shows while its cell has focus; moving the pointer out of it (plus its margin) closes it. */
+function closeFullList(event: MouseEvent<HTMLUListElement>): void {
+  const cell = event.currentTarget.closest<HTMLElement>(".month-cell");
+
+  cell?.querySelector<HTMLElement>(":focus")?.blur();
+  cell?.blur();
 }

@@ -2435,3 +2435,22 @@ ul {
     white-space: nowrap;
   }
 }
+
+/* Category picker: the calendar colour as a bar and on each option (custom colours come from .catc-*). */
+.cf-category {
+  border-left: 8px solid var(--c, var(--line));
+}
+
+.cf-category option[class] {
+  background: var(--c);
+  color: var(--c-ink);
+}
+
+/* An invisible margin around the unfolded list: leaving it closes the list (see MonthPane), but a slightly
+   overshooting pointer does not. */
+.month-full::before {
+  content: "";
+  position: absolute;
+  inset: -16px;
+  z-index: -1;
+}
