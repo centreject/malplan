@@ -12,6 +12,7 @@ import { holidaysForYears, mergeHolidays } from "./domain/holidays";
 import { reschedule } from "./domain/reschedule";
 import { deleteOccurrence, editOccurrence, type SeriesScope } from "./domain/series";
 import { daysAround, overdueTasks } from "./domain/schedule";
+import { weekLabel, weekStartOf } from "./domain/weeks";
 import { parseKorean } from "./parse/parseKorean";
 import { ItemDetail } from "./ui/ItemDetail";
 import { ConfirmDialog } from "./ui/ConfirmDialog";
@@ -108,7 +109,14 @@ export default function App() {
   /** Tab being edited: an id, "new", or undefined when the editor is closed. */
   const [editing, setEditing] = useState<string>();
   const [quickText, setQuickText] = useState("");
-  const [confirm, setConfirm] = useState<{ drafts: Draft[]; editing: boolean; occurrence?: IsoDate | undefined }>();
+
+  const [confirm, setConfirm] = useState<{
+    drafts: Draft[];
+    editing: boolean;
+    occurrence?: IsoDate | undefined;
+    /** The detail view this editor came from, to return to on 취소. */
+    back?: { item: Item; date: IsoDate | undefined } | undefined;
+  }>();
 
   const [llm, setLlm] = useState(loadLlmSettings);
   const [ai, setAi] = useState<AiState>({ extractions: new Map(), inputs: new Map(), note: undefined });
@@ -172,7 +180,7 @@ export default function App() {
   const openEditor = (item: Item, date?: IsoDate) => {
     const occurrence = item.when.kind === "recurring" ? date : undefined;
 
-    setConfirm({ drafts: [{ id: item.id, card: cardFromItem(item, now.today) }], editing: true, occurrence });
+    setConfirm({ drafts: [{ id: item.id, card: cardFromItem(item, now.today) }], editing: true, occurrence, back: { item, date } });
   };
 
   const [undo, setUndo] = useState<{ label: string; board: Board }>();
@@ -288,7 +296,23 @@ export default function App() {
   );
 
   const isCurrentMonth = monthCursor.year === todayMonth.year && monthCursor.month === todayMonth.month;
-  const week = daysAround(weekAnchor);
+  // The week pane: an aligned week ("10월 2주차") stepping a week at a time, or a sliding 7 days stepping a day.
+  const weekFirst = weekStartOf(weekAnchor, display.weekNumberStart);
+  const week = display.weekMove === "week" ? Array.from({ length: 7 }, (_, index) => addDays(weekFirst, index)) : daysAround(weekAnchor);
+  const { month: weekMonth, nth: weekNth } = weekLabel(weekAnchor, display.weekNumberStart);
+
+  const moveWeek = (next: IsoDate) => {
+    setWeekAnchor(next);
+
+    // The month calendar follows when the week pane crosses into another month (can be turned off).
+    if (display.syncMonth) {
+      const first = weekStartOf(next, display.weekNumberStart);
+
+      setMonthCursor({ year: partsOf(first).year, month: weekLabel(next, display.weekNumberStart).month });
+    }
+  };
+
+  const weekStep = display.weekMove === "week" ? 7 : 1;
 
   const select = (date: IsoDate) => {
     setSelected(date);
@@ -393,9 +417,10 @@ export default function App() {
             holidays={holidays}
             onSelect={select}
             onEdit={openEdit}
-            onPrev={() => setWeekAnchor(addDays(weekAnchor, -7))}
-            onNext={() => setWeekAnchor(addDays(weekAnchor, 7))}
-            onReset={weekAnchor === now.today ? undefined : () => setWeekAnchor(now.today)}
+            title={`${weekMonth}월 ${weekNth}주차`}
+            onPrev={() => moveWeek(addDays(weekAnchor, -weekStep))}
+            onNext={() => moveWeek(addDays(weekAnchor, weekStep))}
+            onReset={weekAnchor === now.today ? undefined : () => moveWeek(now.today)}
           />
           <MonthPane
             year={monthCursor.year}
@@ -603,6 +628,8 @@ export default function App() {
           onDelete={deleteItem}
           onCancel={() => {
             aiSession.current += 1;
+            // Opened from 항목 상세: 취소 goes back there.
+            setDetail(confirm.back);
             setConfirm(undefined);
           }}
         />

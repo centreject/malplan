@@ -8,6 +8,8 @@ const VISIBLE_PER_DAY = 5;
 
 type WeekPaneProps = {
   dates: IsoDate[];
+  /** "10월 2주차". */
+  title: string;
   today: IsoDate;
   selected: IsoDate;
   items: Item[];
@@ -26,7 +28,7 @@ export function WeekPane(props: WeekPaneProps) {
   const last = props.dates.at(-1) ?? props.today;
 
   return (
-    <section className="pane pane-week" aria-label="앞뒤 3일 할 일">
+    <section className="pane pane-week" aria-label={`${props.title} 할 일`}>
       <PaneHeader
         unit="주"
         resetLabel="오늘"
@@ -35,7 +37,7 @@ export function WeekPane(props: WeekPaneProps) {
         onReset={props.onReset}
         title={
           <>
-            앞뒤 3일 <span className="pane-range num">{shortDate(first)} – {shortDate(last)}</span>
+            {props.title} <span className="pane-range num">{shortDate(first)} – {shortDate(last)}</span>
           </>
         }
       />

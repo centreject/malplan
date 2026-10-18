@@ -2449,6 +2449,14 @@ ul {
   color: var(--c-ink);
 }
 
+/* The browser paints the chosen option grey and keeps it after the list closes; a gradient overrides that
+   so the chosen category keeps its colour, marked by weight instead. */
+.cf-category option:checked {
+  background: linear-gradient(var(--c), var(--c));
+  color: var(--c-ink);
+  font-weight: 700;
+}
+
 /* An invisible margin around the unfolded list: leaving it closes the list (see MonthPane), but a slightly
    overshooting pointer does not. */
 .month-full::before {
@@ -2469,15 +2477,21 @@ ul {
   width: min(440px, calc(100vw - 32px));
 }
 
+.item-detail .settings-head {
+  padding: 20px 16px 8px 24px;
+}
+
+/* Rows share the header and footer side margins: 24px left, wider right for long text. */
 .detail-rows {
   display: grid;
-  gap: 10px;
-  margin: 8px 0 18px;
+  gap: 12px;
+  margin: 0;
+  padding: 8px 32px 20px 24px;
 }
 
 .detail-row {
   display: grid;
-  grid-template-columns: 56px minmax(0, 1fr);
+  grid-template-columns: 48px minmax(0, 1fr);
   gap: 12px;
   align-items: baseline;
 }
