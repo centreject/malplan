@@ -77,7 +77,7 @@ describe("nextUp", () => {
     expect(next?.minutesUntil).toBe(10);
   });
 
-  test("after today's last item, looks ahead to the next day with a timed item", () => {
+  test("after today's last item there is nothing next: later days are not pulled in", () => {
     const items = [
       item("past", { time: { kind: "exact", start: { hour: 9, minute: 0 } } }),
       item("untimed-tomorrow", { when: { kind: "single", date: "2026-10-06" }, time: { kind: "anytime" } }),
@@ -89,9 +89,7 @@ describe("nextUp", () => {
 
     const next = nextUp(items, "2026-10-05", 20 * 60);
 
-    expect(next?.occurrence.item.id).toBe("class");
-    expect(next?.occurrence.date).toBe("2026-10-07");
-    expect(next?.minutesUntil).toBe(4 * 60 + 24 * 60 + 10 * 60);
+    expect(next).toBeUndefined();
   });
 
   test("nothing in the coming week", () => {

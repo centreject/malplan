@@ -57,19 +57,13 @@ export function minutesOf(clock: ClockTime): number {
   return clock.hour * 60 + clock.minute;
 }
 
-const NEXT_UP_LOOKAHEAD_DAYS = 7;
-
-/** Next not-done timed item from now, looking up to a week ahead. */
+/** Next not-done timed item today from now. Later days are not pulled into the today pane. */
 export function nextUp(items: Item[], today: IsoDate, nowMinutes: number): NextUp | undefined {
-  for (let offset = 0; offset <= NEXT_UP_LOOKAHEAD_DAYS; offset++) {
-    const from = offset === 0 ? nowMinutes : 0;
+  for (const occurrence of occurrencesOn(items, today)) {
+    const start = sortKey(occurrence.item.time);
 
-    for (const occurrence of occurrencesOn(items, addDays(today, offset))) {
-      const start = sortKey(occurrence.item.time);
-
-      if (!occurrence.done && start >= from) {
-        return { occurrence, minutesUntil: offset * 24 * 60 + start - nowMinutes };
-      }
+    if (!occurrence.done && start >= nowMinutes) {
+      return { occurrence, minutesUntil: start - nowMinutes };
     }
   }
 
