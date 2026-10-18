@@ -1,4 +1,4 @@
-import { ListFilter, Pencil, Plus } from "lucide-react";
+import { ChevronDown, Plus } from "lucide-react";
 import { Fragment, useEffect, useRef, useState, type MouseEvent, type RefObject } from "react";
 import { partsOf, weekdayOf, type IsoDate, type Weekday } from "../domain/date";
 import { categoryClass } from "../domain/categories";
@@ -69,9 +69,17 @@ export function MonthPane(props: MonthPaneProps) {
                 type="button"
                 role="tab"
                 aria-selected={t.id === props.activeTab}
-                className={`tab ${tabClass(t, props.categories)}`}
+                className={`tab ${tabClass(t, props.categories)} ${t.id === ALL_TAB_ID ? "tab-filter" : ""} ${t.id === ALL_TAB_ID && props.allFilter !== undefined ? "is-filtering" : ""}`}
                 draggable={t.id !== ALL_TAB_ID}
+                // 전체 already selected: a second click opens the category filter. Other tabs: double-click to edit.
+                popoverTarget={t.id === ALL_TAB_ID && t.id === props.activeTab ? "all-filter" : undefined}
+                title={t.id === ALL_TAB_ID ? "한 번 더 누르면 분류 필터" : "더블클릭하여 편집"}
                 onClick={() => props.onTab(t.id)}
+                onDoubleClick={() => {
+                  if (t.id !== ALL_TAB_ID) {
+                    props.onEditTab(t.id);
+                  }
+                }}
                 onDragStart={(event) => {
                   event.dataTransfer.setData("text/plain", t.id);
                   event.dataTransfer.effectAllowed = "move";
@@ -92,31 +100,10 @@ export function MonthPane(props: MonthPaneProps) {
                 }}
               >
                 {t.name}
+                {t.id === ALL_TAB_ID && <ChevronDown className="tab-chevron" size={14} strokeWidth={2} aria-hidden="true" />}
               </button>
-              {t.id === props.activeTab && t.id !== ALL_TAB_ID && (
-                <button
-                  type="button"
-                  className="tab tab-icon"
-                  onClick={() => props.onEditTab(t.id)}
-                  aria-label={`'${t.name}' 탭 편집`}
-                  title="탭 편집"
-                >
-                  <Pencil size={14} strokeWidth={2} />
-                </button>
-              )}
-              {t.id === props.activeTab && t.id === ALL_TAB_ID && (
+              {t.id === ALL_TAB_ID && (
                 <>
-                  <button
-                    type="button"
-                    className={`tab tab-icon tab-filter ${props.allFilter === undefined ? "" : "is-filtering"}`}
-                    popoverTarget="all-filter"
-                    aria-label={
-                      props.allFilter === undefined ? "분류 필터" : `분류 필터 (${props.allFilter.length}개 표시 중)`
-                    }
-                    title="분류 필터"
-                  >
-                    <ListFilter size={14} strokeWidth={2} />
-                  </button>
                   <div id="all-filter" className="all-filter" popover="auto">
                     <CategoryChecklist
                       categories={props.categories}

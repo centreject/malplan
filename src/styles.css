@@ -2457,3 +2457,38 @@ ul {
   inset: -16px;
   z-index: -1;
 }
+
+/* ▾ inside the 전체 pill: a second click opens the category filter. */
+.tab-chevron {
+  margin-left: 2px;
+  vertical-align: -2px;
+}
+
+/* 항목 상세: label / value rows, then 닫기 and 수정. */
+.item-detail {
+  width: min(440px, calc(100vw - 32px));
+}
+
+.detail-rows {
+  display: grid;
+  gap: 10px;
+  margin: 8px 0 18px;
+}
+
+.detail-row {
+  display: grid;
+  grid-template-columns: 56px minmax(0, 1fr);
+  gap: 12px;
+  align-items: baseline;
+}
+
+.detail-row dt {
+  color: var(--ink-3);
+  font-size: 13px;
+}
+
+.detail-row dd {
+  margin: 0;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}

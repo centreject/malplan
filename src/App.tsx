@@ -13,6 +13,7 @@ import { reschedule } from "./domain/reschedule";
 import { deleteOccurrence, editOccurrence, type SeriesScope } from "./domain/series";
 import { daysAround, overdueTasks } from "./domain/schedule";
 import { parseKorean } from "./parse/parseKorean";
+import { ItemDetail } from "./ui/ItemDetail";
 import { ConfirmDialog } from "./ui/ConfirmDialog";
 import { addCategory, customColorCss, deleteCategory, recolorCategory, renameCategory, setCustomColor } from "./domain/categories";
 import { ALL_TAB_ID, addTab, deleteTab, moveTab, updateTab, type CalendarTab } from "./domain/tabs";
@@ -161,7 +162,14 @@ export default function App() {
       });
   };
 
+  const [detail, setDetail] = useState<{ item: Item; date: IsoDate | undefined }>();
+
+  /** Clicking a saved item shows its details first; 수정 there opens the editor. */
   const openEdit = (item: Item, date?: IsoDate) => {
+    setDetail({ item, date });
+  };
+
+  const openEditor = (item: Item, date?: IsoDate) => {
     const occurrence = item.when.kind === "recurring" ? date : undefined;
 
     setConfirm({ drafts: [{ id: item.id, card: cardFromItem(item, now.today) }], editing: true, occurrence });
@@ -569,6 +577,18 @@ export default function App() {
             openEdit(item, date);
           }}
           onClose={() => setSearchOpen(false)}
+        />
+      )}
+      {detail !== undefined && (
+        <ItemDetail
+          item={detail.item}
+          date={detail.date}
+          categories={categories}
+          onClose={() => setDetail(undefined)}
+          onEdit={() => {
+            setDetail(undefined);
+            openEditor(detail.item, detail.date);
+          }}
         />
       )}
       {confirm !== undefined && (
