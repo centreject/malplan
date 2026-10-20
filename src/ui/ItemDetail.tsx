@@ -1,5 +1,5 @@
 import { X } from "lucide-react";
-import { useEffect, useRef, type ReactNode } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import type { IsoDate } from "../domain/date";
 import type { Category, Item } from "../domain/item";
 import { monthDay, recurrenceLabel, timeLabel, weekdayName } from "./format";
@@ -12,11 +12,16 @@ type ItemDetailProps = {
   categories: Category[];
   onEdit: () => void;
   onClose: () => void;
+  /** "말로 고치기": a short request like "3시로 바꿔". */
+  onCommand: (text: string) => void;
+  /** Status or hint for the last request. */
+  commandNote: string | undefined;
 };
 
 /** Read-only view of a saved item; 수정 opens the edit dialog. New entries go straight to editing instead. */
-export function ItemDetail({ item, date, categories, onEdit, onClose }: ItemDetailProps) {
+export function ItemDetail({ item, date, categories, onEdit, onClose, onCommand, commandNote }: ItemDetailProps) {
   const dialog = useRef<HTMLDialogElement>(null);
+  const [request, setRequest] = useState("");
 
   useEffect(() => {
     dialog.current?.showModal();
@@ -69,6 +74,30 @@ export function ItemDetail({ item, date, categories, onEdit, onClose }: ItemDeta
           </div>
         ))}
       </dl>
+      <form
+        className="detail-command"
+        onSubmit={(event) => {
+          event.preventDefault();
+
+          if (request.trim() !== "") {
+            onCommand(request.trim());
+          }
+        }}
+      >
+        <label htmlFor="detail-command-input" className="detail-command-label">말로 고치기</label>
+        <span className="detail-command-row">
+          <input
+            id="detail-command-input"
+            className="cf-input"
+            value={request}
+            placeholder="예: 3시로 바꿔, 하루 미뤄, 장소는 강남역으로"
+            autoComplete="off"
+            onChange={(event) => setRequest(event.target.value)}
+          />
+          <button type="submit" className="confirm-button">고치기</button>
+        </span>
+        {commandNote !== undefined && <p className="detail-command-note" role="status">{commandNote}</p>}
+      </form>
       <footer className="confirm-foot">
         <button type="button" className="confirm-button" onClick={onClose}>
           닫기

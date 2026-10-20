@@ -75,7 +75,7 @@ export function pickCorrections(corrections: Correction[], input: string, today:
   return [...similar, ...recent];
 }
 
-function replySchema(categories: Category[]): ReplyJsonSchema {
+export function replySchema(categories: Category[]): ReplyJsonSchema {
   const text: SchemaField = { type: "string" };
 
   return {

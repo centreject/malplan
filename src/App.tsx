@@ -2,6 +2,8 @@ import { AppWindow, Bell, CalendarDays, HardDrive, Palette, Sparkles, Tags } fro
 import { useEffect, useMemo, useRef, useState } from "react";
 import { NEW_CATEGORY, cardFromItem, cardFromParse, commitCards, splitInput, type Draft } from "./domain/card";
 import { addCorrections, loadCorrections } from "./llm/corrections";
+import { applyEditCommand, type EditResult } from "./domain/editCommand";
+import { applyEditReply, buildEditPrompt } from "./llm/edit";
 import { buildPrompt, guardExtraction, parseExtraction, type Extraction } from "./llm/extract";
 import { localServer, warmUpLocal } from "./llm/localServer";
 import { complete, loadLlmSettings, saveLlmSettings } from "./llm/providers";
@@ -116,6 +118,8 @@ export default function App() {
     occurrence?: IsoDate | undefined;
     /** The detail view this editor came from, to return to on 취소. */
     back?: { item: Item; date: IsoDate | undefined } | undefined;
+    /** "말로 고치기": what the request changed, shown above the edit screen. */
+    changes?: string[] | undefined;
   }>();
 
   const [llm, setLlm] = useState(loadLlmSettings);
@@ -177,10 +181,39 @@ export default function App() {
     setDetail({ item, date });
   };
 
-  const openEditor = (item: Item, date?: IsoDate) => {
+  const openEditor = (item: Item, date?: IsoDate, edited?: EditResult) => {
     const occurrence = item.when.kind === "recurring" ? date : undefined;
+    const card = edited?.card ?? cardFromItem(item, now.today);
 
-    setConfirm({ drafts: [{ id: item.id, card: cardFromItem(item, now.today) }], editing: true, occurrence, back: { item, date } });
+    setConfirm({ drafts: [{ id: item.id, card }], editing: true, occurrence, back: { item, date }, changes: edited?.changes });
+  };
+
+  const [commandNote, setCommandNote] = useState<string>();
+
+  /** "말로 고치기" from the detail view: rules first, the AI for what they cannot read, then the edit screen to confirm. */
+  const runCommand = async (target: { item: Item; date: IsoDate | undefined }, text: string) => {
+    const card = cardFromItem(target.item, now.today);
+    let result = applyEditCommand(card, text, now.today, categories);
+
+    if (result === undefined && llm.provider !== "off") {
+      setCommandNote("AI가 요청을 정리하는 중…");
+
+      try {
+        result = applyEditReply(card, await complete(llm, buildEditPrompt(card, text, categories)), categories);
+      } catch {
+        // AI unavailable: fall through to the hint below.
+      }
+    }
+
+    if (result === undefined) {
+      setCommandNote("무엇을 바꿀지 알아듣지 못했습니다. 예: 3시로 바꿔, 하루 미뤄, 장소는 강남역으로");
+
+      return;
+    }
+
+    setCommandNote(undefined);
+    setDetail(undefined);
+    openEditor(target.item, target.date, result);
   };
 
   const [undo, setUndo] = useState<{ label: string; board: Board }>();
@@ -609,7 +642,12 @@ export default function App() {
           item={detail.item}
           date={detail.date}
           categories={categories}
-          onClose={() => setDetail(undefined)}
+          commandNote={commandNote}
+          onCommand={(text) => void runCommand(detail, text)}
+          onClose={() => {
+            setCommandNote(undefined);
+            setDetail(undefined);
+          }}
           onEdit={() => {
             setDetail(undefined);
             openEditor(detail.item, detail.date);
@@ -622,7 +660,7 @@ export default function App() {
           editing={confirm.editing}
           occurrence={confirm.occurrence}
           extractions={confirm.editing ? undefined : ai.extractions}
-          aiNote={confirm.editing ? undefined : ai.note}
+          aiNote={confirm.editing ? (confirm.changes === undefined ? undefined : `바뀐 내용 · ${confirm.changes.join(" · ")}`) : ai.note}
           categories={categories}
           onConfirm={saveDrafts}
           onDelete={deleteItem}
