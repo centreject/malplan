@@ -1,0 +1,17 @@
+{
+  "detector": {
+    "ignoreRules": [],
+    "ignoreFiles": [],
+    "ignoreValues": [
+      {
+        "rule": "border-accent-on-rounded",
+        "value": "*",
+        "files": [
+          "src/styles.css"
+        ],
+        "createdAt": "2026-10-20T12:31:05.339Z",
+        "reason": "Claude: desk .next-plate red top rule is the documented desk signature (DESIGN.md Next-up Plate); desk plate radius is 0px (pane 4px - 4px), so no rounded corner clash"
+      }
+    ]
+  }
+}

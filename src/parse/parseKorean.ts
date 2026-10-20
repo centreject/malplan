@@ -988,6 +988,14 @@ function takeTime(scanner: Scanner, flags: Flag[]): ParsedTime | undefined {
     return colon[4] === undefined ? { kind: "exact", start } : { kind: "exact", start, end: clockAt(colon[4], colon[5]) };
   }
 
+  // Glued to a noun ("저녁약속", "점심모임") the word sets the slot but stays in the title. 밤 is left out: "밤샘".
+  const glued = /(?<![가-힣])(아침|점심|저녁)(?=[가-힣])/.exec(scanner.rest);
+  const gluedSlot = SLOT_BY_WORD.get(glued?.[1] ?? "");
+
+  if (gluedSlot !== undefined) {
+    return { kind: "slot", slot: gluedSlot };
+  }
+
   const slotWord = scanner.take(/아침|점심|저녁|밤/);
   const slot = SLOT_BY_WORD.get(slotWord?.[0] ?? "");
 

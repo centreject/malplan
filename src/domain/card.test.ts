@@ -10,6 +10,7 @@ import {
   guessKind,
   itemFromCard,
   splitInput,
+  splitTitle,
   type Card,
 } from "./card";
 import type { Category, Item } from "./item";
@@ -232,5 +233,29 @@ describe("commitCards", () => {
     const result = commitCards([{ id: "a", card: edited }, { id: "c", card: added }], stored, categories, ids());
 
     expect(result.items.map((i) => [i.id, i.title])).toEqual([["a", "바뀐 회의"], ["b", "b"], ["c", "새 일정"]]);
+  });
+});
+
+describe("splitTitle", () => {
+  test("the first sentence is the title, with the person kept; the rest goes to the note", () => {
+    expect(splitTitle("김철수와 저녁약속 있음. 서울 어딘가에서 볼 듯? 메뉴는 안 정함")).toEqual({
+      title: "김철수와 저녁약속",
+      note: "서울 어딘가에서 볼 듯? 메뉴는 안 정함",
+    });
+  });
+
+  test("trailing filler words leave the title", () => {
+    expect(splitTitle("민지랑 점심 먹기로 함")).toEqual({ title: "민지랑 점심", note: "" });
+    expect(splitTitle("팀 회식 예정")).toEqual({ title: "팀 회식", note: "" });
+  });
+
+  test("a plain title is unchanged", () => {
+    expect(splitTitle("보고서 제출")).toEqual({ title: "보고서 제출", note: "" });
+  });
+
+  test("the card from a parse uses it", () => {
+    const card = cardFromParse(parseKorean("10월 31일에 김철수와 저녁약속 있음. 메뉴는 안 정함", "2026-10-05"), "2026-10-05", []);
+
+    expect([card.title, card.note]).toEqual(["김철수와 저녁약속", "메뉴는 안 정함"]);
   });
 });

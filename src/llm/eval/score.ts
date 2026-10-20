@@ -18,12 +18,19 @@ function options(text: string): string[] {
   return text.split("|").filter((option) => option !== "");
 }
 
+/** "점심|파스타+지수": one of the alternatives, and every "+" part (each may list "/" alternatives, e.g. the person). */
+function titleMatches(spec: string, title: string): boolean {
+  const [alternatives = "", ...required] = spec.split("+");
+
+  return options(alternatives).some((word) => title.includes(word)) && required.every((part) => part.split("/").some((word) => title.includes(word)));
+}
+
 /** Which fields came out right. A title must hold an accepted word and no date or time words. */
 export function grade(row: EvalRow, fields: Fields, today: IsoDate): Record<Field, boolean> {
   const [, title, kind, category, place] = row;
 
   return {
-    title: options(title).some((word) => fields.title.includes(word)) && !hasDateOrTime(fields.title, today),
+    title: titleMatches(title, fields.title) && !hasDateOrTime(fields.title, today),
     kind: fields.kind === (kind === "e" ? "event" : "task"),
     category: options(category).includes(fields.category),
     place: place === "*" || (place === "" ? fields.place === "" : options(place).some((word) => fields.place.includes(word))),
@@ -66,6 +73,6 @@ export function otherRowsAsItems(rows: EvalRow[], row: EvalRow): SavedItem[] {
   return rows.flatMap((other) => {
     const category = EVAL_CATEGORY_LIST.find((c) => c.name === options(other[3])[0]);
 
-    return other === row || category === undefined ? [] : [{ title: options(other[1]).join(" "), categoryId: category.id }];
+    return other === row || category === undefined ? [] : [{ title: options(other[1].replace(/[+/]/g, "|")).join(" "), categoryId: category.id }];
   });
 }

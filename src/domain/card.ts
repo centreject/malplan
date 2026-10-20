@@ -93,19 +93,41 @@ export function repeatSeed(date: IsoDate): Pick<Card, "weekdays" | "monthDay" | 
   };
 }
 
+export type TitleSplit = { title: string; note: string };
+
+/** Words that end a sentence without adding meaning: "저녁약속 있음", "점심 먹기로 함", "회식 예정". */
+const FILLER_END = /\s*(?:있음|있다|예정임?|할 예정|먹기로 함|하기로 함|하기로 했음|할 듯|볼 듯|같음)$/;
+
+/**
+ * Rule title when there is no AI: the first sentence, minus filler endings, keeps the person ("김철수와 저녁약속"),
+ * so the calendar shows who without opening the item; later sentences go to the note.
+ */
+export function splitTitle(rest: string): TitleSplit {
+  const end = /[.?!](?:\s|$)/.exec(rest);
+  const first = end === null ? rest : rest.slice(0, end.index);
+  const note = end === null ? "" : rest.slice(end.index + 1).trim();
+
+  return { title: first.replace(FILLER_END, "").trim() || first.trim(), note };
+}
+
 export function cardFromParse(parse: ParseResult, today: IsoDate, categories: Category[]): Card {
-  const kind = guessKind(parse.rest);
+  const { title, note } = splitTitle(parse.rest);
+  const kind = guessKind(title);
   const task = kind === "task";
 
   const item: Item = {
     id: "",
-    title: parse.rest,
+    title,
     kind,
     categoryId: guessCategory(parse.rest, categories),
     when: parse.date ?? (task ? { kind: "none" } : { kind: "single", date: today }),
     time: parse.time ?? (task ? { kind: "anytime" } : { kind: "undecided" }),
     done: [],
   };
+
+  if (note !== "") {
+    item.note = note;
+  }
 
   return { ...cardFromItem(item, today), flags: parse.flags };
 }
