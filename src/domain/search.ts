@@ -1,6 +1,6 @@
-import { addDays, type IsoDate } from "./date";
+import type { IsoDate } from "./date";
 import type { Item } from "./item";
-import { expand } from "./recurrence";
+import { firstOccurrence } from "./schedule";
 
 export type SearchResult = { item: Item; date: IsoDate | undefined };
 
@@ -39,7 +39,7 @@ function nearestDate(item: Item, today: IsoDate): IsoDate | undefined {
     case "range":
       return item.when.end < today ? item.when.end : item.when.start < today ? today : item.when.start;
     case "recurring":
-      return expand(item.when.rule, { from: today, to: addDays(today, LOOKAHEAD_DAYS) })[0] ?? item.when.rule.until ?? item.when.rule.start;
+      return firstOccurrence(item.when.rule, today, LOOKAHEAD_DAYS) ?? item.when.rule.until ?? item.when.rule.start;
     case "none":
       return undefined;
   }

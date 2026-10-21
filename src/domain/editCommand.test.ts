@@ -1,7 +1,8 @@
 import { describe, expect, test } from "vitest";
-import { cardFromItem } from "./card";
+import { cardFromItem, itemFromCard } from "./card";
 import type { Category, Item } from "./item";
-import { applyEditCommand } from "./editCommand";
+import { REPEAT_DATE_REFUSAL, applyEditCommand, editResult } from "./editCommand";
+import { editOccurrence } from "./series";
 
 const today = "2026-10-05";
 
@@ -24,8 +25,57 @@ const item: Item = {
 const card = cardFromItem(item, today);
 
 function edit(text: string) {
-  return applyEditCommand(card, text, today, categories);
+  const result = applyEditCommand(card, text, today, categories);
+
+  return result === REPEAT_DATE_REFUSAL ? undefined : result;
 }
+
+// Weekly on Wednesday from 9/30; the 10/14 occurrence is the one clicked.
+const weekly: Item = { ...item, id: "w", when: { kind: "recurring", rule: { freq: "weekly", weekdays: [3], start: "2026-09-30" } } };
+
+const weeklyCard = cardFromItem(weekly, today);
+
+describe("applyEditCommand on a repeating item", () => {
+  test("a shift moves only the clicked occurrence, saved as 이 일정만", () => {
+    const result = applyEditCommand(weeklyCard, "하루 미뤄", today, categories, "2026-10-14");
+
+    if (result === undefined || result === REPEAT_DATE_REFUSAL) {
+      throw new Error("expected an edit");
+    }
+
+    expect([result.card.date, result.card.repeat]).toEqual(["2026-10-15", false]);
+    expect(result.changes).toEqual(["날짜: 10/14 → 10/15", "반복: 이 일정만 옮김"]);
+
+    const saved = editOccurrence([weekly], weekly, itemFromCard(result.card, "w"), "2026-10-14", "this", () => "moved");
+
+    expect(saved.map((i) => i.when)).toEqual([
+      { kind: "recurring", rule: { freq: "weekly", weekdays: [3], start: "2026-09-30", except: ["2026-10-14"] } },
+      { kind: "single", date: "2026-10-15" },
+    ]);
+  });
+
+  test("a named day is read from today and moves the occurrence too", () => {
+    const result = applyEditCommand(weeklyCard, "금요일로 옮겨", today, categories, "2026-10-14");
+
+    expect(result !== REPEAT_DATE_REFUSAL && [result?.card.date, result?.card.repeat]).toEqual(["2026-10-09", false]);
+  });
+
+  test("a non-date change keeps the series start", () => {
+    const result = applyEditCommand(weeklyCard, "3시로 바꿔", today, categories, "2026-10-14");
+
+    expect(result !== REPEAT_DATE_REFUSAL && [result?.card.date, result?.card.repeat]).toEqual(["2026-09-30", true]);
+  });
+
+  test("a date change with no clicked occurrence is refused", () => {
+    expect(applyEditCommand(weeklyCard, "하루 미뤄", today, categories)).toBe(REPEAT_DATE_REFUSAL);
+  });
+});
+
+describe("editResult", () => {
+  test("a kind-only change is described", () => {
+    expect(editResult(card, { ...card, kind: "task" }, categories)?.changes).toEqual(["종류: 일정 → 할 일"]);
+  });
+});
 
 describe("applyEditCommand", () => {
   test("a new time", () => {

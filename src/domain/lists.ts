@@ -1,15 +1,13 @@
 // Data for the list page: every task by section, and recurring items grouped by the day they happen.
-import { addDays, type IsoDate, type Weekday } from "./date";
+import type { IsoDate, Weekday } from "./date";
+import { WEEKDAY_NAMES, recurrenceLabel } from "./format";
 import type { Item } from "./item";
-import { expand, type Recurrence } from "./recurrence";
-import { missedDates } from "./schedule";
-import { recurrenceLabel } from "../ui/format";
+import type { Recurrence } from "./recurrence";
+import { firstOccurrence, missedDates } from "./schedule";
 
 export type RecurringEntry = { item: Item; rule: string; next: IsoDate | undefined };
 
 export type RecurringGroup = { key: string; label: string; entries: RecurringEntry[] };
-
-const WEEKDAY_FULL = ["일요일", "월요일", "화요일", "수요일", "목요일", "금요일", "토요일"];
 
 const LOOKAHEAD_DAYS = 800;
 
@@ -57,18 +55,18 @@ function groupKeys(rule: Recurrence, weekStart: Weekday): [string, string, numbe
     case "daily":
       return [["daily", "매일·며칠마다", 0]];
     case "weekly":
-      return rule.weekdays.map((d) => [`w${d}`, WEEKDAY_FULL[d] ?? "", 100 + ((d - weekStart + 7) % 7)]);
+      return rule.weekdays.map((d) => [`w${d}`, `${WEEKDAY_NAMES[d]}요일`, 100 + ((d - weekStart + 7) % 7)]);
     case "monthly":
       return "day" in rule
         ? [[`md${rule.day}`, `매월 ${rule.day}일`, 200 + rule.day]]
-        : [[`mn${rule.nth}-${rule.weekday}`, `매월 ${rule.nth === -1 ? "마지막" : `${rule.nth}째`} ${WEEKDAY_FULL[rule.weekday] ?? ""}`, 300 + (rule.nth === -1 ? 9 : rule.nth) * 10 + rule.weekday]];
+        : [[`mn${rule.nth}-${rule.weekday}`, `매월 ${rule.nth === -1 ? "마지막" : `${rule.nth}째`} ${WEEKDAY_NAMES[rule.weekday]}요일`, 300 + (rule.nth === -1 ? 9 : rule.nth) * 10 + rule.weekday]];
     case "yearly":
       return [[`y${rule.month}-${rule.day}`, `매년 ${rule.month}/${rule.day}`, 400 + rule.month * 40 + rule.day]];
   }
 }
 
 function nextOccurrence(rule: Recurrence, today: IsoDate): IsoDate | undefined {
-  return expand(rule, { from: today, to: addDays(today, LOOKAHEAD_DAYS) })[0];
+  return firstOccurrence(rule, today, LOOKAHEAD_DAYS);
 }
 
 export type TaskEntry = { item: Item; date: IsoDate | undefined };
@@ -127,7 +125,7 @@ function upcomingDate(item: Item, today: IsoDate): IsoDate | undefined {
     case "range":
       return item.when.end >= today && !item.done.includes(item.when.end) ? (item.when.start > today ? item.when.start : today) : undefined;
     case "recurring":
-      return expand(item.when.rule, { from: today, to: addDays(today, LOOKAHEAD_DAYS) }).find((d) => !item.done.includes(d));
+      return firstOccurrence(item.when.rule, today, LOOKAHEAD_DAYS, (d) => !item.done.includes(d));
     case "none":
       return undefined;
   }

@@ -94,4 +94,11 @@ describe("taskSections", () => {
     expect(sections.undated.map((e) => e.item.id)).toEqual(["someday"]);
     expect(sections.done.map((e) => e.item.id)).toEqual(["finished"]);
   });
+
+  test("a task missed long ago stays overdue, not done", () => {
+    const sections = taskSections([item("ancient", { when: { kind: "single", date: "2025-03-01" } })], today);
+
+    expect(sections.overdue.map((e) => e.item.id)).toEqual(["ancient"]);
+    expect(sections.done).toEqual([]);
+  });
 });

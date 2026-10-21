@@ -2,7 +2,8 @@ import { AppWindow, Bell, CalendarDays, HardDrive, Palette, Sparkles, Tags } fro
 import { useEffect, useMemo, useRef, useState } from "react";
 import { NEW_CATEGORY, cardFromItem, cardFromParse, commitCards, splitInput, type Draft } from "./domain/card";
 import { addCorrections, loadCorrections } from "./llm/corrections";
-import { applyEditCommand, type EditResult } from "./domain/editCommand";
+import { REPEAT_DATE_REFUSAL, applyEditCommand, type EditResult } from "./domain/editCommand";
+import { revertChange } from "./domain/undo";
 import { applyEditReply, buildEditPrompt } from "./llm/edit";
 import { buildPrompt, guardExtraction, parseExtraction, type Extraction } from "./llm/extract";
 import { localServer, warmUpLocal } from "./llm/localServer";
@@ -193,7 +194,13 @@ export default function App() {
   /** "말로 고치기" from the detail view: rules first, the AI for what they cannot read, then the edit screen to confirm. */
   const runCommand = async (target: { item: Item; date: IsoDate | undefined }, text: string) => {
     const card = cardFromItem(target.item, now.today);
-    let result = applyEditCommand(card, text, now.today, categories);
+    let result = applyEditCommand(card, text, now.today, categories, target.date);
+
+    if (result === REPEAT_DATE_REFUSAL) {
+      setCommandNote(REPEAT_DATE_REFUSAL);
+
+      return;
+    }
 
     if (result === undefined && llm.provider !== "off") {
       setCommandNote("AI가 요청을 정리하는 중…");
@@ -216,7 +223,7 @@ export default function App() {
     openEditor(target.item, target.date, result);
   };
 
-  const [undo, setUndo] = useState<{ label: string; board: Board }>();
+  const [undo, setUndo] = useState<{ label: string; before: Board; after: Board }>();
 
   useEffect(() => {
     if (undo === undefined) {
@@ -228,8 +235,15 @@ export default function App() {
     return () => window.clearTimeout(timer);
   }, [undo]);
 
-  /** Remember the board before a change so the toast can restore it. */
-  const remember = (label: string) => setUndo({ label, board: persisted.board });
+  /** Apply an undoable change to the latest board; the toast reverts just the records it touched. */
+  const act = (label: string, change: (board: Board) => Board) =>
+    persisted.update((before) => {
+      const after = change(before);
+
+      setUndo({ label, before, after });
+
+      return after;
+    });
 
   const saveDrafts = (drafts: Draft[], scope: SeriesScope) => {
     // Learn from category and kind fixes: what the AI proposed vs what the user kept.
@@ -250,18 +264,21 @@ export default function App() {
           : [];
       }),
     );
-    remember(confirm?.editing === true ? "수정했습니다" : `${drafts.length}개 추가했습니다`);
-    const result = commitCards(drafts, items, categories, () => crypto.randomUUID());
-    const original = items.find((item) => item.id === drafts[0]?.id);
-    const edited = result.items.find((item) => item.id === original?.id);
     const occurrence = confirm?.occurrence;
 
-    setItems(() =>
-      original !== undefined && edited !== undefined && occurrence !== undefined
-        ? editOccurrence(items, original, edited, occurrence, scope, () => crypto.randomUUID())
-        : result.items,
-    );
-    setCategories(result.categories);
+    act(confirm?.editing === true ? "수정했습니다" : `${drafts.length}개 추가했습니다`, (board) => {
+      const result = commitCards(drafts, board.items, board.categories, () => crypto.randomUUID());
+      const original = board.items.find((item) => item.id === drafts[0]?.id);
+      const edited = result.items.find((item) => item.id === original?.id);
+
+      return {
+        ...board,
+        categories: result.categories,
+        items: original !== undefined && edited !== undefined && occurrence !== undefined
+          ? editOccurrence(board.items, original, edited, occurrence, scope, () => crypto.randomUUID())
+          : result.items,
+      };
+    });
 
     if (confirm?.editing === false) {
       setQuickText("");
@@ -271,15 +288,18 @@ export default function App() {
   };
 
   const deleteItem = (id: string, scope: SeriesScope) => {
-    remember("삭제했습니다");
-    const original = items.find((item) => item.id === id);
     const occurrence = confirm?.occurrence;
 
-    setItems((current) =>
-      original !== undefined && occurrence !== undefined
-        ? deleteOccurrence(current, original, occurrence, scope)
-        : current.filter((item) => item.id !== id),
-    );
+    act("삭제했습니다", (board) => {
+      const original = board.items.find((item) => item.id === id);
+
+      return {
+        ...board,
+        items: original !== undefined && occurrence !== undefined
+          ? deleteOccurrence(board.items, original, occurrence, scope)
+          : board.items.filter((item) => item.id !== id),
+      };
+    });
     setConfirm(undefined);
   };
 
@@ -303,12 +323,7 @@ export default function App() {
   };
 
   const removeCategory = (id: string) => {
-    remember("분류를 삭제했습니다");
-    const result = deleteCategory(categories, tabs, items, id);
-
-    setCategories(result.categories);
-    setTabs(result.tabs);
-    setItems(() => result.items);
+    act("분류를 삭제했습니다", (board) => ({ ...board, ...deleteCategory(board.categories, board.tabs, board.items, id) }));
   };
 
   const todayMonth = partsOf(now.today);
@@ -332,7 +347,8 @@ export default function App() {
   // The week pane: an aligned week ("10월 2주차") stepping a week at a time, or a sliding 7 days stepping a day.
   const weekFirst = weekStartOf(weekAnchor, display.weekNumberStart);
   const week = display.weekMove === "week" ? Array.from({ length: 7 }, (_, index) => addDays(weekFirst, index)) : daysAround(weekAnchor);
-  const { month: weekMonth, nth: weekNth } = weekLabel(weekAnchor, display.weekNumberStart);
+  // Labelled by the first day shown, so the sliding 7 days never claim a week they do not show.
+  const { month: weekMonth, nth: weekNth } = weekLabel(week[0] ?? weekAnchor, display.weekNumberStart);
 
   const moveWeek = (next: IsoDate) => {
     setWeekAnchor(next);
@@ -397,18 +413,17 @@ export default function App() {
             onEdit={openEdit}
             onToggle={toggleDone}
             onEndSeries={(target) => {
-              remember("반복을 끝냈습니다");
-              setItems((current) =>
-                current.map((item) =>
+              act("반복을 끝냈습니다", (board) => ({
+                ...board,
+                items: board.items.map((item) =>
                   item.id === target.id && item.when.kind === "recurring"
                     ? { ...item, when: { kind: "recurring", rule: { ...item.when.rule, until: now.today } } }
                     : item,
                 ),
-              );
+              }));
             }}
             onDelete={(target) => {
-              remember("삭제했습니다");
-              setItems((current) => current.filter((item) => item.id !== target.id));
+              act("삭제했습니다", (board) => ({ ...board, items: board.items.filter((item) => item.id !== target.id) }));
             }}
             onAddRecurring={() => {
               const base = cardFromParse(parseKorean("", now.today), now.today, categories);
@@ -433,8 +448,10 @@ export default function App() {
           onEdit={openEdit}
           today={now.today}
           onReschedule={(ids, target) => {
-            remember(`${ids.length}개를 옮겼습니다`);
-            setItems((current) => reschedule(current, ids, target, now.today, () => crypto.randomUUID()));
+            act(`${ids.length}개를 옮겼습니다`, (board) => ({
+              ...board,
+              items: reschedule(board.items, ids, target, now.today, () => crypto.randomUUID()),
+            }));
           }}
           onPrev={() => select(addDays(selected, -1))}
           onNext={() => select(addDays(selected, 1))}
@@ -599,8 +616,7 @@ export default function App() {
             setEditing(undefined);
           }}
           onDelete={() => {
-            remember("탭을 삭제했습니다");
-            setTabs(deleteTab(tabs, editing));
+            act("탭을 삭제했습니다", (board) => ({ ...board, tabs: deleteTab(board.tabs, editing) }));
             chooseTab(ALL_TAB_ID);
             setEditing(undefined);
           }}
@@ -615,9 +631,14 @@ export default function App() {
             type="button"
             className="text-button"
             onClick={() => {
-              const before = undo.board;
+              const { before, after } = undo;
 
-              persisted.update(() => before);
+              persisted.update((board) => ({
+                ...board,
+                items: revertChange(board.items, before.items, after.items),
+                categories: revertChange(board.categories, before.categories, after.categories),
+                tabs: revertChange(board.tabs, before.tabs, after.tabs),
+              }));
               setUndo(undefined);
             }}
           >

@@ -1,6 +1,6 @@
 import { addDays, daysInMonth, makeDate, weekdayOf, type IsoDate, type Weekday } from "./date";
 import type { Item, ItemTime } from "./item";
-import { expand } from "./recurrence";
+import { expand, type Recurrence } from "./recurrence";
 import type { ClockTime, Slot } from "../parse/parseKorean";
 
 export type Occurrence = { item: Item; date: IsoDate; done: boolean };
@@ -16,8 +16,6 @@ export const SLOT_START: Record<Slot, ClockTime> = {
   dinner: { hour: 18, minute: 0 },
   night: { hour: 21, minute: 0 },
 };
-
-const OVERDUE_LOOKBACK_DAYS = 60;
 
 export function occursOn(item: Item, date: IsoDate): boolean {
   switch (item.when.kind) {
@@ -80,28 +78,52 @@ export function overdueTasks(items: Item[], today: IsoDate): OverdueTask[] {
   });
 }
 
-/** Unfinished occurrence dates of a task before `today` (within the lookback window). */
+/** Unfinished occurrence dates of a task before `today`, however old: a task stays overdue until it is done. */
 export function missedDates(item: Item, today: IsoDate): IsoDate[] {
   if (item.kind !== "task") {
     return [];
   }
 
-  return datesBetween(item, addDays(today, -OVERDUE_LOOKBACK_DAYS), addDays(today, -1))
-    .filter((date) => !item.done.includes(date));
+  return datesBefore(item, addDays(today, -1)).filter((date) => !item.done.includes(date));
 }
 
-function datesBetween(item: Item, from: IsoDate, to: IsoDate): IsoDate[] {
+function datesBefore(item: Item, last: IsoDate): IsoDate[] {
   switch (item.when.kind) {
     case "single":
-      return from <= item.when.date && item.when.date <= to ? [item.when.date] : [];
+      return item.when.date <= last ? [item.when.date] : [];
     case "range":
       // A range task is overdue once its last day has passed.
-      return from <= item.when.end && item.when.end <= to ? [item.when.end] : [];
+      return item.when.end <= last ? [item.when.end] : [];
     case "recurring":
-      return expand(item.when.rule, { from, to });
+      // ponytail: walks the whole series day by day; fine for years of history, cap or index if it ever shows.
+      return expand(item.when.rule, { from: item.when.rule.start, to: last });
     case "none":
       return [];
   }
+}
+
+/**
+ * First occurrence of `rule` from `from` on, at most `days` ahead, that passes `accept`.
+ * Expands a month at a time, so a near occurrence ends the search early.
+ */
+export function firstOccurrence(
+  rule: Recurrence,
+  from: IsoDate,
+  days: number,
+  accept: (date: IsoDate) => boolean = () => true,
+): IsoDate | undefined {
+  const end = addDays(from, days);
+
+  for (let start = from; start <= end; start = addDays(start, 32)) {
+    const to = addDays(start, 31);
+    const found = expand(rule, { from: start, to: to < end ? to : end }).find(accept);
+
+    if (found !== undefined) {
+      return found;
+    }
+  }
+
+  return undefined;
 }
 
 /** The week pane's rolling window: 3 days before `center`, the day itself, 3 days after. */

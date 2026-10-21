@@ -1,11 +1,17 @@
 // "말로 고치기": a short Korean request ("3시로 바꿔", "하루 미뤄", "장소는 강남역으로") applied to an item's card.
 // Dates and times are computed here, as everywhere; the result goes to the edit screen before anything is saved.
-import { parseKorean, type ClockTime } from "../parse/parseKorean";
-import type { Card } from "./card";
-import { addDays, partsOf, type IsoDate } from "./date";
+import { parseKorean } from "../parse/parseKorean";
+import { clockText, type Card, type CardKind } from "./card";
+import { addDays, type IsoDate } from "./date";
+import { shortDate } from "./format";
 import type { Category } from "./item";
 
 export type EditResult = { card: Card; changes: string[] };
+
+/** Shown when a date change on a repeating item has no clicked occurrence to move. */
+export const REPEAT_DATE_REFUSAL = "반복 일정의 날짜는 수정에서 바꿔 주세요";
+
+const KIND_NAMES: Record<CardKind, string> = { event: "일정", task: "할 일", undated: "날짜 없는 할 일" };
 
 /** "하루 미뤄", "다음 주로 미뤄", "이틀 당겨": a shift from the item's own date. */
 const SHIFT = /(하루|이틀|사흘|나흘|일주일|한\s*주|다음\s*주|\d{1,3}\s*(?:일|주))\s*(?:로|만큼|정도)?\s*(뒤로|미뤄|미루|늦춰|늦추|연기|당겨|앞당겨|앞으로)/;
@@ -20,8 +26,21 @@ const NOTE = /메모(?:에|를)?\s*(.+?)\s*(?:추가|적어|넣어|남겨)/;
 
 const TIME_NAMES = { undecided: "미정", anytime: "아무때나", slot: "시간대", exact: "" } as const;
 
-export function applyEditCommand(card: Card, text: string, today: IsoDate, categories: Category[]): EditResult | undefined {
+/**
+ * `occurrence` is the clicked date of a repeating item. A date change there moves only that occurrence: the card
+ * becomes a one-off, which saving turns into "이 일정만". With no occurrence the date change is refused.
+ */
+export function applyEditCommand(
+  card: Card,
+  text: string,
+  today: IsoDate,
+  categories: Category[],
+  occurrence?: IsoDate,
+): EditResult | typeof REPEAT_DATE_REFUSAL | undefined {
   const next: Card = { ...card };
+  // A repeating card's date is the series start; "하루 미뤄" means the clicked occurrence.
+  const from = card.repeat && occurrence !== undefined ? occurrence : card.date;
+  let date = from;
   let rest = text;
 
   const shift = SHIFT.exec(rest);
@@ -29,7 +48,7 @@ export function applyEditCommand(card: Card, text: string, today: IsoDate, categ
   if (shift !== null) {
     const days = shiftDays(shift[1] ?? "") * (/당겨|앞당겨|앞으로/.test(shift[2] ?? "") ? -1 : 1);
 
-    next.date = addDays(card.date, days);
+    date = addDays(from, days);
     next.endDate = card.endDate === "" ? "" : addDays(card.endDate, days);
     rest = rest.replace(shift[0], " ");
   }
@@ -54,19 +73,33 @@ export function applyEditCommand(card: Card, text: string, today: IsoDate, categ
   const parsed = parseKorean(rest, today);
 
   if (shift === null && parsed.date?.kind === "single") {
-    next.date = parsed.date.date;
+    date = parsed.date.date;
   }
 
   if (parsed.time?.kind === "exact") {
     next.timeMode = "exact";
-    next.start = clock(parsed.time.start);
-    next.end = parsed.time.end === undefined ? "" : clock(parsed.time.end);
+    next.start = clockText(parsed.time.start);
+    next.end = parsed.time.end === undefined ? "" : clockText(parsed.time.end);
   } else if (parsed.time?.kind === "slot") {
     next.timeMode = "slot";
     next.slot = parsed.time.slot;
   }
 
-  return editResult(card, next, categories);
+  if (date === from) {
+    return editResult(card, next, categories);
+  }
+
+  if (!card.repeat) {
+    return editResult(card, { ...next, date }, categories);
+  }
+
+  if (occurrence === undefined) {
+    return REPEAT_DATE_REFUSAL;
+  }
+
+  const moved = editResult({ ...card, date: from }, { ...next, date, repeat: false }, categories);
+
+  return moved && { ...moved, changes: [...moved.changes, "반복: 이 일정만 옮김"] };
 }
 
 /** The edited card with one line per changed field, or undefined when nothing changed. */
@@ -102,16 +135,6 @@ function shiftDays(amount: string): number {
   return SHIFT_DAYS.get(compact) ?? 0;
 }
 
-function clock(time: ClockTime): string {
-  return `${String(time.hour).padStart(2, "0")}:${String(time.minute).padStart(2, "0")}`;
-}
-
-function dayText(date: IsoDate): string {
-  const { month, day } = partsOf(date);
-
-  return `${month}/${day}`;
-}
-
 function timeText(card: Card): string {
   if (card.timeMode === "exact") {
     return card.end === "" ? card.start : `${card.start}–${card.end}`;
@@ -125,7 +148,8 @@ function describeChanges(before: Card, after: Card, categories: Category[], chan
   const nameOf = (id: string) => categories.find((c) => c.id === id)?.name ?? id;
 
   const pairs: [string, string, string][] = [
-    ["날짜", dayText(before.date), dayText(after.date)],
+    ["종류", KIND_NAMES[before.kind], KIND_NAMES[after.kind]],
+    ["날짜", shortDate(before.date), shortDate(after.date)],
     ["시간", timeText(before), timeText(after)],
     ["제목", before.title, after.title],
     ["장소", before.place, after.place],

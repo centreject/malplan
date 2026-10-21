@@ -1,7 +1,9 @@
 import { describe, expect, test } from "vitest";
 import type { Item } from "./item";
+import type { Recurrence } from "./recurrence";
 import {
   daysAround,
+  firstOccurrence,
   formatClock,
   monthCells,
   nextUp,
@@ -103,9 +105,28 @@ test("overdue tasks collapse missed recurring occurrences into one entry", () =>
   const overdue = overdueTasks([mailing], "2026-10-22");
 
   expect(overdue).toEqual([
-    // Wednesdays 9/2 … 10/21 inside the 60-day lookback.
+    // Wednesdays 9/2 … 10/21.
     { item: mailing, latest: "2026-10-21", missed: 8 },
   ]);
+});
+
+test("unfinished tasks stay overdue however old", () => {
+  const old = item("tax", { kind: "task", when: { kind: "single", date: "2025-01-10" } });
+  const weekly = item("log", { kind: "task", when: { kind: "recurring", rule: { freq: "weekly", weekdays: [3], start: "2025-01-01", until: "2025-01-31" } } });
+
+  expect(overdueTasks([old, weekly], "2026-10-22")).toEqual([
+    { item: old, latest: "2025-01-10", missed: 1 },
+    { item: weekly, latest: "2025-01-29", missed: 5 },
+  ]);
+});
+
+test("first occurrence searches ahead past empty months and honours the filter", () => {
+  const yearly: Recurrence = { freq: "yearly", month: 3, day: 1, start: "2020-03-01" };
+  const wednesdays: Recurrence = { freq: "weekly", weekdays: [3], start: "2026-09-01" };
+
+  expect(firstOccurrence(yearly, "2026-10-22", 400)).toBe("2027-03-01");
+  expect(firstOccurrence(yearly, "2026-10-22", 100)).toBeUndefined();
+  expect(firstOccurrence(wednesdays, "2026-10-01", 30, (d) => d !== "2026-10-07")).toBe("2026-10-14");
 });
 
 test("overdue ignores events and finished tasks", () => {

@@ -269,7 +269,8 @@ function timeFromCard(card: Card): ItemTime {
   }
 }
 
-function clockText(clock: ClockTime): string {
+/** "HH:MM", as native time inputs use. */
+export function clockText(clock: ClockTime): string {
   return `${String(clock.hour).padStart(2, "0")}:${String(clock.minute).padStart(2, "0")}`;
 }
 
