@@ -2,6 +2,7 @@ import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 import App from "./App";
 import { applyAppSettings, loadAppSettings } from "./ui/appSettings";
+import { CrashScreen } from "./ui/CrashScreen";
 
 void applyAppSettings(loadAppSettings());
 
@@ -13,6 +14,8 @@ if (rootElement === null) {
 
 createRoot(rootElement).render(
   <StrictMode>
-    <App />
+    <CrashScreen>
+      <App />
+    </CrashScreen>
   </StrictMode>,
 );
