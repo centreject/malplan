@@ -79,7 +79,7 @@ export function applyEditCommand(
   if (parsed.time?.kind === "exact") {
     next.timeMode = "exact";
     next.start = clockText(parsed.time.start);
-    next.end = parsed.time.end === undefined ? "" : clockText(parsed.time.end);
+    next.end = parsed.time.end === undefined ? keptEnd(card, next.start) : clockText(parsed.time.end);
   } else if (parsed.time?.kind === "slot") {
     next.timeMode = "slot";
     next.slot = parsed.time.slot;
@@ -133,6 +133,23 @@ function shiftDays(amount: string): number {
   }
 
   return SHIFT_DAYS.get(compact) ?? 0;
+}
+
+function minutesOf(clock: string): number {
+  const [hour = 0, minute = 0] = clock.split(":").map(Number);
+
+  return hour * 60 + minute;
+}
+
+/** "3시로" on a 14:00–15:30 item keeps its length (15:00–16:30); nothing kept if it had no end or would pass midnight. */
+function keptEnd(card: Card, start: string): string {
+  if (card.timeMode !== "exact" || card.end === "") {
+    return "";
+  }
+
+  const end = minutesOf(start) + minutesOf(card.end) - minutesOf(card.start);
+
+  return end > minutesOf(start) && end < 24 * 60 ? clockText({ hour: Math.floor(end / 60), minute: end % 60 }) : "";
 }
 
 function timeText(card: Card): string {

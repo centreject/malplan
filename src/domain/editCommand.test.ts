@@ -85,6 +85,22 @@ describe("applyEditCommand", () => {
     expect(result?.changes).toEqual(["시간: 16:00 → 15:00"]);
   });
 
+  test("a new start keeps the length of a timed range", () => {
+    const meeting = cardFromItem({ ...item, time: { kind: "exact", start: { hour: 14, minute: 0 }, end: { hour: 15, minute: 30 } } }, today);
+
+    const end = (text: string) => {
+      const result = applyEditCommand(meeting, text, today, categories);
+
+      return result === undefined || result === REPEAT_DATE_REFUSAL ? result : result.card.end;
+    };
+
+    expect(end("3시로 바꿔")).toBe("16:30");
+    expect(end("11시로 바꿔")).toBe("12:30");
+    expect(end("3시부터 5시로")).toBe("17:00");
+    // Past midnight the range would wrap; the end is left for the user.
+    expect(end("밤 11시로 바꿔")).toBe("");
+  });
+
   test("a new date, as the parser reads it", () => {
     expect(edit("금요일로 옮겨")?.card.date).toBe("2026-10-09");
   });

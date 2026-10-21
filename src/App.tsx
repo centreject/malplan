@@ -208,7 +208,9 @@ export default function App() {
       try {
         result = applyEditReply(card, await complete(llm, buildEditPrompt(card, text, categories)), categories);
       } catch {
-        // AI unavailable: fall through to the hint below.
+        setCommandNote("AI에 연결하지 못했습니다. 규칙으로 읽는 요청은 됩니다. 예: 3시로 바꿔, 하루 미뤄, 장소는 강남역으로");
+
+        return;
       }
     }
 
