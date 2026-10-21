@@ -339,9 +339,9 @@ export default function App() {
   const tab = tabs.find((t) => t.id === activeTab);
   const shownIds = tab?.categoryIds ?? allFilter;
 
-  const visible = shownIds === undefined
-    ? items
-    : items.filter((item) => shownIds.includes(item.categoryId));
+  // Memoized: App re-renders on every keystroke in the sentence input, and overdue walks whole series.
+  const visible = useMemo(() => (shownIds === undefined ? items : items.filter((item) => shownIds.includes(item.categoryId))), [items, shownIds]);
+  const overdue = useMemo(() => overdueTasks(visible, now.today), [visible, now.today]);
 
   const editedTab = tabs.find((t) => t.id === editing);
 
@@ -470,7 +470,7 @@ export default function App() {
           items={visible}
           categories={categories}
           holiday={holidays.get(selected)}
-          overdue={overdueTasks(visible, now.today)}
+          overdue={overdue}
           undated={visible.filter((item) => item.when.kind === "none" && !item.done.includes("done"))}
           onToggle={toggleDone}
           onEdit={openEdit}
