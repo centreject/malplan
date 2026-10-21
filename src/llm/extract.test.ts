@@ -171,6 +171,15 @@ describe("applyExtraction", () => {
     expect(next.timeMode).toBe(card.timeMode);
   });
 
+  test("a kind or category the model changed from the rules' guess is badged; one it kept is not", () => {
+    const changed = applyExtraction({ ...card, kind: "task", categoryId: "work" }, extraction, categories, []);
+    const kept = applyExtraction({ ...card, kind: "event", categoryId: "meet" }, extraction, categories, []);
+
+    expect(changed.flags).toEqual(expect.arrayContaining(["kindGuessed", "categoryGuessed"]));
+    expect(kept.flags).not.toContain("kindGuessed");
+    expect(kept.flags).not.toContain("categoryGuessed");
+  });
+
   test("an unknown category becomes a proposed new one", () => {
     const next = applyExtraction(card, { ...extraction, category: "친구" }, categories, []);
 

@@ -242,7 +242,9 @@ function CardEditor({ card, errors, categories, heading, onChange, onExclude }: 
       <Field
         label="종류"
         groupId={id("kind")}
-        badge={!dated && card.flags.includes("checkDate") ? <Guess text="날짜 확인" /> : undefined}
+        badge={
+          !dated && card.flags.includes("checkDate") ? <Guess text="날짜 확인" /> : card.flags.includes("kindGuessed") ? <Guess text="AI가 고른 종류" /> : undefined
+        }
       >
         <Segmented name={id("kind-radio")} labelledBy={id("kind")} value={card.kind} options={KINDS} onChange={(kind) => set({ kind })} />
       </Field>
@@ -341,7 +343,7 @@ function CardEditor({ card, errors, categories, heading, onChange, onExclude }: 
         </>
       )}
 
-      <Field label="분류" htmlFor={id("category")}>
+      <Field label="분류" htmlFor={id("category")} badge={card.flags.includes("categoryGuessed") ? <Guess text="AI가 고른 분류" /> : undefined}>
         <select
           id={id("category")}
           // The calendar's category colour, as a bar on the field and on each option.

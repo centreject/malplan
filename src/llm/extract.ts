@@ -1,7 +1,7 @@
 // The LLM's one job: title, kind, category, place and note for one parsed part.
 // Dates, times and recurrence never come from the model; code already computed them.
 import * as v from "valibot";
-import { guessKind, NEW_CATEGORY, type Card } from "../domain/card";
+import { guessKind, NEW_CATEGORY, type Card, type CardFlag } from "../domain/card";
 import type { IsoDate } from "../domain/date";
 import type { Category } from "../domain/item";
 import { hasDateOrTime } from "../parse/parseKorean";
@@ -217,11 +217,24 @@ export function applyExtraction(card: Card, extraction: Extraction, categories: 
     next.newCategory = existing === undefined ? extraction.category : "";
   }
 
+  // Where the model overruled the rules, the confirm screen badges the choice as a guess.
+  const guessed: CardFlag[] = [];
+
+  if (next.kind !== card.kind) {
+    guessed.push("kindGuessed");
+  }
+
+  if (next.categoryId !== card.categoryId) {
+    guessed.push("categoryGuessed");
+  }
+
+  next.flags = [...card.flags.filter((flag) => !guessed.includes(flag)), ...guessed];
+
   if (!keep("place") && extraction.place !== undefined && extraction.place !== "") {
     next.place = extraction.place;
 
-    if (extraction.placeGuessed === true && !card.flags.includes("placeGuessed")) {
-      next.flags = [...card.flags, "placeGuessed"];
+    if (extraction.placeGuessed === true && !next.flags.includes("placeGuessed")) {
+      next.flags = [...next.flags, "placeGuessed"];
     }
   }
 

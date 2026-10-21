@@ -50,7 +50,7 @@ export type Card = {
 };
 
 /** Parser guesses plus LLM guesses, each badged "추정" on the confirm screen. */
-export type CardFlag = Flag | "placeGuessed";
+export type CardFlag = Flag | "placeGuessed" | "kindGuessed" | "categoryGuessed";
 
 export type Draft = { id: string; card: Card };
 
