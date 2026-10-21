@@ -9,13 +9,34 @@ const AppSettingsSchema = v.object({
   tray: v.optional(v.boolean(), true),
   closeToTray: v.optional(v.boolean(), true),
   shortcut: v.optional(v.boolean(), true),
+  /** Accelerator for the global shortcut, as the plugin parses it ("CommandOrControl+Alt+Space"). */
+  combo: v.optional(v.string(), "CommandOrControl+Alt+Space"),
 });
 
 export type AppSettings = v.InferOutput<typeof AppSettingsSchema>;
 
-export const SHORTCUT = "CommandOrControl+Alt+Space";
+/** "CommandOrControl+Alt+KeyK" as the user sees it: "Ctrl+Alt+K". */
+export function shortcutLabel(combo: string): string {
+  return combo
+    .split("+")
+    .map((part) => (part === "CommandOrControl" ? "Ctrl" : part.replace(/^(?:Key|Digit)(.)$/, "$1")))
+    .join("+");
+}
 
-export const SHORTCUT_LABEL = "Ctrl+Alt+Space";
+type KeyPress = { code: string; ctrlKey: boolean; altKey: boolean; shiftKey: boolean; metaKey: boolean };
+
+/** A pressed combination as an accelerator, or undefined until it has a modifier and a non-modifier key. */
+export function comboFromKey(key: KeyPress): string | undefined {
+  const modifiers = [key.ctrlKey && "CommandOrControl", key.altKey && "Alt", key.shiftKey && "Shift", key.metaKey && "Super"].filter(
+    (part): part is string => part !== false,
+  );
+
+  if (modifiers.length === 0 || key.code === "" || /^(?:Control|Alt|Shift|Meta|OS)(?:Left|Right)?$/.test(key.code)) {
+    return undefined;
+  }
+
+  return [...modifiers, key.code].join("+");
+}
 
 const STORAGE_KEY = "malplan.appSettings";
 
@@ -44,15 +65,17 @@ function focusQuickAdd(event: ShortcutEvent): void {
   }
 }
 
-async function registerShortcut(enabled: boolean): Promise<string | null> {
+/** The combo this app holds now, so a change releases the old one. */
+let registered: string | undefined;
+
+async function registerShortcut(enabled: boolean, combo: string): Promise<string | null> {
   if (!isTauri()) {
     return null;
   }
 
-  try {
-    await unregister(SHORTCUT);
-  } catch {
-    // Not registered yet.
+  if (registered !== undefined) {
+    await unregister(registered).catch(() => undefined);
+    registered = undefined;
   }
 
   if (!enabled) {
@@ -60,11 +83,12 @@ async function registerShortcut(enabled: boolean): Promise<string | null> {
   }
 
   try {
-    await register(SHORTCUT, focusQuickAdd);
+    await register(combo, focusQuickAdd);
+    registered = combo;
 
     return null;
   } catch {
-    return `${SHORTCUT_LABEL}를 다른 프로그램이 이미 쓰고 있어 등록하지 못했습니다.`;
+    return `${shortcutLabel(combo)}를 다른 프로그램이 이미 쓰고 있어 등록하지 못했습니다. 다른 조합으로 바꿔 보세요.`;
   }
 }
 
@@ -76,8 +100,9 @@ export function shortcutStatus(): Promise<string | null> {
 }
 
 /** Registers or releases the global shortcut. Resolves to an error message when the combo is taken. */
-export function applyShortcut(enabled: boolean): Promise<string | null> {
-  latestShortcut = registerShortcut(enabled);
+export function applyShortcut(enabled: boolean, combo: string): Promise<string | null> {
+  // Queued, so a quick change never races the previous unregister.
+  latestShortcut = latestShortcut.then(() => registerShortcut(enabled, combo));
 
   return latestShortcut;
 }
@@ -94,7 +119,7 @@ export async function applyWindowBehaviour(settings: AppSettings): Promise<void>
 
 /** Startup: apply the persisted settings once. Call before the first render so shortcutStatus() sees it. */
 export async function applyAppSettings(settings: AppSettings): Promise<void> {
-  const shortcut = applyShortcut(settings.shortcut);
+  const shortcut = applyShortcut(settings.shortcut, settings.combo);
 
   await applyWindowBehaviour(settings);
   await shortcut;

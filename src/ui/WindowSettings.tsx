@@ -3,11 +3,12 @@ import { disable, enable, isEnabled } from "@tauri-apps/plugin-autostart";
 import { useEffect, useState } from "react";
 import {
   applyShortcut,
+  comboFromKey,
   applyWindowBehaviour,
   closesToTray,
   loadAppSettings,
   saveAppSettings,
-  SHORTCUT_LABEL,
+  shortcutLabel,
   shortcutStatus,
   type AppSettings,
 } from "./appSettings";
@@ -18,6 +19,7 @@ export function WindowSettings() {
   const [settings, setSettings] = useState<AppSettings>(loadAppSettings);
   const [autostart, setAutostart] = useState(false);
   const [shortcutError, setShortcutError] = useState<string | null>(null);
+  const [recording, setRecording] = useState(false);
 
   useEffect(() => {
     if (desktop) {
@@ -31,8 +33,17 @@ export function WindowSettings() {
     saveAppSettings(next);
     void applyWindowBehaviour(next);
 
-    if (next.shortcut !== settings.shortcut) {
-      void applyShortcut(next.shortcut).then(setShortcutError);
+    if (next.shortcut !== settings.shortcut || next.combo !== settings.combo) {
+      void applyShortcut(next.shortcut, next.combo).then(async (error) => {
+        // A combo another program holds is not kept: the old one is put back.
+        if (error !== null && next.combo !== settings.combo) {
+          setSettings(settings);
+          saveAppSettings(settings);
+          await applyShortcut(settings.shortcut, settings.combo);
+        }
+
+        setShortcutError(error);
+      });
     }
   };
 
@@ -95,8 +106,43 @@ export function WindowSettings() {
           checked={settings.shortcut}
           onChange={(event) => update({ ...settings, shortcut: event.currentTarget.checked })}
         />
-        전역 단축키로 입력창 열기 <kbd>{SHORTCUT_LABEL}</kbd>
+        전역 단축키로 입력창 열기 <kbd>{shortcutLabel(settings.combo)}</kbd>
       </label>
+      {desktop && (
+        <span className="window-option shortcut-record">
+          {recording ? (
+            <input
+              className="cf-input"
+              aria-label="새 단축키"
+              readOnly
+              autoFocus
+              value=""
+              placeholder="새 조합을 누르세요 (Esc: 취소)"
+              onBlur={() => setRecording(false)}
+              onKeyDown={(event) => {
+                event.preventDefault();
+
+                if (event.key === "Escape") {
+                  setRecording(false);
+
+                  return;
+                }
+
+                const combo = comboFromKey(event);
+
+                if (combo !== undefined) {
+                  setRecording(false);
+                  update({ ...settings, combo });
+                }
+              }}
+            />
+          ) : (
+            <button type="button" className="text-button bordered" onClick={() => setRecording(true)}>
+              단축키 바꾸기
+            </button>
+          )}
+        </span>
+      )}
       {shortcutError !== null && (
         <p className="window-error" role="alert">
           {shortcutError}
