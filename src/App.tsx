@@ -1,4 +1,4 @@
-import { AppWindow, Bell, CalendarDays, HardDrive, Palette, Sparkles, Tags } from "lucide-react";
+import { AppWindow, Bell, CalendarDays, HardDrive, Info, Palette, Sparkles, Tags } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { NEW_CATEGORY, cardFromItem, cardFromParse, commitCards, splitInput, type Draft } from "./domain/card";
 import { addCorrections, loadCorrections } from "./llm/corrections";
@@ -24,6 +24,7 @@ import { ALL_TAB_ID, addTab, deleteTab, moveTab, updateTab, type CalendarTab } f
 import { CategorySettings } from "./ui/CategorySettings";
 import { MonthPane } from "./ui/MonthPane";
 import { SAMPLE_CATEGORIES, sampleItems } from "./ui/sampleData";
+import { AboutSettings } from "./ui/AboutSettings";
 import { BackupSettings } from "./ui/BackupSettings";
 import { HolidaySettings } from "./ui/HolidaySettings";
 import { loadApiKey, saveApiKey, useSpecialDays } from "./ui/specialDays";
@@ -626,6 +627,7 @@ export default function App() {
               />
             ),
           },
+          { id: "about", label: "정보", icon: Info, content: <AboutSettings /> },
         ]}
       />
       {editing !== undefined && (

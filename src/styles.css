@@ -2709,3 +2709,29 @@ ul {
   background: color-mix(in srgb, var(--c) 24%, var(--surface));
   color: color-mix(in srgb, var(--c) 40%, var(--ink));
 }
+
+.about-notices {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+
+.about-notices caption {
+  margin-bottom: 8px;
+  color: var(--ink-2);
+  font-weight: 600;
+  text-align: left;
+}
+
+.about-notices th,
+.about-notices td {
+  padding: 6px 8px 6px 0;
+  border-bottom: 1px solid var(--line);
+  text-align: left;
+  vertical-align: top;
+}
+
+.about-notices th {
+  color: var(--ink-3);
+  font-weight: 400;
+}
