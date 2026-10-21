@@ -578,3 +578,13 @@ describe("past dates, corrections and evening words", () => {
     expect(parseKorean("내일 퇴근하고 장보기", today)).toMatchObject({ time: { kind: "slot", slot: "dinner" }, rest: "퇴근하고 장보기" });
   });
 });
+
+describe("ranges without 까지", () => {
+  test.each([
+    ["내일부터 모레 휴가", "2026-10-06", "2026-10-07"],
+    ["10월 7일부터 9일 출장", "2026-10-07", "2026-10-09"],
+    ["25일부터 28일 저녁까지 워크숍", "2026-10-25", "2026-10-28"],
+  ])("%s", (text, start, end) => {
+    expect(dateOf(text)).toEqual({ kind: "range", start, end });
+  });
+});
