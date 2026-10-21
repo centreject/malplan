@@ -41,6 +41,17 @@ pub fn run() {
                 )
                 .build(),
         )
+        // A small rotating log in the app's log folder, so a problem on someone's PC can be read afterwards.
+        .plugin(
+            tauri_plugin_log::Builder::new()
+                .target(tauri_plugin_log::Target::new(
+                    tauri_plugin_log::TargetKind::LogDir { file_name: None },
+                ))
+                .level(log::LevelFilter::Info)
+                .max_file_size(1_000_000)
+                .rotation_strategy(tauri_plugin_log::RotationStrategy::KeepOne)
+                .build(),
+        )
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_notification::init())

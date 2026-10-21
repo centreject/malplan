@@ -1,4 +1,5 @@
 import { Component, type ErrorInfo, type ReactNode } from "react";
+import { report } from "./report";
 
 type CrashState = { error: Error | undefined };
 
@@ -14,7 +15,7 @@ export class CrashScreen extends Component<{ children: ReactNode }, CrashState> 
   }
 
   override componentDidCatch(error: Error, info: ErrorInfo): void {
-    console.error("render error", error, info.componentStack);
+    report(`render error: ${error.name}: ${error.message}${info.componentStack ?? ""}`);
   }
 
   override render(): ReactNode {

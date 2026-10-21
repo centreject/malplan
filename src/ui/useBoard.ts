@@ -4,6 +4,7 @@ import { deviceId, loadSyncDir, openBackend, saveSyncDir } from "../storage/back
 import { boardChanges, boardFromEntities, type Board } from "../storage/board";
 import { DELETED } from "../storage/schema";
 import { SyncStore, type Backend } from "../storage/store";
+import { report } from "./report";
 
 const EMPTY: Board = { items: [], categories: [], tabs: [{ id: ALL_TAB_ID, name: "전체", categoryIds: undefined }] };
 
@@ -53,7 +54,10 @@ export function useBoard(seed: () => Board) {
           remove ? { entity, id, field: DELETED, value: true } : { entity, id, field, value },
         ),
       ),
-    ).catch((error: Error) => setErrors((list) => [...list, `저장 실패: ${error.message}`]));
+    ).catch((error: Error) => {
+      report(`save failed: ${error.message}`);
+      setErrors((list) => [...list, `저장 실패: ${error.message}`]);
+    });
   }, []);
 
   const update = useCallback(
@@ -143,7 +147,10 @@ export function useBoard(seed: () => Board) {
       }
 
       setReady(true);
-    })().catch((error: Error) => setErrors([`불러오기 실패: ${error.message}`]));
+    })().catch((error: Error) => {
+      report(`load failed: ${error.message}`);
+      setErrors([`불러오기 실패: ${error.message}`]);
+    });
 
     return () => {
       cancelled = true;

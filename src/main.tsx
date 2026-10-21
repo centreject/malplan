@@ -3,7 +3,10 @@ import { createRoot } from "react-dom/client";
 import App from "./App";
 import { applyAppSettings, loadAppSettings } from "./ui/appSettings";
 import { CrashScreen } from "./ui/CrashScreen";
+import { reportUncaught } from "./ui/report";
 import { loadScheme, loadTheme, resolvedScheme } from "./ui/themes";
+
+reportUncaught();
 
 void applyAppSettings(loadAppSettings());
 
