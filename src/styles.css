@@ -40,6 +40,7 @@
   --cat-ink-4: #1d1600;
   --day-num-size: 46px;
   --day-num-weight: 700;
+  --shadow: var(--ink);
 }
 
 [data-theme="desk"] {
@@ -79,6 +80,7 @@
   --cat-ink-4: #ffffff;
   --day-num-size: 72px;
   --day-num-weight: 700;
+  --shadow: var(--ink);
 }
 
 [data-theme="standard"] {
@@ -118,6 +120,89 @@
   --cat-ink-4: #ffffff;
   --day-num-size: 40px;
   --day-num-weight: 600;
+  --shadow: var(--ink);
+}
+
+/* ───────── Dark schemes ─────────
+   Same three worlds after dark: the bus board at night, the desk calendar under a lamp, a plain dark app.
+   Category slots keep their hue and stay dark enough for white ink (4.5:1); text roles lift for dark surfaces. */
+
+:root {
+  color-scheme: light;
+}
+
+:root[data-scheme="dark"] {
+  color-scheme: dark;
+  --shadow: #000000;
+}
+
+[data-theme="bus"][data-scheme="dark"] {
+  --bg: #0d131b;
+  --surface: #151d28;
+  --surface-2: #1b2532;
+  --ink: #e9eef4;
+  --ink-2: #b2bdcb;
+  --ink-3: #8995a6;
+  --line: #263243;
+  --accent: #2f6fc4;
+  --accent-ink: #ffffff;
+  --focus: #6aa6f0;
+  --red: #ff6b5a;
+  --blue: #6aa6f0;
+  --late: #f2b24a;
+  --late-bg: #2e2412;
+  --plate-bg: #070b10;
+  --plate-ink: #ffffff;
+  --plate-when: #f2b705;
+  --cat-0: #5f6b7c;
+  --cat-1: #2f6fc4;
+  --cat-2: #23803a;
+  --cat-3: #d33a2a;
+  --cat-4: #e9a800;
+  --cat-5: #4a62a0;
+  --cat-6: #00807d;
+}
+
+[data-theme="desk"][data-scheme="dark"] {
+  --bg: #171512;
+  --surface: #201d19;
+  --surface-2: #28241f;
+  --ink: #eee7dc;
+  --ink-2: #c4baab;
+  --ink-3: #9b9284;
+  --line: #36312a;
+  --accent: #c8281f;
+  --accent-ink: #ffffff;
+  --focus: #7ea2e8;
+  --red: #f0675c;
+  --blue: #7ea2e8;
+  --late: #e09a4a;
+  --late-bg: #2f2416;
+  --plate-bg: #201d19;
+  --plate-ink: #eee7dc;
+  --plate-when: #f0675c;
+  --cat-0: #6b645b;
+  --cat-1: #3a66b8;
+}
+
+[data-theme="standard"][data-scheme="dark"] {
+  --bg: #111318;
+  --surface: #1a1d24;
+  --surface-2: #20242c;
+  --ink: #e5e7eb;
+  --ink-2: #b3b9c4;
+  --ink-3: #8b93a0;
+  --line: #2c313b;
+  --accent: #2f6fe0;
+  --accent-ink: #ffffff;
+  --focus: #60a5fa;
+  --red: #f87171;
+  --blue: #60a5fa;
+  --late: #fbbf24;
+  --late-bg: #2d2410;
+  --plate-bg: #1c2742;
+  --plate-ink: #dbe7ff;
+  --plate-when: #93c5fd;
 }
 
 /* ───────── Base ───────── */
@@ -285,11 +370,11 @@ ul {
   border-radius: var(--radius-pane);
   background: var(--surface);
   color: var(--ink);
-  box-shadow: 0 16px 48px color-mix(in srgb, var(--ink) 22%, transparent);
+  box-shadow: 0 16px 48px color-mix(in srgb, var(--shadow) 22%, transparent);
 }
 
 .settings::backdrop {
-  background: color-mix(in srgb, var(--ink) 35%, transparent);
+  background: color-mix(in srgb, var(--shadow) 35%, transparent);
 }
 
 .settings-head {
@@ -1033,7 +1118,7 @@ ul {
   border: 1px solid var(--line);
   border-radius: 8px;
   background: var(--surface);
-  box-shadow: 0 8px 24px color-mix(in srgb, var(--ink) 16%, transparent);
+  box-shadow: 0 8px 24px color-mix(in srgb, var(--shadow) 16%, transparent);
 }
 
 .month-cell:focus-within .month-full,
@@ -1318,7 +1403,7 @@ ul {
   border-radius: calc(var(--radius-pane) - 4px);
   background: var(--surface);
   color: var(--ink);
-  box-shadow: 0 8px 24px color-mix(in srgb, var(--ink) 16%, transparent);
+  box-shadow: 0 8px 24px color-mix(in srgb, var(--shadow) 16%, transparent);
 }
 
 .cat-checklist {
@@ -1549,7 +1634,7 @@ ul {
   border-radius: var(--radius-pane);
   background: var(--surface);
   color: var(--ink);
-  box-shadow: 0 16px 48px color-mix(in srgb, var(--ink) 22%, transparent);
+  box-shadow: 0 16px 48px color-mix(in srgb, var(--shadow) 22%, transparent);
 }
 
 .confirm[open] {
@@ -1557,7 +1642,7 @@ ul {
 }
 
 .confirm::backdrop {
-  background: color-mix(in srgb, var(--ink) 35%, transparent);
+  background: color-mix(in srgb, var(--shadow) 35%, transparent);
 }
 
 .confirm-form {
@@ -2112,7 +2197,7 @@ ul {
   border-radius: 10px;
   background: var(--ink);
   color: var(--surface);
-  box-shadow: 0 8px 24px color-mix(in srgb, var(--ink) 25%, transparent);
+  box-shadow: 0 8px 24px color-mix(in srgb, var(--shadow) 25%, transparent);
   font-size: 14px;
   transform: translateX(-50%);
 }
@@ -2505,7 +2590,7 @@ ul {
 .confirm {
   box-shadow:
     inset 0 var(--band-h) 0 var(--band),
-    0 16px 48px color-mix(in srgb, var(--ink) 22%, transparent);
+    0 16px 48px color-mix(in srgb, var(--shadow) 22%, transparent);
 }
 
 .all-filter,
@@ -2513,7 +2598,7 @@ ul {
   border-radius: var(--radius-pane);
   box-shadow:
     inset 0 var(--band-h) 0 var(--band),
-    0 8px 24px color-mix(in srgb, var(--ink) 16%, transparent);
+    0 8px 24px color-mix(in srgb, var(--shadow) 16%, transparent);
 }
 
 /* One inner margin for every dialog: 24px, matching the header. */
@@ -2563,7 +2648,7 @@ ul {
 }
 
 .crash h1 {
-  font-size: 1.25rem;
+  font-size: 16px;
   margin: 0;
 }
 
@@ -2576,7 +2661,7 @@ ul {
   max-height: 240px;
   overflow: auto;
   white-space: pre-wrap;
-  font-size: 0.8rem;
+  font-size: 12px;
   color: var(--ink-3);
 }
 
@@ -2591,5 +2676,36 @@ ul {
 
 .first-run .first-run-sub {
   color: var(--ink-3);
-  font-size: 0.9em;
+  font-size: 13px;
+}
+
+.scheme-choice {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 16px;
+  margin-top: 14px;
+}
+
+.scheme-label {
+  color: var(--ink-2);
+  font-weight: 600;
+}
+
+.scheme-option {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  cursor: pointer;
+}
+
+/* Outlined and tinted tags take their hue as text; after dark that hue is lifted toward the ink to stay readable. */
+[data-theme="desk"][data-scheme="dark"] .cat-tag {
+  border-color: color-mix(in srgb, var(--c) 70%, var(--ink));
+  color: color-mix(in srgb, var(--c) 45%, var(--ink));
+}
+
+[data-theme="standard"][data-scheme="dark"] .cat-tag {
+  background: color-mix(in srgb, var(--c) 24%, var(--surface));
+  color: color-mix(in srgb, var(--c) 40%, var(--ink));
 }

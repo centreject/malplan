@@ -389,6 +389,7 @@ The single loudest object on the board: what is next and how long until it.
 - **Don't** use red for errors or general emphasis. It means a Sunday, a holiday or now, plus the accent on desk only.
 
 ## Open Items
-- **Dark and high-contrast themes:** not built. PRODUCT.md commits to a high-contrast theme and user-adjustable text size. Both must fill the full role vocabulary above.
+- **Dark schemes:** built (2026-10-22). Each theme has a dark token set under `[data-theme=…][data-scheme="dark"]`, chosen in 화면 → 밝기 (밝게 / 어둡게 / 시스템 설정 따름, default system). Slots keep their hue at white-ink strength; text roles lift; shadows and scrims use `--shadow` (black after dark); `color-scheme` follows so native controls match. Outlined (desk) and tinted (standard) tags mix their hue toward the ink after dark. Measured text contrast ≥4.5:1 in all three.
+- **High-contrast theme:** not built. PRODUCT.md commits to it and to user-adjustable text size.
 - **Self-hosted fonts:** pending download approval (Seoul Namsan for bus, a condensed numeral face for desk). Malgun Gothic, Bahnschrift and Segoe UI are installed-system stand-ins, not the decided faces.
 - **Lunar dates:** not yet computed; intended for the desk theme's date cells.

@@ -36,7 +36,7 @@ import { StorageSettings } from "./ui/StorageSettings";
 import { TabEditor } from "./ui/TabEditor";
 import { useBoard } from "./ui/useBoard";
 import type { Board } from "./storage/board";
-import { loadTheme, saveTheme, type ThemeId } from "./ui/themes";
+import { loadScheme, loadTheme, resolvedScheme, saveScheme, saveTheme, type SchemeId, type ThemeId } from "./ui/themes";
 import { FirstRunNotice } from "./ui/FirstRunNotice";
 import { SettingsDialog, ThemeSettings } from "./ui/SettingsDialog";
 import { WindowSettings } from "./ui/WindowSettings";
@@ -79,6 +79,7 @@ function shiftMonth(cursor: MonthCursor, delta: number): MonthCursor {
 export default function App() {
   const now = useNow();
   const [theme, setTheme] = useState<ThemeId>(loadTheme);
+  const [scheme, setScheme] = useState<SchemeId>(loadScheme);
   const persisted = useBoard(() => firstBoard(now.today));
   const { items, categories, tabs } = persisted.board;
   const setItems = (change: (current: Item[]) => Item[]) => persisted.update((b) => ({ ...b, items: change(b.items) }));
@@ -320,6 +321,20 @@ export default function App() {
     saveTheme(theme);
   }, [theme]);
 
+  useEffect(() => {
+    const media = window.matchMedia("(prefers-color-scheme: dark)");
+
+    const apply = () => {
+      document.documentElement.dataset["scheme"] = resolvedScheme(scheme, media.matches);
+    };
+
+    apply();
+    saveScheme(scheme);
+    media.addEventListener("change", apply);
+
+    return () => media.removeEventListener("change", apply);
+  }, [scheme]);
+
   const tab = tabs.find((t) => t.id === activeTab);
   const shownIds = tab?.categoryIds ?? allFilter;
 
@@ -523,7 +538,7 @@ export default function App() {
             icon: Palette,
             content: (
               <>
-                <ThemeSettings theme={theme} onTheme={setTheme} />
+                <ThemeSettings theme={theme} onTheme={setTheme} scheme={scheme} onScheme={setScheme} />
                 <DisplaySettings
                   display={display}
                   onChange={(next) => {

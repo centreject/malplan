@@ -1,6 +1,6 @@
 import { X, type LucideIcon } from "lucide-react";
 import { useEffect, useRef, useState, type ReactNode } from "react";
-import { THEMES, type ThemeId } from "./themes";
+import { SCHEMES, THEMES, type SchemeId, type ThemeId } from "./themes";
 
 export type SettingsPage = { id: string; label: string; icon: LucideIcon; content: ReactNode };
 
@@ -72,7 +72,9 @@ export function SettingsDialog({ open, initialPage, pages, onClose }: SettingsDi
 }
 
 /** "디자인": the three themes as radio cards. */
-export function ThemeSettings({ theme, onTheme }: { theme: ThemeId; onTheme: (theme: ThemeId) => void }) {
+type ThemeSettingsProps = { theme: ThemeId; onTheme: (theme: ThemeId) => void; scheme: SchemeId; onScheme: (scheme: SchemeId) => void };
+
+export function ThemeSettings({ theme, onTheme, scheme, onScheme }: ThemeSettingsProps) {
   return (
     <fieldset className="settings-section">
       <legend>디자인</legend>
@@ -87,6 +89,15 @@ export function ThemeSettings({ theme, onTheme }: { theme: ThemeId; onTheme: (th
             </span>
             <span className="theme-name">{option.name}</span>
             <span className="theme-desc">{option.description}</span>
+          </label>
+        ))}
+      </div>
+      <div className="scheme-choice" role="radiogroup" aria-label="밝기">
+        <span className="scheme-label">밝기</span>
+        {SCHEMES.map((option) => (
+          <label key={option.id} className="scheme-option">
+            <input type="radio" name="scheme" value={option.id} checked={option.id === scheme} onChange={() => onScheme(option.id)} />
+            {option.name}
           </label>
         ))}
       </div>

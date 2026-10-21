@@ -34,3 +34,28 @@ export function loadTheme(): ThemeId {
 export function saveTheme(theme: ThemeId): void {
   writeStored(STORAGE_KEY, theme);
 }
+
+/** Light or dark, or whatever Windows is set to. Each theme has both. */
+export const SCHEMES = [
+  { id: "light", name: "밝게" },
+  { id: "dark", name: "어둡게" },
+  { id: "system", name: "시스템 설정 따름" },
+] as const;
+
+export type SchemeId = (typeof SCHEMES)[number]["id"];
+
+const SCHEME_KEY = "malplan.scheme";
+
+export function loadScheme(): SchemeId {
+  const saved = readStored(SCHEME_KEY);
+
+  return SCHEMES.find((scheme) => scheme.id === saved)?.id ?? "system";
+}
+
+export function saveScheme(scheme: SchemeId): void {
+  writeStored(SCHEME_KEY, scheme);
+}
+
+export function resolvedScheme(scheme: SchemeId, systemDark: boolean): "light" | "dark" {
+  return scheme === "system" ? (systemDark ? "dark" : "light") : scheme;
+}
