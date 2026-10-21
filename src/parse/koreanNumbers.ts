@@ -41,6 +41,8 @@ const RULES: [RegExp, (match: string, ...groups: string[]) => string][] = [
   // 삼월 오일, 시월 십오일, 유월 3일: month words only when a day follows.
   [new RegExp(`(?<![가-힣])(${SINO}|유|시)월\\s*(?=(?:\\d{1,2}|${SINO})\\s*일)`, "g"), (_, month = "") => `${month === "유" ? 6 : month === "시" ? 10 : sinoValue(month)}월 `],
   [new RegExp(`(\\d월\\s*)(${SINO})(?=\\s*일)`, "g"), (_, head = "", day = "") => `${head}${sinoValue(day)}`],
+  // 이십구일, 십오일: a bare day of the month with a tens digit ("삼일절", "오일" have none).
+  [new RegExp(`(?<![가-힣\\d])([이삼]?십[일이삼사오육칠팔구]?)(?=일(?![가-힣]))`, "g"), (day) => (sinoValue(day) <= 31 ? String(sinoValue(day)) : day)],
   // 세시 반, 저녁 열시, 열한시 십오분.
   [new RegExp(`(?<![가-힣])(${NATIVE_WORD})\\s*시${AFTER_CLOCK}`, "g"), (_, hour = "") => `${NATIVE.get(hour) ?? 0}시`],
   [new RegExp(`(\\d시\\s*)(${SINO})\\s*분`, "g"), (_, head = "", minute = "") => `${head}${sinoValue(minute)}분`],

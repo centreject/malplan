@@ -100,7 +100,7 @@ class Scanner {
 }
 
 export function parseKorean(text: string, today: IsoDate): ParseResult {
-  const scanner = new Scanner(normalizeNumbers(text));
+  const scanner = new Scanner(normalizeNumbers(spoken(text, today)));
   const flags: Flag[] = [];
   const recurrence = takeRecurrence(scanner, today);
   const unreadRepeat = recurrence === undefined && UNREAD_REPEAT.test(scanner.rest);
@@ -142,6 +142,17 @@ export function parseKorean(text: string, today: IsoDate): ParseResult {
   }
 
   return result;
+}
+
+/**
+ * Spoken forms read before the rules: "어젯밤" is 어제 밤, and in "내일이 아니라 모레" (a correction) only what follows
+ * 아니라 counts, when what precedes it is a date or time. "사과가 아니라 배" stays as written.
+ */
+function spoken(text: string, today: IsoDate): string {
+  const plain = text.replace(/어젯밤/g, "어제 밤").replace(/(?<![가-힣])간밤/g, "어제 밤");
+  const correction = /^(.*?)\s*아니(?:라|고)\s+(.+)$/.exec(plain);
+
+  return correction !== null && hasDateOrTime(correction[1] ?? "", today) ? correction[2] ?? plain : plain;
 }
 
 /** A date or a clock time in the text. Meal words alone ("저녁 약속") do not count: they are often just nouns. */
@@ -313,8 +324,9 @@ function takeDateRange(scanner: Scanner, today: IsoDate, flags: Flag[]): ParsedD
   const base = start?.kind === "single" && /뒤|후/.test(match[2] ?? "") ? start.date : today;
   let end = start?.kind === "single" ? takeDate(right, base, []) : undefined;
 
-  // "다음주 월요일부터 금요일까지": a bare end that falls before the start is the one after it.
-  if (start?.kind === "single" && end?.kind === "single" && dayNumber(end.date) < dayNumber(start.date)) {
+  // "다음주 월요일부터 금요일까지": a bare end that falls before the start is the one after it; "작년 12월 30일부터
+  // 1월 2일까지": an end read from today that lands over a year past the start is the one right after it too.
+  if (start?.kind === "single" && end?.kind === "single" && (dayNumber(end.date) < dayNumber(start.date) || dayNumber(end.date) - dayNumber(start.date) > 366)) {
     right.rest = match[2] ?? "";
     end = takeDate(right, start.date, []);
   }
@@ -417,6 +429,7 @@ const DATE_RULES: DateRule[] = [
   takeRelativeRange,
   takeMonthDayRange,
   takeDayRange,
+  takePast,
   // An explicit date wins over a holiday name, which then stays in the title: "12월 25일 크리스마스 파티".
   takeMonthDay,
   takeHoliday,
@@ -536,6 +549,29 @@ function takeDayRange(scanner: Scanner, today: IsoDate): ParsedDate | undefined 
   const start = upcomingDay(Number(match[1]), today);
 
   return { kind: "range", start, end: upcomingDay(Number(match[2]), start) };
+}
+
+/** 지난 15일, 지난 5월 3일, 지난 크리스마스: the latest one before today. "지난 3일간" is a length and is left alone. */
+function takePast(scanner: Scanner, today: IsoDate): ParsedDate | undefined {
+  const prefix = new RegExp(`(?<![가-힣])(?:지난|저번)\\s*(?=\\d{1,2}\\s*(?:월\\s*\\d{1,2}\\s*)?일|${HOLIDAY_NAME})`).exec(scanner.rest);
+
+  if (prefix === null) {
+    return undefined;
+  }
+
+  const after = new Scanner(scanner.rest.slice(prefix.index + prefix[0].length));
+  const bareDay = /^\d{1,2}\s*일/.test(after.rest);
+  // Read as if a month (bare day) or a year ago: the first one from there is the latest one before today.
+  const from = addDays(addMonths(today, bareDay ? -1 : -12), 1);
+  const date = bareDay ? takeDayOfMonth(after, from) : takeMonthDay(after, from, []) ?? takeHoliday(after, from);
+
+  if (date?.kind !== "single" || dayNumber(date.date) >= dayNumber(today)) {
+    return undefined;
+  }
+
+  scanner.rest = `${scanner.rest.slice(0, prefix.index)} ${after.rest}`;
+
+  return date;
 }
 
 /** Solar holidays by month/day; lunar ones (marked) by lunar month/day. */
@@ -1003,8 +1039,9 @@ function takeTime(scanner: Scanner, flags: Flag[]): ParsedTime | undefined {
   }
 
   // Glued to a noun ("저녁약속", "점심모임") the word sets the slot but stays in the title. 밤 is left out: "밤샘".
-  const glued = /(?<![가-힣])(아침|점심|저녁)(?=[가-힣])/.exec(scanner.rest);
-  const gluedSlot = SLOT_BY_WORD.get(glued?.[1] ?? "");
+  // "퇴근하고", "퇴근 후", "퇴근길" mean the evening and stay in the title too.
+  const glued = /(?<![가-힣])(아침|점심|저녁)(?=[가-힣])|(?<![가-힣])퇴근(?:하고|\s*후|길)/.exec(scanner.rest);
+  const gluedSlot = glued === null ? undefined : glued[1] === undefined ? "dinner" : SLOT_BY_WORD.get(glued[1]);
 
   if (gluedSlot !== undefined) {
     return { kind: "slot", slot: gluedSlot };

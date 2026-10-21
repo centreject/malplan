@@ -6,12 +6,13 @@ import { parseGold, scoreGold, type CategoryScore } from "./goldScore";
 // Lowered once on 2026-10-15 (984 → 960, 86.4% → 84.0%) by deliberate choices that differ from the gold set, after a
 // review of ~420 everyday inputs: "N일 전" alone is no longer counted back from today ("회의 3일 전에 자료 공유"),
 // "첫째 주 금요일" is the first Friday rather than the Friday of the first calendar row, and "이번 주 X요일" already
-// past means the coming one.
-const MIN_CORRECT = 960;
+// past means the coming one. Raised on 2026-10-22 (960 → 984, 84.1% → 86.7%): 지난 + date, "A가 아니라 B", 어젯밤,
+// 퇴근하고, a year-end range, 이십구일.
+const MIN_CORRECT = 984;
 
 const MAX_FALSE_POSITIVES = 9;
 
-const MIN_SCHEDULE_RATE = 0.84;
+const MIN_SCHEDULE_RATE = 0.867;
 
 /**
  * Not counted in the schedule rate: whole months or years ("다음달" as a span; the app has no such item),

@@ -543,3 +543,38 @@ describe("everyday inputs that must not get a wrong date", () => {
     expect(parseKorean("14:00~16:00 회의", today).time).toEqual({ kind: "exact", start: { hour: 14, minute: 0 }, end: { hour: 16, minute: 0 } });
   });
 });
+
+describe("past dates, corrections and evening words", () => {
+  test.each([
+    // The latest one before today (2026-10-05).
+    ["지난 15일 병원", "2026-09-15"],
+    ["지난 3일 회의록", "2026-10-03"],
+    ["지난 5월 3일", "2026-05-03"],
+    ["지난 12월 25일", "2025-12-25"],
+    ["지난 크리스마스", "2025-12-25"],
+    ["지난 추석", "2025-10-06"],
+    ["이십구일 마감", "2026-10-29"],
+  ])("%s", (text, date) => {
+    expect(dateOf(text)).toEqual(single(date));
+  });
+
+  test("a year-end range runs into the next year", () => {
+    expect(parseKorean("작년 12월 30일부터 1월 2일까지 휴가", today).date).toEqual({ kind: "range", start: "2025-12-30", end: "2026-01-02" });
+  });
+
+  test("지난 3일간 is a length, not the 3rd", () => {
+    expect(parseKorean("지난 3일간 야근", today).date).toBeUndefined();
+  });
+
+  test("\"A가 아니라 B\" keeps B", () => {
+    expect(dateOf("내일이 아니라 모레 회의")).toEqual(single("2026-10-07"));
+    expect(parseKorean("내일이 아니라 모레 회의", today).rest).toBe("회의");
+    expect(clockOf("내일 오전 3시가 아니라 내일 오후 3시로 바꿔")).toBe("15:00");
+    expect(parseKorean("사과가 아니라 배 사기", today).rest).toBe("사과가 아니라 배 사기");
+  });
+
+  test("어젯밤 and 퇴근하고", () => {
+    expect(parseKorean("어젯밤 늦게까지 작업", today)).toMatchObject({ date: single("2026-10-04"), time: { kind: "slot", slot: "night" } });
+    expect(parseKorean("내일 퇴근하고 장보기", today)).toMatchObject({ time: { kind: "slot", slot: "dinner" }, rest: "퇴근하고 장보기" });
+  });
+});
