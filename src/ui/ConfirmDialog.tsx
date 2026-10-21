@@ -84,6 +84,12 @@ export function ConfirmDialog(props: ConfirmDialogProps) {
   useEffect(() => {
     if (dialog.current?.open === false) {
       dialog.current.showModal();
+      // A blank form starts in the title; otherwise the dialog's own first focus stands.
+      const title = dialog.current.querySelector<HTMLInputElement>("input[id$='title']");
+
+      if (title?.value === "") {
+        title.focus();
+      }
     }
   }, []);
 

@@ -29,10 +29,7 @@ export function TopBar({ today, text, onText, onFocus, onSubmit, onSettings, onS
         className="quick-add"
         onSubmit={(event) => {
           event.preventDefault();
-
-          if (text.trim() !== "") {
-            onSubmit();
-          }
+          onSubmit();
         }}
       >
         <label className="visually-hidden" htmlFor="quick-add-input">
@@ -47,7 +44,12 @@ export function TopBar({ today, text, onText, onFocus, onSubmit, onSettings, onS
           placeholder="예: 12월 28일까지 매주 수요일 오후 4시 회사 우편물 발송"
           autoComplete="off"
         />
-        <button type="submit" className="quick-add-submit" aria-label="확인 화면 열기" disabled={text.trim() === ""}>
+        <button
+          type="submit"
+          className="quick-add-submit"
+          aria-label={text.trim() === "" ? "빈 양식으로 직접 입력" : "확인 화면 열기"}
+          title={text.trim() === "" ? "빈 양식으로 직접 입력" : "확인 화면 열기"}
+        >
           <CornerDownLeft size={16} strokeWidth={2} />
         </button>
         <output className="quick-add-preview" htmlFor="quick-add-input" aria-live="polite">

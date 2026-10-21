@@ -129,6 +129,14 @@ export default function App() {
   const aiSession = useRef(0);
 
   const openNew = () => {
+    // Nothing typed: a blank form for direct entry, no AI.
+    if (quickText.trim() === "") {
+      setConfirm({ drafts: [{ id: crypto.randomUUID(), card: cardFromParse(parseKorean("", now.today), now.today, categories) }], editing: false });
+      setAi({ extractions: new Map(), inputs: new Map(), note: undefined });
+
+      return;
+    }
+
     const parts = splitInput(quickText).map((part) => ({ part, id: crypto.randomUUID() }));
     const drafts = parts.map(({ part, id }) => ({ id, card: cardFromParse(parseKorean(part, now.today), now.today, categories) }));
     const session = ++aiSession.current;
