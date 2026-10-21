@@ -24,7 +24,9 @@ const TITLE = /제목(?:은|을|를)?\s*(.+?)\s*(?:으로|로)(?=\s|$)/;
 
 const NOTE = /메모(?:에|를)?\s*(.+?)\s*(?:추가|적어|넣어|남겨)/;
 
-const TIME_NAMES = { undecided: "미정", anytime: "아무때나", slot: "시간대", exact: "" } as const;
+const KIND = /(할\s*일|일정)\s*(?:으로|로)(?=\s|,|$)/;
+
+const TIME_NAMES ={ undecided: "미정", anytime: "아무때나", slot: "시간대", exact: "" } as const;
 
 /**
  * `occurrence` is the clicked date of a repeating item. A date change there moves only that occurrence: the card
@@ -61,6 +63,12 @@ export function applyEditCommand(
   });
   rest = takeField(rest, NOTE, (note) => {
     next.note = card.note === "" ? note : `${card.note}\n${note}`;
+  });
+  rest = takeField(rest, KIND, (kind) => {
+    // An undated task has no date to keep; turning it into an event or a dated task is the edit screen's job.
+    if (card.kind !== "undated") {
+      next.kind = kind.startsWith("할") ? "task" : "event";
+    }
   });
 
   // A category only when the request says so: "회사로 옮겨" could be a place.

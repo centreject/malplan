@@ -118,6 +118,15 @@ describe("applyEditCommand", () => {
     expect(edit("메모에 노트북 챙기기 추가")?.card.note).toBe("노트북 챙기기");
   });
 
+  test("a kind by name, alone or with other fields", () => {
+    expect(edit("할 일로 바꿔")?.card.kind).toBe("task");
+    expect(edit("할 일로 바꿔")?.changes).toEqual(["종류: 일정 → 할 일"]);
+
+    const both = edit("약속으로 분류, 할 일로 바꿔줘");
+
+    expect([both?.card.kind, both?.card.categoryId]).toEqual(["task", "meet"]);
+  });
+
   test("date and time together", () => {
     const result = edit("내일 오전 10시로");
 
