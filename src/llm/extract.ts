@@ -3,7 +3,7 @@
 import * as v from "valibot";
 import { guessKind, NEW_CATEGORY, type Card } from "../domain/card";
 import type { IsoDate } from "../domain/date";
-import type { Category, Item } from "../domain/item";
+import type { Category } from "../domain/item";
 import { hasDateOrTime } from "../parse/parseKorean";
 
 /** The category the model picks when none of the user's fit; the name it proposes goes in "newCategory". */
@@ -45,9 +45,6 @@ export type ReplyJsonSchema = {
 };
 
 export type Prompt = { system: string; user: string; schema: ReplyJsonSchema };
-
-/** What history needs from a saved item. */
-export type SavedItem = Pick<Item, "title" | "categoryId">;
 
 /** Words that say nothing about the topic: times of day, repeats, and verb stubs. */
 const GENERIC_WORDS = new Set(["매일", "매주", "매월", "매년", "오전", "오후", "아침", "점심", "저녁", "하기", "가기", "사기", "보기", "준비", "정리", "확인"]);
@@ -127,8 +124,8 @@ export function buildPrompt(
   return { system, user: input, schema: replySchema(categories) };
 }
 
-/** First {...} block in the reply, validated. Anything unusable gives undefined. */
-export function parseExtraction(reply: string): Extraction | undefined {
+/** First {...} block in a model reply (code fences and chatter around it ignored), validated. Unusable gives undefined. */
+export function parseReplyJson<S extends v.GenericSchema>(reply: string, schema: S): v.InferOutput<S> | undefined {
   const start = reply.indexOf("{");
   const end = reply.lastIndexOf("}");
 
@@ -137,59 +134,34 @@ export function parseExtraction(reply: string): Extraction | undefined {
   }
 
   try {
-    const parsed = v.safeParse(ReplySchema, JSON.parse(reply.slice(start, end + 1)));
+    const parsed = v.safeParse(schema, JSON.parse(reply.slice(start, end + 1)));
 
-    if (!parsed.success) {
-      return undefined;
-    }
-
-    const { newCategory, ...extraction } = parsed.output;
-
-    if (extraction.category !== NEW_CATEGORY_CHOICE) {
-      return extraction;
-    }
-
-    // A new category with no name is unusable; the rules' card stands.
-    return newCategory === undefined || newCategory === "" ? undefined : { ...extraction, category: newCategory };
+    return parsed.success ? parsed.output : undefined;
   } catch {
     return undefined;
   }
 }
 
-/**
- * Each input word seen in saved titles of only one category votes for it ("결혼식" always 약속);
- * words seen across categories ("제출" in 회사 and 학교) say nothing. The most-voted category wins; none on a tie.
- */
-const MIN_HISTORY_HITS = 3;
+export function parseExtraction(reply: string): Extraction | undefined {
+  const parsed = parseReplyJson(reply, ReplySchema);
 
-function historyCategory(input: string, items: SavedItem[], categories: Category[], today: IsoDate): Category | undefined {
-  const known = items.filter((item) => categories.some((c) => c.id === item.categoryId));
-  const titles = known.map((item) => topicWords(item.title, today));
-  const votes = new Map<string, number>();
-
-  for (const word of topicWords(input, today)) {
-    // A word must recur (3+ saved titles, one category): with single sightings the rule cut HELD category 71 → 66 / 90.
-    const hits = known.flatMap((item, index) => (sharesWord([word], titles[index] ?? []) ? [item.categoryId] : []));
-    const seenIn = new Set(hits);
-    const [only] = seenIn;
-
-    if (only !== undefined && seenIn.size === 1 && hits.length >= MIN_HISTORY_HITS) {
-      votes.set(only, (votes.get(only) ?? 0) + 1);
-    }
-  }
-
-  const [first, second] = [...votes].toSorted((a, b) => b[1] - a[1]);
-
-  if (first === undefined || first[1] === second?.[1]) {
+  if (parsed === undefined) {
     return undefined;
   }
 
-  return categories.find((c) => c.id === first[0]);
+  const { newCategory, ...extraction } = parsed;
+
+  if (extraction.category !== NEW_CATEGORY_CHOICE) {
+    return extraction;
+  }
+
+  // A new category with no name is unusable; the rules' card stands.
+  return newCategory === undefined || newCategory === "" ? undefined : { ...extraction, category: newCategory };
 }
 
 /**
  * Rules overrule the model where they are surer: a title still holding dates, a task ending,
- * a category named in the sentence (else the one saved items with a shared word mostly have),
+ * a category named in the sentence,
  * a place the sentence never mentions (or that is a date), a note that repeats the title.
  */
 export function guardExtraction(
@@ -197,10 +169,9 @@ export function guardExtraction(
   input: string,
   ruleCard: Card,
   categories: Category[],
-  items: SavedItem[],
   today: IsoDate,
 ): Extraction {
-  const named = categories.find((c) => input.includes(c.name)) ?? historyCategory(input, items, categories, today);
+  const named = categories.find((c) => input.includes(c.name));
   const { place, placeGuessed, note, ...rest } = extraction;
 
   const guarded: Extraction = {

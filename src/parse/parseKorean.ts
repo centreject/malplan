@@ -42,8 +42,6 @@ const WEEKDAY_BY_CHAR = new Map<string, Weekday>([
   ["일", 0], ["월", 1], ["화", 2], ["수", 3], ["목", 4], ["금", 5], ["토", 6],
 ]);
 
-const NTH_BY_WORD = new Map([["첫", 1], ["둘", 2], ["셋", 3], ["넷", 4]]);
-
 const SLOT_BY_WORD = new Map<string, Slot>([
   ["아침", "morning"], ["점심", "lunch"], ["저녁", "dinner"], ["밤", "night"],
 ]);
@@ -198,7 +196,7 @@ function takeRule(scanner: Scanner, today: IsoDate): Recurrence | undefined {
   }
 
   const nthWeekday = scanner.take(/매(?:월|달)\s*(첫|둘|셋|넷)째\s*(?:주\s*)?([일월화수목금토])요일/);
-  const nth = NTH_BY_WORD.get(nthWeekday?.[1] ?? "");
+  const nth = NTH_VALUE.get(nthWeekday?.[1] ?? "");
   const nthWeekdayValue = WEEKDAY_BY_CHAR.get(nthWeekday?.[2] ?? "");
 
   if (nth !== undefined && nthWeekdayValue !== undefined) {
@@ -341,12 +339,24 @@ const RELATIVE_DAY = new Map([
   ["어제", -1], ["작일", -1], ["그저께", -2], ["그제", -2], ["그끄저께", -3], ["그그제", -3], ["그그그제", -4],
 ]);
 
-// "낼" is left out: "보고서 낼 것" means "submit", not "tomorrow".
-const YEAR_OFFSET = new Map([
-  ["올해", 0], ["금년", 0], ["내년", 1], ["명년", 1], ["다음해", 1], ["내후년", 2], ["작년", -1], ["지난해", -1], ["재작년", -2],
-]);
+/** Words → one regex group; a space in a word allows any spacing there ("다음 해", "다음해"). */
+function alternation(words: string[]): string {
+  return `(${words.map((word) => word.replace(/ /g, "\\s*")).join("|")})`;
+}
 
-const YEAR_WORD = "(올해|금년|내년|명년|다음\\s*해|내후년|작년|지난\\s*해|재작년)";
+/** Keyed by the words without spaces: lookups strip the matched text's spacing. */
+function bySpacelessWord<T>(entries: [string, T][]): Map<string, T> {
+  return new Map(entries.map(([word, value]) => [word.replace(/ /g, ""), value]));
+}
+
+// "낼" is left out: "보고서 낼 것" means "submit", not "tomorrow".
+const YEAR_WORDS: [string, number][] = [
+  ["올해", 0], ["금년", 0], ["내년", 1], ["명년", 1], ["다음 해", 1], ["내후년", 2], ["작년", -1], ["지난 해", -1], ["재작년", -2],
+];
+
+const YEAR_OFFSET = bySpacelessWord(YEAR_WORDS);
+
+const YEAR_WORD = alternation(YEAR_WORDS.map(([word]) => word));
 
 function yearOffset(word: string | undefined): number {
   return YEAR_OFFSET.get((word ?? "").replace(/\s/g, "")) ?? 0;
@@ -370,13 +380,14 @@ function relativeDay(word: string | undefined, today: IsoDate): IsoDate {
   return addDays(today, RELATIVE_DAY.get(word ?? "") ?? 0);
 }
 
+/** Prefixes before "주" (다음주, 지지난주): weeks away. */
 const WEEK_OFFSET = new Map([
-  ["이번주", 0], ["금주", 0], ["오는주", 0], ["다음주", 1], ["차주", 1], ["내주", 1], ["익주", 1],
-  ["다다음주", 2], ["다음다음주", 2], ["저번주", -1], ["지난주", -1], ["지지난주", -2], ["저저번주", -2], ["전전주", -2],
-  ["다다다음주", 3], ["다다담주", 3], ["저저저번주", -3], ["지지지난주", -3], ["전전전주", -3], ["담주", 1], ["다담주", 2],
+  ["이번", 0], ["금", 0], ["오는", 0], ["다음", 1], ["담", 1], ["다담", 2], ["차", 1], ["내", 1], ["익", 1],
+  ["다다음", 2], ["다음다음", 2], ["다다다음", 3], ["다다담", 3], ["저번", -1], ["지난", -1], ["지지난", -2], ["지지지난", -3],
+  ["저저번", -2], ["저저저번", -3], ["전전", -2], ["전전전", -3],
 ]);
 
-const WEEK_PREFIX = "(이번|금|오는|다음|담|다담|차|내|익|다다음|다음다음|다다다음|다다담|저번|지난|지지난|지지지난|저저번|저저저번|전전|전전전)";
+const WEEK_PREFIX = alternation([...WEEK_OFFSET.keys()]);
 
 /** Weeks start on Monday, as Korean calendars and "다음주" usually mean. */
 function mondayOf(date: IsoDate, weeksAhead: number): IsoDate {
@@ -384,19 +395,21 @@ function mondayOf(date: IsoDate, weeksAhead: number): IsoDate {
 }
 
 function weekOffset(prefix: string | undefined): number {
-  return WEEK_OFFSET.get(`${prefix ?? "이번"}주`) ?? 0;
+  return WEEK_OFFSET.get(prefix ?? "이번") ?? 0;
 }
 
 const NTH = "(첫|둘|두|셋|세|넷|네|다섯|마지막)\\s*(?:째|번\\s*째)?";
 
 const NTH_VALUE = new Map([["첫", 1], ["둘", 2], ["두", 2], ["셋", 3], ["세", 3], ["넷", 4], ["네", 4], ["다섯", 5], ["마지막", -1]]);
 
-const MONTH_OFFSET = new Map([
-  ["이번달", 0], ["이달", 0], ["당월", 0], ["다음달", 1], ["다음월", 1], ["익월", 1],
-  ["다다음달", 2], ["다음다음달", 2], ["저번달", -1], ["지난달", -1], ["지지난달", -2], ["저저번달", -2],
-]);
+const MONTH_WORDS: [string, number][] = [
+  ["이번 달", 0], ["이달", 0], ["당월", 0], ["다음 달", 1], ["다음 월", 1], ["익월", 1],
+  ["다다음 달", 2], ["다음다음 달", 2], ["저번 달", -1], ["지난 달", -1], ["지지난 달", -2], ["저저번 달", -2],
+];
 
-const MONTH_PREFIX = "(이번\\s*달|이달|당월|다음\\s*달|다음\\s*월|익월|다다음\\s*달|다음다음\\s*달|저번\\s*달|지난\\s*달|지지난\\s*달|저저번\\s*달)";
+const MONTH_OFFSET = bySpacelessWord(MONTH_WORDS);
+
+const MONTH_PREFIX = alternation(MONTH_WORDS.map(([word]) => word));
 
 const DATE_RULES: DateRule[] = [
   takeWritten,
@@ -526,19 +539,20 @@ function takeDayRange(scanner: Scanner, today: IsoDate): ParsedDate | undefined 
 }
 
 /** Solar holidays by month/day; lunar ones (marked) by lunar month/day. */
-const HOLIDAYS = new Map<string, [month: number, day: number, lunar: boolean]>([
-  ["크리스마스이브", [12, 24, false]], ["크리스마스", [12, 25, false]], ["성탄절", [12, 25, false]], ["신정", [1, 1, false]],
+const HOLIDAY_DATES: [string, [month: number, day: number, lunar: boolean]][] = [
+  ["크리스마스 이브", [12, 24, false]], ["크리스마스", [12, 25, false]], ["성탄절", [12, 25, false]], ["신정", [1, 1, false]],
   ["삼일절", [3, 1, false]], ["어린이날", [5, 5, false]], ["현충일", [6, 6, false]], ["제헌절", [7, 17, false]],
   ["광복절", [8, 15, false]], ["개천절", [10, 3, false]], ["한글날", [10, 9, false]],
   ["설날", [1, 1, true]], ["설", [1, 1, true]], ["구정", [1, 1, true]], ["추석", [8, 15, true]],
-  ["부처님오신날", [4, 8, true]], ["석가탄신일", [4, 8, true]],
-  ["발렌타인데이", [2, 14, false]], ["밸런타인데이", [2, 14, false]], ["화이트데이", [3, 14, false]], ["근로자의날", [5, 1, false]],
-  ["어버이날", [5, 8, false]], ["스승의날", [5, 15, false]], ["할로윈", [10, 31, false]], ["핼러윈", [10, 31, false]], ["빼빼로데이", [11, 11, false]],
-]);
+  ["부처님 오신 날", [4, 8, true]], ["석가탄신일", [4, 8, true]],
+  ["발렌타인데이", [2, 14, false]], ["밸런타인데이", [2, 14, false]], ["화이트데이", [3, 14, false]], ["근로자의 날", [5, 1, false]],
+  ["어버이날", [5, 8, false]], ["스승의 날", [5, 15, false]], ["할로윈", [10, 31, false]], ["핼러윈", [10, 31, false]], ["빼빼로데이", [11, 11, false]],
+];
 
-const HOLIDAY_NAME =
-  "크리스마스\\s*이브|크리스마스|성탄절|신정|삼일절|어린이날|현충일|제헌절|광복절|개천절|한글날|설날|구정|추석|부처님\\s*오신\\s*날|석가탄신일|" +
-  "발렌타인데이|밸런타인데이|화이트데이|근로자의\\s*날|어버이날|스승의\\s*날|할로윈|핼러윈|빼빼로데이";
+const HOLIDAYS = bySpacelessWord(HOLIDAY_DATES);
+
+// Bare "설" has its own branch (only with 연휴).
+const HOLIDAY_NAME = alternation(HOLIDAY_DATES.flatMap(([name]) => (name === "설" ? [] : [name])));
 
 /**
  * Holiday names; "연휴" spans the day before to the day after. Bare "설" only with 연휴 ("설명" is not a holiday).
@@ -546,7 +560,7 @@ const HOLIDAY_NAME =
  */
 function takeHoliday(scanner: Scanner, today: IsoDate): ParsedDate | undefined {
   const match = scanner.take(
-    new RegExp(`(?<![가-힣])(?:(올해|올|금년|내년|명년|내후년|작년|재작년)\\s*)?(?:(${HOLIDAY_NAME})|(설))(\\s*연휴)?${WORD_END}(?!\\s*(?:선물|준비|용품|음식|장보기|특가|세일|할인))`),
+    new RegExp(`(?<![가-힣])(?:(올해|올|금년|내년|명년|내후년|작년|재작년)\\s*)?(?:${HOLIDAY_NAME}|(설))(\\s*연휴)?${WORD_END}(?!\\s*(?:선물|준비|용품|음식|장보기|특가|세일|할인))`),
     (m) => m[3] === undefined || m[4] !== undefined,
   );
 

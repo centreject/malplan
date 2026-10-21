@@ -3,6 +3,7 @@
 import { isTauri } from "@tauri-apps/api/core";
 import { fetch as tauriFetch } from "@tauri-apps/plugin-http";
 import * as v from "valibot";
+import { loadStored, saveStored } from "../storage/localStore";
 import type { Prompt, ReplyJsonSchema } from "./extract";
 import { LOCAL_ORIGIN, localServer } from "./localServer";
 
@@ -47,21 +48,11 @@ export const LOCAL_ENDPOINT = `${LOCAL_ORIGIN}/v1/chat/completions`;
 const TIMEOUT_MS = 30_000;
 
 export function loadLlmSettings(): LlmSettings {
-  try {
-    const parsed = v.safeParse(SettingsSchema, JSON.parse(window.localStorage.getItem(STORAGE_KEY) ?? "{}"));
-
-    return parsed.success ? parsed.output : { provider: "local", apiKey: "", model: "" };
-  } catch {
-    return { provider: "local", apiKey: "", model: "" };
-  }
+  return loadStored(STORAGE_KEY, SettingsSchema, v.parse(SettingsSchema, {}));
 }
 
 export function saveLlmSettings(settings: LlmSettings): void {
-  try {
-    window.localStorage.setItem(STORAGE_KEY, JSON.stringify(settings));
-  } catch {
-    // Storage unavailable: the setting lasts for this session only.
-  }
+  saveStored(STORAGE_KEY, settings);
 }
 
 /** The desktop app goes through the Rust HTTP plugin (no CORS); the browser preview uses fetch. */
@@ -70,6 +61,13 @@ const httpFetch: typeof window.fetch = (input, init) => (isTauri() ? tauriFetch(
 const ChatReply = v.object({
   choices: v.pipe(v.array(v.object({ message: v.object({ content: v.nullable(v.string()) }) })), v.minLength(1)),
 });
+
+/** The reply text of an OpenAI-compatible chat response; undefined when the shape is wrong. */
+export async function chatContent(response: Response): Promise<string | undefined> {
+  const parsed = v.safeParse(ChatReply, await response.json());
+
+  return parsed.success ? (parsed.output.choices[0]?.message.content ?? "") : undefined;
+}
 
 type ChatBody = {
   model: string;
@@ -114,13 +112,13 @@ async function openAiCompatible(url: string, apiKey: string, model: string, prom
     throw new Error(`HTTP ${response.status}`);
   }
 
-  const parsed = v.safeParse(ChatReply, await response.json());
+  const content = await chatContent(response);
 
-  if (!parsed.success) {
+  if (content === undefined) {
     throw new Error("응답 형식을 읽을 수 없습니다.");
   }
 
-  return parsed.output.choices[0]?.message.content ?? "";
+  return content;
 }
 
 async function claude(apiKey: string, model: string, prompt: Prompt): Promise<string> {

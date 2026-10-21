@@ -5,6 +5,7 @@ import * as v from "valibot";
 import type { IsoDate } from "../domain/date";
 import { parseSpecialDays } from "../domain/holidays";
 import { isStale, normalizeKey, specialDaysUrl } from "../domain/specialDays";
+import { loadStored, readStored, saveStored, writeStored } from "../storage/localStore";
 
 const KEY_STORAGE = "malplan.holidayApiKey";
 
@@ -25,37 +26,15 @@ export type SpecialDaysStatus =
   | { kind: "error"; message: string; fetchedAt: number | undefined };
 
 export function loadApiKey(): string {
-  try {
-    return window.localStorage.getItem(KEY_STORAGE) ?? "";
-  } catch {
-    return "";
-  }
+  return readStored(KEY_STORAGE) ?? "";
 }
 
 export function saveApiKey(key: string): void {
-  try {
-    window.localStorage.setItem(KEY_STORAGE, normalizeKey(key));
-  } catch {
-    // Storage unavailable: the key lasts for this session only.
-  }
+  writeStored(KEY_STORAGE, normalizeKey(key));
 }
 
 function loadCache(): Cache | undefined {
-  try {
-    const parsed = v.safeParse(CacheSchema, JSON.parse(window.localStorage.getItem(CACHE_STORAGE) ?? "null"));
-
-    return parsed.success ? parsed.output : undefined;
-  } catch {
-    return undefined;
-  }
-}
-
-function saveCache(cache: Cache): void {
-  try {
-    window.localStorage.setItem(CACHE_STORAGE, JSON.stringify(cache));
-  } catch {
-    // Storage unavailable: refetch next time.
-  }
+  return loadStored(CACHE_STORAGE, CacheSchema, undefined);
 }
 
 /** data.go.kr sends no CORS headers, so the desktop app fetches through the Rust HTTP plugin. */
@@ -99,7 +78,7 @@ export function useSpecialDays(apiKey: string, years: number[], now: number) {
         const next: Cache = { fetchedAt: now, years: yearList.split(",").map(Number), days: maps.flatMap((map) => [...map]) };
 
         if (!cancelled) {
-          saveCache(next);
+          saveStored(CACHE_STORAGE, next);
           setCache(next);
           setFailure(undefined);
         }

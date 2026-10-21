@@ -2,6 +2,7 @@ import { invoke, isTauri } from "@tauri-apps/api/core";
 import { TrayIcon } from "@tauri-apps/api/tray";
 import { register, unregister, type ShortcutEvent } from "@tauri-apps/plugin-global-shortcut";
 import * as v from "valibot";
+import { parseStored, readStored, saveStored } from "../storage/localStore";
 
 /** Always-on window behaviour. Autostart is not stored here: the OS holds the truth. */
 const AppSettingsSchema = v.object({
@@ -20,33 +21,15 @@ const STORAGE_KEY = "malplan.appSettings";
 
 /** Parses the stored JSON; anything missing or malformed falls back to defaults. */
 export function parseAppSettings(raw: string | null): AppSettings {
-  try {
-    const result = v.safeParse(AppSettingsSchema, JSON.parse(raw ?? "{}"));
-
-    if (result.success) {
-      return result.output;
-    }
-  } catch {
-    // Not JSON: use defaults.
-  }
-
-  return v.parse(AppSettingsSchema, {});
+  return parseStored(raw, AppSettingsSchema, v.parse(AppSettingsSchema, {}));
 }
 
 export function loadAppSettings(): AppSettings {
-  try {
-    return parseAppSettings(window.localStorage.getItem(STORAGE_KEY));
-  } catch {
-    return parseAppSettings(null);
-  }
+  return parseAppSettings(readStored(STORAGE_KEY));
 }
 
 export function saveAppSettings(settings: AppSettings): void {
-  try {
-    window.localStorage.setItem(STORAGE_KEY, JSON.stringify(settings));
-  } catch {
-    // Storage unavailable: settings still apply for this session.
-  }
+  saveStored(STORAGE_KEY, settings);
 }
 
 /** Closing hides to the tray only while there is a tray icon to come back from. */

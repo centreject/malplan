@@ -1,4 +1,5 @@
 import * as v from "valibot";
+import { parseStored, readStored, saveStored, writeStored } from "../storage/localStore";
 import type { Correction } from "./extract";
 
 const KEY = "malplan.llmCorrections";
@@ -11,39 +12,19 @@ const Schema = v.array(v.object({ input: v.string(), category: v.string(), kind:
 
 /** Stored JSON → corrections; anything unreadable gives none. */
 export function parseCorrections(stored: string | null): Correction[] {
-  try {
-    const parsed = v.safeParse(Schema, JSON.parse(stored ?? "[]"));
-
-    return parsed.success ? parsed.output : [];
-  } catch {
-    return [];
-  }
+  return parseStored(stored, Schema, []);
 }
 
 export function loadCorrections(): Correction[] {
-  try {
-    return parseCorrections(window.localStorage.getItem(KEY));
-  } catch {
-    return [];
-  }
+  return parseCorrections(readStored(KEY));
 }
 
 export function addCorrections(added: Correction[]): void {
-  if (added.length === 0) {
-    return;
-  }
-
-  try {
-    window.localStorage.setItem(KEY, JSON.stringify([...loadCorrections(), ...added].slice(-MAX)));
-  } catch {
-    // Storage unavailable: the model just doesn't learn this one.
+  if (added.length > 0) {
+    saveStored(KEY, [...loadCorrections(), ...added].slice(-MAX));
   }
 }
 
 export function clearCorrections(): void {
-  try {
-    window.localStorage.removeItem(KEY);
-  } catch {
-    // Nothing stored.
-  }
+  writeStored(KEY, undefined);
 }

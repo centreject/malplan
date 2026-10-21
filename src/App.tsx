@@ -150,7 +150,7 @@ export default function App() {
         const ruleCard = drafts[index]?.card;
 
         if (extraction !== undefined && ruleCard !== undefined && aiSession.current === session) {
-          const guarded = guardExtraction(extraction, part, ruleCard, categories, items, now.today);
+          const guarded = guardExtraction(extraction, part, ruleCard, categories, now.today);
 
           setAi((current) => ({ ...current, extractions: new Map(current.extractions).set(id, guarded) }));
         }

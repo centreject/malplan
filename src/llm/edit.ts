@@ -4,7 +4,7 @@ import * as v from "valibot";
 import type { Card } from "../domain/card";
 import { editResult, type EditResult } from "../domain/editCommand";
 import type { Category } from "../domain/item";
-import { NEW_CATEGORY_CHOICE, replySchema, type Prompt } from "./extract";
+import { NEW_CATEGORY_CHOICE, parseReplyJson, replySchema, type Prompt } from "./extract";
 
 const PatchSchema = v.object({
   title: v.optional(v.pipe(v.string(), v.trim())),
@@ -36,46 +36,34 @@ export function buildEditPrompt(card: Card, request: string, categories: Categor
 
 /** The model's patch applied to the card; unreadable or empty replies give undefined. */
 export function applyEditReply(card: Card, reply: string, categories: Category[]): EditResult | undefined {
-  const start = reply.indexOf("{");
-  const end = reply.lastIndexOf("}");
+  const patch = parseReplyJson(reply, PatchSchema);
 
-  if (start === -1 || end <= start) {
+  if (patch === undefined) {
     return undefined;
   }
 
-  try {
-    const parsed = v.safeParse(PatchSchema, JSON.parse(reply.slice(start, end + 1)));
+  const next: Card = { ...card };
+  const category = categories.find((c) => c.name === patch.category && patch.category !== NEW_CATEGORY_CHOICE);
 
-    if (!parsed.success) {
-      return undefined;
-    }
-
-    const patch = parsed.output;
-    const next: Card = { ...card };
-    const category = categories.find((c) => c.name === patch.category && patch.category !== NEW_CATEGORY_CHOICE);
-
-    if (patch.title !== undefined && patch.title !== "") {
-      next.title = patch.title;
-    }
-
-    if (patch.kind !== undefined && card.kind !== "undated") {
-      next.kind = patch.kind;
-    }
-
-    if (category !== undefined) {
-      next.categoryId = category.id;
-    }
-
-    if (patch.place !== undefined) {
-      next.place = patch.place;
-    }
-
-    if (patch.note !== undefined) {
-      next.note = patch.note;
-    }
-
-    return editResult(card, next, categories);
-  } catch {
-    return undefined;
+  if (patch.title !== undefined && patch.title !== "") {
+    next.title = patch.title;
   }
+
+  if (patch.kind !== undefined && card.kind !== "undated") {
+    next.kind = patch.kind;
+  }
+
+  if (category !== undefined) {
+    next.categoryId = category.id;
+  }
+
+  if (patch.place !== undefined) {
+    next.place = patch.place;
+  }
+
+  if (patch.note !== undefined) {
+    next.note = patch.note;
+  }
+
+  return editResult(card, next, categories);
 }

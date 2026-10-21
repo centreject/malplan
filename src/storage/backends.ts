@@ -1,4 +1,5 @@
 import { invoke, isTauri } from "@tauri-apps/api/core";
+import { readStored, writeStored } from "./localStore";
 import type { Backend } from "./store";
 
 /** A folder on disk (local, NAS share, or a cloud-synced folder), through the Rust sync commands. */
@@ -59,23 +60,11 @@ const DEVICE_KEY = "malplan.deviceId";
 
 /** The folder this device syncs through; undefined = the app's own data folder. */
 export function loadSyncDir(): string | undefined {
-  try {
-    return window.localStorage.getItem(DIR_KEY) ?? undefined;
-  } catch {
-    return undefined;
-  }
+  return readStored(DIR_KEY) ?? undefined;
 }
 
 export function saveSyncDir(dir: string | undefined): void {
-  try {
-    if (dir === undefined) {
-      window.localStorage.removeItem(DIR_KEY);
-    } else {
-      window.localStorage.setItem(DIR_KEY, dir);
-    }
-  } catch {
-    // Storage unavailable: the choice lasts for this session only.
-  }
+  writeStored(DIR_KEY, dir);
 }
 
 /** Stable per-install id that names this device's change log. */

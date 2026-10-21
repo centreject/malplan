@@ -1,7 +1,9 @@
 import * as v from "valibot";
+import { loadStored, saveStored } from "../storage/localStore";
 
 const DisplaySchema = v.object({
-  weekStart: v.optional(v.picklist([0, 1]), 0),
+  /** The month grid's first column: Monday, as on Korean office calendars. */
+  weekStart: v.optional(v.picklist([0, 1]), 1),
   hideDone: v.optional(v.boolean(), false),
   /** The week pane: its start day (Monday, as on Korean office calendars), arrow step, and whether the month follows. */
   weekNumberStart: v.optional(v.picklist([0, 1, 2, 3, 4, 5, 6]), 1),
@@ -18,21 +20,11 @@ const DEFAULT_DISPLAY: Display = v.parse(DisplaySchema, {});
 const WEEKDAY_LABELS = ["일요일", "월요일", "화요일", "수요일", "목요일", "금요일", "토요일"];
 
 export function loadDisplay(): Display {
-  try {
-    const parsed = v.safeParse(DisplaySchema, JSON.parse(window.localStorage.getItem(KEY) ?? "{}"));
-
-    return parsed.success ? parsed.output : DEFAULT_DISPLAY;
-  } catch {
-    return DEFAULT_DISPLAY;
-  }
+  return loadStored(KEY, DisplaySchema, DEFAULT_DISPLAY);
 }
 
 export function saveDisplay(display: Display): void {
-  try {
-    window.localStorage.setItem(KEY, JSON.stringify(display));
-  } catch {
-    // Storage unavailable: the setting lasts for this session only.
-  }
+  saveStored(KEY, display);
 }
 
 type DisplaySettingsProps = { display: Display; onChange: (display: Display) => void };

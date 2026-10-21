@@ -4,6 +4,7 @@ import { useEffect, useRef } from "react";
 import * as v from "valibot";
 import type { Item } from "../domain/item";
 import { dueReminders } from "../domain/reminders";
+import { loadStored, saveStored } from "../storage/localStore";
 import type { Now } from "./useNow";
 
 const SettingsSchema = v.object({
@@ -18,21 +19,11 @@ const SETTINGS_KEY = "malplan.notifications";
 const SENT_KEY = "malplan.sentReminders";
 
 export function loadNotificationSettings(): NotificationSettings {
-  try {
-    const parsed = v.safeParse(SettingsSchema, JSON.parse(window.localStorage.getItem(SETTINGS_KEY) ?? "{}"));
-
-    return parsed.success ? parsed.output : { enabled: false, lead: 10 };
-  } catch {
-    return { enabled: false, lead: 10 };
-  }
+  return loadStored(SETTINGS_KEY, SettingsSchema, v.parse(SettingsSchema, {}));
 }
 
 export function saveNotificationSettings(settings: NotificationSettings): void {
-  try {
-    window.localStorage.setItem(SETTINGS_KEY, JSON.stringify(settings));
-  } catch {
-    // Storage unavailable: the setting lasts for this session only.
-  }
+  saveStored(SETTINGS_KEY, settings);
 }
 
 /** Ask the OS (or browser) for permission. Returns whether notifications may be shown. */
@@ -60,24 +51,12 @@ export function notify(title: string, body: string): void {
 
 /** Keys already fired, kept for two days so a restart never repeats a reminder. */
 function loadSent(): Set<string> {
-  try {
-    const parsed = v.safeParse(v.array(v.string()), JSON.parse(window.localStorage.getItem(SENT_KEY) ?? "[]"));
-
-    return new Set(parsed.success ? parsed.output : []);
-  } catch {
-    return new Set();
-  }
+  return new Set(loadStored(SENT_KEY, v.array(v.string()), []));
 }
 
 function saveSent(sent: Set<string>, today: string): void {
-  // Keys end with "@YYYY-MM-DD"; keep today's and later.
-  const kept = [...sent].filter((key) => (key.split("@").at(-1) ?? "") >= today);
-
-  try {
-    window.localStorage.setItem(SENT_KEY, JSON.stringify(kept));
-  } catch {
-    // Storage unavailable: worst case a reminder repeats after a restart.
-  }
+  // Keys end with "@YYYY-MM-DD"; keep today's and later. Without storage a reminder may repeat after a restart.
+  saveStored(SENT_KEY, [...sent].filter((key) => (key.split("@").at(-1) ?? "") >= today));
 }
 
 /** Fires reminders as the clock passes them. Checks once per minute via `now`. */

@@ -10,7 +10,6 @@ import {
   parseExtraction,
   pickCorrections,
   type Extraction,
-  type SavedItem,
 } from "./extract";
 
 const today = "2026-10-11";
@@ -104,8 +103,8 @@ describe("parseExtraction", () => {
   });
 });
 
-function guard(input: string, extraction: Extraction, items: SavedItem[] = []): Extraction {
-  return guardExtraction(extraction, input, cardFromParse(parseKorean(input, today), today, categories), categories, items, today);
+function guard(input: string, extraction: Extraction): Extraction {
+  return guardExtraction(extraction, input, cardFromParse(parseKorean(input, today), today, categories), categories, today);
 }
 
 describe("guardExtraction", () => {
@@ -128,38 +127,6 @@ describe("guardExtraction", () => {
   test("a category named in the sentence wins", () => {
     expect(guard("회사 우편물 발송", { title: "우편물 발송", kind: "task", category: "개인" }).category).toBe("회사");
     expect(guard("우편물 발송", { title: "우편물 발송", kind: "task", category: "개인" }).category).toBe("개인");
-  });
-
-  test("a word saved 3+ times under only one category votes for it; words seen under several do not", () => {
-    const items: SavedItem[] = [
-      { title: "민지 결혼식장", categoryId: "meet" },
-      { title: "사촌 결혼식", categoryId: "meet" },
-      { title: "동기 결혼식 축가", categoryId: "meet" },
-      { title: "친구 생일", categoryId: "meet" },
-      { title: "친구 이사 돕기", categoryId: "work" },
-      { title: "친구 송별회", categoryId: "work" },
-    ];
-
-    expect(guard("토요일 친구 결혼식", { title: "친구 결혼식", kind: "event", category: "회사" }, items).category).toBe("약속");
-  });
-
-  test("history needs a clear winner and never beats a category named in the sentence", () => {
-    const tied: SavedItem[] = [
-      { title: "결혼식", categoryId: "meet" },
-      { title: "결혼식 준비", categoryId: "work" },
-    ];
-
-    expect(guard("친구 결혼식", { title: "친구 결혼식", kind: "event", category: "개인" }, tied).category).toBe("개인");
-    expect(guard("회사 동료 결혼식", { title: "동료 결혼식", kind: "event", category: "약속" }, [{ title: "결혼식", categoryId: "meet" }]).category).toBe("회사");
-  });
-
-  test("date words and generic words do not count as shared", () => {
-    const items: SavedItem[] = [
-      { title: "토요일 장보기", categoryId: "meet" },
-      { title: "선물 사기", categoryId: "meet" },
-    ];
-
-    expect(guard("토요일 책 사기", { title: "책 사기", kind: "task", category: "개인" }, items).category).toBe("개인");
   });
 
   test("a place not written in the sentence is dropped", () => {
@@ -229,10 +196,4 @@ describe("applyExtraction", () => {
 
     expect(next.kind).toBe("undated");
   });
-});
-
-test("history ignores a word seen only once", () => {
-  const once: SavedItem[] = [{ title: "민지 결혼식장", categoryId: "meet" }];
-
-  expect(guard("토요일 친구 결혼식", { title: "친구 결혼식", kind: "event", category: "회사" }, once).category).toBe("회사");
 });

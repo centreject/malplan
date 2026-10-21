@@ -29,7 +29,7 @@ export type Item = {
   done: string[];
   place?: string;
   note?: string;
-  /** Reminder this many minutes before the start. Delivery is not built yet. */
+  /** Reminder this many minutes before the start; unset uses the notification settings' lead (see reminders.ts). */
   remindMinutes?: number;
 };
 
