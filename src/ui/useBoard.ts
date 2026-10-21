@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { ALL_TAB_ID } from "../domain/tabs";
 import { deviceId, loadSyncDir, openBackend, saveSyncDir } from "../storage/backends";
 import { boardChanges, boardFromEntities, type Board } from "../storage/board";
+import { DELETED } from "../storage/schema";
 import { SyncStore, type Backend } from "../storage/store";
 
 const EMPTY: Board = { items: [], categories: [], tabs: [{ id: ALL_TAB_ID, name: "전체", categoryIds: undefined }] };
@@ -29,6 +30,9 @@ export function useBoard(seed: () => Board) {
   const queue = useRef<Promise<void>>(Promise.resolve());
   /** Only used on first run; held in a ref so a new function identity never re-seeds. */
   const seedRef = useRef(seed);
+  /** Counts local edits, so a reload that overlapped one does not overwrite the screen. */
+  const edits = useRef(0);
+  const reloading = useRef<Promise<void>>(undefined);
 
   const show = useCallback((next: Board) => {
     current.current = next;
@@ -42,13 +46,14 @@ export function useBoard(seed: () => Board) {
       return;
     }
 
-    queue.current = queue.current.then(async () => {
-      for (const change of boardChanges(prev, next)) {
-        await (change.remove
-          ? target.remove(change.entity, change.id)
-          : target.set(change.entity, change.id, change.field, change.value));
-      }
-    }).catch((error: Error) => setErrors((list) => [...list, `저장 실패: ${error.message}`]));
+    queue.current = queue.current.then(() =>
+      // One append (one disk sync) per save, not one per field.
+      target.setMany(
+        boardChanges(prev, next).map(({ entity, id, field, value, remove }) =>
+          remove ? { entity, id, field: DELETED, value: true } : { entity, id, field, value },
+        ),
+      ),
+    ).catch((error: Error) => setErrors((list) => [...list, `저장 실패: ${error.message}`]));
   }, []);
 
   const update = useCallback(
@@ -56,29 +61,53 @@ export function useBoard(seed: () => Board) {
       const prev = current.current;
       const next = change(prev);
 
+      edits.current += 1;
       show(next);
       write(prev, next);
     },
     [show, write],
   );
 
-  const reload = useCallback(async () => {
+  const reload = useCallback((): Promise<void> => {
     const target = store.current;
 
     if (target === undefined) {
-      return;
+      return Promise.resolve();
     }
 
-    await queue.current;
-    await target.refresh();
+    const editsBefore = edits.current;
 
-    const loaded = boardFromEntities(target.entities());
+    const apply = () => {
+      const loaded = boardFromEntities(target.entities());
+      const found = [...target.errors, ...loaded.errors];
 
-    setErrors([...target.errors, ...loaded.errors]);
+      setErrors((list) => (sameList(list, found) ? list : found));
 
-    if (boardChanges(current.current, loaded.board).length > 0) {
-      show(loaded.board);
+      // An edit made meanwhile is not in what was read; showing it would revert the screen.
+      // The next reload shows both.
+      if (edits.current === editsBefore && boardChanges(current.current, loaded.board).length > 0) {
+        show(loaded.board);
+      }
+    };
+
+    // Focus and visibilitychange often fire together: share one reload.
+    if (reloading.current !== undefined) {
+      return reloading.current;
     }
+
+    // Queued with the writes, so a write never runs while the store is reloading.
+    const run = queue.current.then(async () => {
+      await target.refresh();
+      // Cheap unless due; the app stays open for days, so startup alone is not enough.
+      await target.compactIfDue(COMPACT_THRESHOLD).catch(() => false);
+    });
+
+    queue.current = run.catch(() => undefined);
+    reloading.current = run.then(apply).finally(() => {
+      reloading.current = undefined;
+    });
+
+    return reloading.current;
   }, [show]);
 
   useEffect(() => {
@@ -126,14 +155,20 @@ export function useBoard(seed: () => Board) {
       return;
     }
 
-    const onFocus = () => void reload();
-    const timer = window.setInterval(onFocus, REFRESH_MS);
+    // A hidden window (tray) skips the minute refresh and catches up when shown again.
+    const onShow = () => {
+      if (!document.hidden) void reload();
+    };
 
-    window.addEventListener("focus", onFocus);
+    const timer = window.setInterval(onShow, REFRESH_MS);
+
+    window.addEventListener("focus", onShow);
+    document.addEventListener("visibilitychange", onShow);
 
     return () => {
       window.clearInterval(timer);
-      window.removeEventListener("focus", onFocus);
+      window.removeEventListener("focus", onShow);
+      document.removeEventListener("visibilitychange", onShow);
     };
   }, [ready, reload]);
 
@@ -168,6 +203,10 @@ export async function folderHasData(dir: string | undefined): Promise<boolean> {
   const backend = await openBackend(dir);
 
   return (await backend.list()).some((name) => name === "snapshot.json" || name.startsWith("log-"));
+}
+
+function sameList(a: readonly string[], b: readonly string[]): boolean {
+  return a.length === b.length && a.every((item, i) => item === b[i]);
 }
 
 async function copyInto(from: Backend, to: Backend): Promise<void> {

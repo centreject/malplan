@@ -27,7 +27,7 @@ fn alive(slot: &mut Option<Child>) -> bool {
 }
 
 /// Start the server unless it already runs. Errors with "no-model" when the model is missing.
-#[tauri::command]
+#[tauri::command(async)]
 pub fn llm_start(app: AppHandle, state: State<LlmServer>) -> Result<(), String> {
     let mut slot = state.0.lock().map_err(|e| e.to_string())?;
 
@@ -70,9 +70,59 @@ pub fn llm_start(app: AppHandle, state: State<LlmServer>) -> Result<(), String> 
         command.creation_flags(CREATE_NO_WINDOW);
     }
 
-    *slot = Some(command.spawn().map_err(|e| format!("llama-server: {e}"))?);
+    let child = command.spawn().map_err(|e| format!("llama-server: {e}"))?;
+
+    #[cfg(windows)]
+    kill_with_app(&child);
+
+    *slot = Some(child);
 
     Ok(())
+}
+
+/// Put the child in a Job Object that kills it when the job's last handle closes, i.e. when this
+/// process ends for any reason, a crash included. The job handle is never closed on purpose.
+/// Best effort: without it, RunEvent::Exit still stops the server on a normal exit.
+#[cfg(windows)]
+fn kill_with_app(child: &Child) {
+    use std::os::windows::io::AsRawHandle;
+    use std::sync::OnceLock;
+
+    use windows_sys::Win32::System::JobObjects::{
+        AssignProcessToJobObject, CreateJobObjectW, JobObjectExtendedLimitInformation, SetInformationJobObject,
+        JOBOBJECT_EXTENDED_LIMIT_INFORMATION, JOB_OBJECT_LIMIT_KILL_ON_JOB_CLOSE,
+    };
+
+    // Stored as usize because a raw HANDLE is not Sync; 0 means the job could not be made.
+    static JOB: OnceLock<usize> = OnceLock::new();
+
+    let job = *JOB.get_or_init(|| {
+        let mut info = JOBOBJECT_EXTENDED_LIMIT_INFORMATION::default();
+
+        info.BasicLimitInformation.LimitFlags = JOB_OBJECT_LIMIT_KILL_ON_JOB_CLOSE;
+
+        let size = u32::try_from(size_of::<JOBOBJECT_EXTENDED_LIMIT_INFORMATION>()).unwrap_or(0);
+
+        // SAFETY: null attributes and name are allowed; `info` outlives the call and `size` is its size.
+        unsafe {
+            let job = CreateJobObjectW(std::ptr::null(), std::ptr::null());
+
+            if job.is_null()
+                || SetInformationJobObject(job, JobObjectExtendedLimitInformation, (&raw const info).cast(), size) == 0
+            {
+                return 0;
+            }
+
+            job as usize
+        }
+    });
+
+    if job != 0 {
+        // SAFETY: `job` is a live job handle (never closed); the child's handle is valid while `child` lives.
+        unsafe {
+            AssignProcessToJobObject(job as _, child.as_raw_handle());
+        }
+    }
 }
 
 /// Kill the server if it runs. Also called on app exit and before deleting the model.
@@ -85,7 +135,7 @@ pub fn stop(app: &AppHandle) {
     }
 }
 
-#[tauri::command]
+#[tauri::command(async)]
 pub fn llm_stop(app: AppHandle) {
     stop(&app);
 }
@@ -96,7 +146,7 @@ pub fn llm_running(state: State<LlmServer>) -> bool {
 }
 
 /// Remove the model (and any partial download) to give the space back.
-#[tauri::command]
+#[tauri::command(async)]
 pub fn model_delete(app: AppHandle) -> Result<(), String> {
     stop(&app);
 

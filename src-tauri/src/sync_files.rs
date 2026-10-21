@@ -25,7 +25,7 @@ fn text_error(error: std::io::Error) -> String {
     error.to_string()
 }
 
-#[tauri::command]
+#[tauri::command(async)]
 pub fn sync_default_dir(app: AppHandle) -> Result<String, String> {
     let dir = app.path().app_data_dir().map_err(|e| e.to_string())?.join("sync");
 
@@ -34,7 +34,7 @@ pub fn sync_default_dir(app: AppHandle) -> Result<String, String> {
     Ok(dir.to_string_lossy().into_owned())
 }
 
-#[tauri::command]
+#[tauri::command(async)]
 pub fn sync_list(dir: String) -> Result<Vec<String>, String> {
     fs::create_dir_all(&dir).map_err(text_error)?;
 
@@ -51,7 +51,7 @@ pub fn sync_list(dir: String) -> Result<Vec<String>, String> {
     Ok(names)
 }
 
-#[tauri::command]
+#[tauri::command(async)]
 pub fn sync_read(dir: String, name: String) -> Result<Option<String>, String> {
     match fs::read_to_string(file_path(&dir, &name)?) {
         Ok(text) => Ok(Some(text)),
@@ -61,7 +61,7 @@ pub fn sync_read(dir: String, name: String) -> Result<Option<String>, String> {
 }
 
 /// Write via a temp file and rename, so readers never see a half-written file.
-#[tauri::command]
+#[tauri::command(async)]
 pub fn sync_write(dir: String, name: String, content: String) -> Result<(), String> {
     let target = file_path(&dir, &name)?;
     let temp = file_path(&dir, &format!("{name}.tmp"))?;
@@ -72,7 +72,7 @@ pub fn sync_write(dir: String, name: String, content: String) -> Result<(), Stri
 
 /// Append one line. If an earlier append was cut short (no trailing newline), start on a fresh
 /// line so only the broken line is lost, not the new one.
-#[tauri::command]
+#[tauri::command(async)]
 pub fn sync_append(dir: String, name: String, line: String) -> Result<(), String> {
     let path = file_path(&dir, &name)?;
     let mut file = OpenOptions::new()
@@ -100,7 +100,7 @@ pub fn sync_append(dir: String, name: String, line: String) -> Result<(), String
 }
 
 /// Save an export (backup JSON, .ics) to the path the user picked in the save dialog.
-#[tauri::command]
+#[tauri::command(async)]
 pub fn save_text_file(path: String, content: String) -> Result<(), String> {
     fs::write(path, content).map_err(text_error)
 }

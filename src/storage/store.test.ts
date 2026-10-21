@@ -249,3 +249,30 @@ test("compactIfDue: only the designated device (smallest id) compacts, and only 
   expect(await backend.read("snapshot.json")).toBeDefined();
   expect(a.entities().item).toHaveLength(5);
 });
+
+test("setMany writes all fields with one append, in strictly increasing ts, and they reload", async () => {
+  const backend = new MemoryBackend();
+  let appends = 0;
+  const append = backend.append.bind(backend);
+
+  backend.append = async (name, line) => {
+    appends += 1;
+    await append(name, line);
+  };
+
+  const a = new SyncStore(backend, "A", () => 1000);
+  await a.load();
+  await a.setMany([
+    { entity: "item", id: "i1", field: "title", value: "x" },
+    { entity: "item", id: "i1", field: "place", value: "p" },
+    { entity: "item", id: "i2", field: "_deleted", value: true },
+  ]);
+
+  expect(appends).toBe(1);
+
+  const ts = ((await backend.read("log-A.jsonl")) ?? "").trim().split("\n").map((line) => JSON.parse(line).ts);
+
+  expect(ts).toEqual([1000, 1001, 1002]);
+  expect(await item(a)).toEqual({ title: "x", place: "p" });
+  expect(await item(a, "i2")).toBeUndefined();
+});

@@ -84,6 +84,8 @@ export function createLocalServer(control: ServerControl, options: ServerOptions
       await control.wait(options.pollMs);
     }
 
+    // A process that never answered would otherwise run until the app exits.
+    await control.stop().catch(() => undefined);
     set("error");
 
     throw new Error("로컬 AI 서버가 응답하지 않습니다.");

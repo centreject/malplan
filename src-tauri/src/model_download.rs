@@ -50,7 +50,7 @@ fn part_name() -> String {
     format!("{MODEL_FILE}.part")
 }
 
-#[tauri::command]
+#[tauri::command(async)]
 pub fn model_status(app: AppHandle, state: State<Download>) -> Result<ModelStatus, String> {
     let dir = models_dir(&app)?;
 

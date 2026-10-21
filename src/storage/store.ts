@@ -30,6 +30,8 @@ export class MemoryBackend implements Backend {
   }
 }
 
+export type FieldWrite = Pick<Change, "entity" | "id" | "field" | "value">;
+
 const SNAPSHOT = "snapshot.json";
 
 const LOG_NAME = /^log-(.+)\.jsonl$/;
@@ -111,14 +113,28 @@ export class SyncStore {
     return this.load();
   }
 
-  async set(entity: EntityKind, id: string, field: string, value: Json): Promise<void> {
-    // Strictly increasing per device, even if the clock steps back: compaction relies on it.
-    const ts = Math.max(this.#now(), this.#lastTs + 1);
-    const change: Change = { ts, device: this.#deviceId, entity, id, field, value };
+  set(entity: EntityKind, id: string, field: string, value: Json): Promise<void> {
+    return this.setMany([{ entity, id, field, value }]);
+  }
 
-    await this.#backend.append(logName(this.#deviceId), toLines([change]));
+  /** Writes several fields in one append (one disk sync). Use DELETED/true to remove an entity. */
+  async setMany(writes: readonly FieldWrite[]): Promise<void> {
+    if (writes.length === 0) return;
+
+    const now = this.#now();
+    let ts = this.#lastTs;
+
+    // Strictly increasing per device, even if the clock steps back: compaction relies on it.
+    const changes = writes.map(({ entity, id, field, value }): Change => {
+      ts = Math.max(now, ts + 1);
+
+      return { ts, device: this.#deviceId, entity, id, field, value };
+    });
+
+    await this.#backend.append(logName(this.#deviceId), toLines(changes));
     this.#lastTs = ts;
-    this.#state = applyChanges(this.#state, [change]);
+    this.#state = applyChanges(this.#state, changes);
+    this.#logs.set(this.#deviceId, [...(this.#logs.get(this.#deviceId) ?? []), ...changes]);
   }
 
   remove(entity: EntityKind, id: string): Promise<void> {
@@ -143,10 +159,9 @@ export class SyncStore {
   /**
    * Compact when the logs hold more than `threshold` changes, but only on the designated
    * compactor: the device with the smallest id among those with a log. Returns whether it ran.
+   * Decides from the last load() plus this device's writes since, so it is cheap when not due.
    */
   async compactIfDue(threshold: number): Promise<boolean> {
-    await this.load();
-
     const devices = [...new Set([...this.#logs.keys(), this.#deviceId])].toSorted();
     const pending = [...this.#logs.values()].reduce((sum, log) => sum + log.length, 0);
 

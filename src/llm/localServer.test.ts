@@ -95,6 +95,7 @@ describe("createLocalServer", () => {
     await expect(server.ensure()).rejects.toThrow("응답");
     expect(server.status()).toBe("error");
     expect(f.calls.filter((c) => c.startsWith("wait"))).toHaveLength(5);
+    expect(f.calls.at(-1)).toBe("stop");
     expect(f.pendingTimers()).toBe(0);
   });
 
