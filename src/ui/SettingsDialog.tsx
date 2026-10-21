@@ -6,14 +6,16 @@ export type SettingsPage = { id: string; label: string; icon: LucideIcon; conten
 
 type SettingsDialogProps = {
   open: boolean;
+  /** Page to show on opening; the first one if not given. Remount (key) to apply a new one. */
+  initialPage?: string | undefined;
   pages: SettingsPage[];
   onClose: () => void;
 };
 
 /** 마이페이지: settings split into pages, a menu on the left and one page at a time on the right. */
-export function SettingsDialog({ open, pages, onClose }: SettingsDialogProps) {
+export function SettingsDialog({ open, initialPage, pages, onClose }: SettingsDialogProps) {
   const dialog = useRef<HTMLDialogElement>(null);
-  const [current, setCurrent] = useState(pages[0]?.id ?? "");
+  const [current, setCurrent] = useState(initialPage ?? pages[0]?.id ?? "");
   const page = pages.find((p) => p.id === current) ?? pages[0];
 
   useEffect(() => {

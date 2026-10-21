@@ -37,6 +37,7 @@ import { TabEditor } from "./ui/TabEditor";
 import { useBoard } from "./ui/useBoard";
 import type { Board } from "./storage/board";
 import { loadTheme, saveTheme, type ThemeId } from "./ui/themes";
+import { FirstRunNotice } from "./ui/FirstRunNotice";
 import { SettingsDialog, ThemeSettings } from "./ui/SettingsDialog";
 import { WindowSettings } from "./ui/WindowSettings";
 import { TodayPane } from "./ui/TodayPane";
@@ -107,7 +108,8 @@ export default function App() {
   const [weekAnchor, setWeekAnchor] = useState<IsoDate>(now.today);
   const [monthCursor, setMonthCursor] = useState<MonthCursor>(() => partsOf(now.today));
   const [activeTab, setActiveTab] = useState(ALL_TAB_ID);
-  const [settingsOpen, setSettingsOpen] = useState(false);
+  /** The settings page shown, or undefined while settings are closed. */
+  const [settingsOpen, setSettingsOpen] = useState<string>();
   const [allFilter, setAllFilter] = useState<string[]>();
   /** Tab being edited: an id, "new", or undefined when the editor is closed. */
   const [editing, setEditing] = useState<string>();
@@ -408,7 +410,7 @@ export default function App() {
           }
         }}
         onSubmit={openNew}
-        onSettings={() => setSettingsOpen(true)}
+        onSettings={() => setSettingsOpen("screen")}
         onSearch={() => setSearchOpen(true)}
         listOpen={view === "list"}
         onList={() => setView(view === "list" ? "board" : "list")}
@@ -508,9 +510,12 @@ export default function App() {
           />
         </div>
       </main>
+      <FirstRunNotice localAi={llm.provider === "local"} onDownload={() => setSettingsOpen("ai")} />
       <SettingsDialog
-        open={settingsOpen}
-        onClose={() => setSettingsOpen(false)}
+        key={settingsOpen ?? "closed"}
+        open={settingsOpen !== undefined}
+        initialPage={settingsOpen}
+        onClose={() => setSettingsOpen(undefined)}
         pages={[
           {
             id: "screen",

@@ -2579,3 +2579,17 @@ ul {
   font-size: 0.8rem;
   color: var(--ink-3);
 }
+
+.first-run {
+  max-width: 480px;
+}
+
+.first-run p {
+  margin: 0 24px 12px;
+  line-height: 1.6;
+}
+
+.first-run .first-run-sub {
+  color: var(--ink-3);
+  font-size: 0.9em;
+}
