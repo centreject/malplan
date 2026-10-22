@@ -272,6 +272,10 @@ mod tests {
 
                 stream.write_all(head.as_bytes()).unwrap();
                 stream.write_all(&body[from..]).unwrap();
+                // Close gracefully: dropping a Windows socket with anything unread can reset the
+                // connection before the client has read the whole body (seen once in 10 runs).
+                let _ = stream.shutdown(std::net::Shutdown::Write);
+                let _ = std::io::copy(&mut reader, &mut std::io::sink());
             }
         });
 
