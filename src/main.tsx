@@ -4,7 +4,7 @@ import App from "./App";
 import { applyAppSettings, loadAppSettings } from "./ui/appSettings";
 import { CrashScreen } from "./ui/CrashScreen";
 import { reportUncaught } from "./ui/report";
-import { loadScheme, loadTheme, resolvedScheme } from "./ui/themes";
+import { loadScheme, loadTextSize, loadTheme, resolvedScheme } from "./ui/themes";
 
 reportUncaught();
 
@@ -14,6 +14,8 @@ void applyAppSettings(loadAppSettings());
 const root = document.documentElement;
 
 root.dataset["theme"] = loadTheme();
+
+root.dataset["text"] = loadTextSize();
 
 root.dataset["scheme"] = resolvedScheme(loadScheme(), window.matchMedia("(prefers-color-scheme: dark)").matches);
 

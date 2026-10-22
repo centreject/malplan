@@ -205,6 +205,78 @@
   --plate-when: #93c5fd;
 }
 
+/* ───────── High contrast ─────────
+   Black ground, white text, yellow for what acts, strong borders. Always dark, whatever the scheme. */
+
+[data-theme="contrast"] {
+  --font-ui: "Segoe UI", "Malgun Gothic", "맑은 고딕", system-ui, sans-serif;
+  --font-num: "Segoe UI", "Malgun Gothic", sans-serif;
+  --bg: #000000;
+  --surface: #000000;
+  --surface-2: #141414;
+  --ink: #ffffff;
+  --ink-2: #f2f2f2;
+  --ink-3: #d6d6d6;
+  --line: #bdbdbd;
+  --accent: #ffd400;
+  --accent-ink: #000000;
+  --focus: #00e5ff;
+  --red: #ff7b6b;
+  --blue: #8cc0ff;
+  --late: #ffc233;
+  --late-bg: #2a1f00;
+  --plate-bg: #000000;
+  --plate-ink: #ffffff;
+  --plate-when: #ffd400;
+  --radius: 6px;
+  --radius-pane: 8px;
+  --radius-control: 6px;
+  --radius-field: 4px;
+  --band: var(--accent);
+  --band-h: 3px;
+  --row-pad: 9px;
+  --cat-0: #d6d6d6;
+  --cat-1: #8cc0ff;
+  --cat-2: #6ee68a;
+  --cat-3: #ff8a7a;
+  --cat-4: #ffd400;
+  --cat-5: #cfb2ff;
+  --cat-6: #5ee8e8;
+  --cat-ink-4: #000000;
+  --day-num-size: 44px;
+  --day-num-weight: 700;
+  --shadow: #000000;
+}
+
+:root[data-theme="contrast"] {
+  color-scheme: dark;
+}
+
+/* Bright slots take black ink. */
+[data-theme="contrast"] :is(.cat-0, .cat-1, .cat-2, .cat-3, .cat-4, .cat-5, .cat-6) {
+  --c-ink: #000000;
+}
+
+[data-theme="contrast"] :is(.pane, .settings, .confirm) {
+  border: 2px solid var(--line);
+}
+
+/* Past and done rows stay readable: the checkbox and strike-through mark them, not a fade. */
+[data-theme="contrast"] .agenda-row:is(.is-past, .is-done) .cat-tag {
+  opacity: 1;
+}
+
+/* ───────── Text size ─────────
+   Scales the whole window, like browser zoom, so spacing and hit areas grow with the text. */
+
+:root[data-text="large"] {
+  zoom: 1.12;
+}
+
+:root[data-text="larger"] {
+  zoom: 1.25;
+}
+
 /* ───────── Base ───────── */
 
 *,
@@ -404,7 +476,7 @@ ul {
 
 .theme-cards {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 10px;
 }
 

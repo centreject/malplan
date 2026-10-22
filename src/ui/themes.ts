@@ -19,6 +19,12 @@ export const THEMES = [
     description: "익숙한 캘린더 앱처럼 깔끔하게",
     swatch: ["#ffffff", "#1f2937", "#2563eb", "#e5e7eb"],
   },
+  {
+    id: "contrast",
+    name: "고대비",
+    description: "검은 바탕에 흰 글자와 노란 강조, 굵은 테두리",
+    swatch: ["#000000", "#ffffff", "#ffd400", "#7fb2ff"],
+  },
 ] as const;
 
 export type ThemeId = (typeof THEMES)[number]["id"];
@@ -58,4 +64,25 @@ export function saveScheme(scheme: SchemeId): void {
 
 export function resolvedScheme(scheme: SchemeId, systemDark: boolean): "light" | "dark" {
   return scheme === "system" ? (systemDark ? "dark" : "light") : scheme;
+}
+
+/** Text size for the whole window, on top of any theme. */
+export const TEXT_SIZES = [
+  { id: "normal", name: "보통" },
+  { id: "large", name: "크게" },
+  { id: "larger", name: "아주 크게" },
+] as const;
+
+export type TextSizeId = (typeof TEXT_SIZES)[number]["id"];
+
+const TEXT_SIZE_KEY = "malplan.textSize";
+
+export function loadTextSize(): TextSizeId {
+  const saved = readStored(TEXT_SIZE_KEY);
+
+  return TEXT_SIZES.find((size) => size.id === saved)?.id ?? "normal";
+}
+
+export function saveTextSize(size: TextSizeId): void {
+  writeStored(TEXT_SIZE_KEY, size);
 }

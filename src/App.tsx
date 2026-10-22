@@ -37,7 +37,7 @@ import { StorageSettings } from "./ui/StorageSettings";
 import { TabEditor } from "./ui/TabEditor";
 import { useBoard } from "./ui/useBoard";
 import type { Board } from "./storage/board";
-import { loadScheme, loadTheme, resolvedScheme, saveScheme, saveTheme, type SchemeId, type ThemeId } from "./ui/themes";
+import { loadScheme, loadTextSize, loadTheme, resolvedScheme, saveScheme, saveTextSize, saveTheme, type SchemeId, type TextSizeId, type ThemeId } from "./ui/themes";
 import { FirstRunNotice } from "./ui/FirstRunNotice";
 import { SettingsDialog, ThemeSettings } from "./ui/SettingsDialog";
 import { WindowSettings } from "./ui/WindowSettings";
@@ -81,6 +81,7 @@ export default function App() {
   const now = useNow();
   const [theme, setTheme] = useState<ThemeId>(loadTheme);
   const [scheme, setScheme] = useState<SchemeId>(loadScheme);
+  const [textSize, setTextSize] = useState<TextSizeId>(loadTextSize);
   const persisted = useBoard(() => firstBoard(now.today));
   const { items, categories, tabs } = persisted.board;
   const setItems = (change: (current: Item[]) => Item[]) => persisted.update((b) => ({ ...b, items: change(b.items) }));
@@ -330,6 +331,11 @@ export default function App() {
   }, [theme]);
 
   useEffect(() => {
+    document.documentElement.dataset["text"] = textSize;
+    saveTextSize(textSize);
+  }, [textSize]);
+
+  useEffect(() => {
     const media = window.matchMedia("(prefers-color-scheme: dark)");
 
     const apply = () => {
@@ -542,7 +548,7 @@ export default function App() {
             icon: Palette,
             content: (
               <>
-                <ThemeSettings theme={theme} onTheme={setTheme} scheme={scheme} onScheme={setScheme} />
+                <ThemeSettings theme={theme} onTheme={setTheme} scheme={scheme} onScheme={setScheme} textSize={textSize} onTextSize={setTextSize} />
                 <DisplaySettings
                   display={display}
                   onChange={(next) => {
