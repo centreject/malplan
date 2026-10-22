@@ -7,6 +7,10 @@ use std::sync::atomic::{AtomicBool, Ordering};
 use tauri::menu::{Menu, MenuItem};
 use tauri::tray::{MouseButton, MouseButtonState, TrayIconBuilder, TrayIconEvent};
 use tauri::{AppHandle, Manager, RunEvent, WindowEvent};
+use tauri_plugin_window_state::{AppHandleExt, StateFlags};
+
+/// Size and position only: a window hidden to the tray at quit must still open next time.
+const WINDOW_STATE: StateFlags = StateFlags::all().difference(StateFlags::VISIBLE);
 
 /// Whether the window close button hides to the tray. The frontend owns the
 /// persisted setting and pushes it here on startup and on change.
@@ -32,13 +36,9 @@ pub fn run() {
         .plugin(tauri_plugin_single_instance::init(|app, _args, _cwd| {
             show_main(app);
         }))
-        // Size and position only: a window hidden to the tray at quit must still open next time.
         .plugin(
             tauri_plugin_window_state::Builder::new()
-                .with_state_flags(
-                    tauri_plugin_window_state::StateFlags::all()
-                        - tauri_plugin_window_state::StateFlags::VISIBLE,
-                )
+                .with_state_flags(WINDOW_STATE)
                 .build(),
         )
         // A small rotating log in the app's log folder, so a problem on someone's PC can be read afterwards.
@@ -123,6 +123,9 @@ pub fn run() {
             if let WindowEvent::CloseRequested { api, .. } = event {
                 if window.state::<CloseToTray>().0.load(Ordering::Relaxed) {
                     api.prevent_close();
+                    // The app usually lives in the tray until Windows shuts down, which may never
+                    // run the exit hook: keep the size and position from this moment.
+                    let _ = window.app_handle().save_window_state(WINDOW_STATE);
                     let _ = window.hide();
                 }
             }
