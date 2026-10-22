@@ -2831,3 +2831,100 @@ ul {
   font-size: 12px;
   white-space: pre;
 }
+
+/* Month pane title: year and month open a picker, as in most date pickers. */
+.month-picker {
+  anchor-name: --month-picker;
+}
+
+.month-picker-part {
+  padding: 2px 4px;
+  margin: -2px -4px;
+  border: 0;
+  border-radius: var(--radius-field);
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+}
+
+.month-picker-part:hover,
+.month-picker-part:focus-visible {
+  background: var(--surface-2);
+}
+
+.month-picker-pop {
+  position-anchor: --month-picker;
+  inset: auto;
+  top: anchor(bottom);
+  left: anchor(left);
+  position-try-fallbacks: flip-inline;
+  width: 248px;
+  margin: 6px 0 0;
+  padding: 10px 12px 12px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-pane);
+  background: var(--surface);
+  color: var(--ink);
+  font-size: 14px;
+  font-weight: 400;
+  box-shadow:
+    inset 0 var(--band-h) 0 var(--band),
+    0 8px 24px color-mix(in srgb, var(--shadow) 16%, transparent);
+}
+
+.month-picker-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 8px;
+}
+
+.month-picker-switch {
+  padding: 4px 8px;
+  border: 0;
+  border-radius: var(--radius-field);
+  background: transparent;
+  color: var(--ink);
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.month-picker-switch:hover {
+  background: var(--surface-2);
+}
+
+.month-picker-range {
+  font-weight: 700;
+}
+
+.month-picker-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 6px;
+}
+
+.month-picker-cell {
+  height: 36px;
+  border: 1px solid transparent;
+  border-radius: var(--radius-control);
+  background: transparent;
+  color: var(--ink);
+  font: inherit;
+  cursor: pointer;
+}
+
+.month-picker-cell:hover {
+  background: var(--surface-2);
+}
+
+.month-picker-cell.is-today {
+  border-color: var(--accent);
+}
+
+.month-picker-cell[aria-pressed="true"] {
+  background: var(--accent);
+  color: var(--accent-ink);
+  font-weight: 700;
+}

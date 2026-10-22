@@ -7,6 +7,7 @@ import { monthCells, occurrencesOn } from "../domain/schedule";
 import { ALL_TAB_ID, type CalendarTab } from "../domain/tabs";
 import { WEEKDAY_NAMES, startLabel } from "./format";
 import { ItemMark, PaneHeader } from "./parts";
+import { MonthPicker } from "./MonthPicker";
 import { CategoryChecklist } from "./TabEditor";
 
 type MonthPaneProps = {
@@ -35,6 +36,8 @@ type MonthPaneProps = {
   onPrev: () => void;
   onNext: () => void;
   onReset: (() => void) | undefined;
+  /** A month chosen from the title's year/month picker. */
+  onPickMonth: (year: number, month: number) => void;
 };
 
 export function MonthPane(props: MonthPaneProps) {
@@ -56,11 +59,7 @@ export function MonthPane(props: MonthPaneProps) {
         onPrev={props.onPrev}
         onNext={props.onNext}
         onReset={props.onReset}
-        title={
-          <>
-            <span className="num">{props.year}</span>년 <span className="num">{props.month}</span>월
-          </>
-        }
+        title={<MonthPicker year={props.year} month={props.month} today={props.today} onPick={props.onPickMonth} />}
       >
         <div className="tabs" role="tablist" aria-label="달력 탭">
           {props.tabs.map((t, index) => (

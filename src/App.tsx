@@ -532,6 +532,7 @@ export default function App() {
             onEdit={openEdit}
             onPrev={() => setMonthCursor(shiftMonth(monthCursor, -1))}
             onNext={() => setMonthCursor(shiftMonth(monthCursor, 1))}
+            onPickMonth={(year, month) => setMonthCursor({ year, month })}
             onReset={isCurrentMonth ? undefined : () => setMonthCursor(todayMonth)}
           />
         </div>
