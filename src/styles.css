@@ -2928,3 +2928,44 @@ ul {
   color: var(--accent-ink);
   font-weight: 700;
 }
+
+.week-picker {
+  anchor-name: --week-picker;
+}
+
+.week-picker-pop {
+  position-anchor: --week-picker;
+}
+
+.week-picker-list {
+  display: grid;
+  gap: 4px;
+}
+
+.week-picker-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  height: 36px;
+  padding: 0 12px;
+  border: 1px solid transparent;
+  border-radius: var(--radius-control);
+  background: transparent;
+  color: var(--ink);
+  font: inherit;
+  cursor: pointer;
+}
+
+.week-picker-row:hover {
+  background: var(--surface-2);
+}
+
+.week-picker-row.is-today {
+  border-color: var(--accent);
+}
+
+.week-picker-row[aria-pressed="true"] {
+  background: var(--accent);
+  color: var(--accent-ink);
+  font-weight: 700;
+}

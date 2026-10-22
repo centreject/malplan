@@ -46,6 +46,7 @@ import { TodayPane } from "./ui/TodayPane";
 import { TopBar } from "./ui/TopBar";
 import { useNow } from "./ui/useNow";
 import { WeekPane } from "./ui/WeekPane";
+import { WeekPicker } from "./ui/WeekPicker";
 import "./styles.css";
 
 const ALL_TAB: CalendarTab = { id: ALL_TAB_ID, name: "전체", categoryIds: undefined };
@@ -506,6 +507,7 @@ export default function App() {
             onSelect={select}
             onEdit={openEdit}
             title={`${weekMonth}월 ${weekNth}주차`}
+            picker={<WeekPicker label={`${weekMonth}월 ${weekNth}주차`} first={week[0] ?? weekAnchor} today={now.today} start={display.weekNumberStart} onPick={moveWeek} />}
             onPrev={() => moveWeek(addDays(weekAnchor, -weekStep))}
             onNext={() => moveWeek(addDays(weekAnchor, weekStep))}
             onReset={weekAnchor === now.today ? undefined : () => moveWeek(now.today)}

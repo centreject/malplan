@@ -1,3 +1,4 @@
+import type { ReactNode } from "react";
 import { partsOf, weekdayOf, type IsoDate } from "../domain/date";
 import type { Category, Item } from "../domain/item";
 import { occurrencesOn } from "../domain/schedule";
@@ -10,6 +11,8 @@ type WeekPaneProps = {
   dates: IsoDate[];
   /** "10월 2주차". */
   title: string;
+  /** The title as a week picker. */
+  picker: ReactNode;
   today: IsoDate;
   selected: IsoDate;
   items: Item[];
@@ -37,7 +40,7 @@ export function WeekPane(props: WeekPaneProps) {
         onReset={props.onReset}
         title={
           <>
-            {props.title} <span className="pane-range num">{shortDate(first)} – {shortDate(last)}</span>
+            {props.picker} <span className="pane-range num">{shortDate(first)} – {shortDate(last)}</span>
           </>
         }
       />

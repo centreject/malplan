@@ -1,5 +1,5 @@
 import { describe, expect, test } from "vitest";
-import { weekLabel, weekStartOf } from "./weeks";
+import { weekLabel, weekStartOf, weeksOfMonth } from "./weeks";
 
 describe("weekStartOf", () => {
   test("goes back to the chosen start day", () => {
@@ -19,5 +19,16 @@ describe("weekLabel", () => {
 
   test("other start days", () => {
     expect(weekLabel("2026-10-04", 0)).toEqual({ month: 10, nth: 1 });
+  });
+});
+
+describe("weeksOfMonth", () => {
+  test("the first days of the weeks that belong to a month", () => {
+    // Monday weeks: October 2026's weeks start 10/5, 10/12, 10/19, 10/26.
+    expect(weeksOfMonth(2026, 10, 1)).toEqual(["2026-10-05", "2026-10-12", "2026-10-19", "2026-10-26"]);
+    // Sunday weeks: 10/4 … 10/25.
+    expect(weeksOfMonth(2026, 10, 0)).toEqual(["2026-10-04", "2026-10-11", "2026-10-18", "2026-10-25"]);
+    // A month starting on the start day has five: June 2026 begins on a Monday.
+    expect(weeksOfMonth(2026, 6, 1)).toHaveLength(5);
   });
 });
