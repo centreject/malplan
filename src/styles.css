@@ -2971,10 +2971,12 @@ ul {
 }
 
 /* 밀린 할 일 "등 N회": the missed dates, newest first. */
+/* Same type as the date-only label beside it (.side-meta .num): only the button chrome is reset. */
 .missed-trigger {
+  padding: 0;
   border: 0;
   background: transparent;
-  font: inherit;
+  line-height: inherit;
   text-decoration: underline dotted;
   text-underline-offset: 3px;
   cursor: pointer;
