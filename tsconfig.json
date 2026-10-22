@@ -5,6 +5,8 @@
     "lib": ["ESNext", "DOM", "DOM.Iterable"],
     "module": "ESNext",
     "skipLibCheck": true,
+    /* Browser code: Node types only for the MCP server (tsconfig.mcp.json). */
+    "types": [],
 
     /* Bundler mode */
     "moduleResolution": "bundler",
@@ -25,5 +27,6 @@
     "noImplicitReturns": true
   },
   "include": ["src"],
+  "exclude": ["src/mcp/main.ts"],
   "references": [{ "path": "./tsconfig.node.json" }]
 }

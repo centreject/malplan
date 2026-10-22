@@ -5,7 +5,8 @@ import * as v from "valibot";
 import type { Category, Item } from "../domain/item";
 import { ALL_TAB_ID, type CalendarTab } from "../domain/tabs";
 import type { Entities, EntityRecord } from "./merge";
-import type { EntityKind, Json } from "./schema";
+import { DELETED, type EntityKind, type Json } from "./schema";
+import type { FieldWrite } from "./store";
 
 export type Board = { items: Item[]; categories: Category[]; tabs: CalendarTab[] };
 
@@ -133,6 +134,11 @@ export function boardChanges(prev: Board, next: Board): BoardChange[] {
 
     return changes;
   });
+}
+
+/** boardChanges as store writes: a removal becomes the DELETED marker. One setMany call per save. */
+export function boardWrites(prev: Board, next: Board): FieldWrite[] {
+  return boardChanges(prev, next).map(({ entity, id, field, value, remove }) => (remove ? { entity, id, field: DELETED, value: true } : { entity, id, field, value }));
 }
 
 export type LoadedBoard = { board: Board; errors: string[] };

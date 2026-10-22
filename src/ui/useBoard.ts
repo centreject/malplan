@@ -1,8 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { ALL_TAB_ID } from "../domain/tabs";
 import { deviceId, loadSyncDir, openBackend, saveSyncDir } from "../storage/backends";
-import { boardChanges, boardFromEntities, type Board } from "../storage/board";
-import { DELETED } from "../storage/schema";
+import { boardChanges, boardFromEntities, boardWrites, type Board } from "../storage/board";
 import { SyncStore, type Backend } from "../storage/store";
 import { report } from "./report";
 
@@ -49,11 +48,7 @@ export function useBoard(seed: () => Board) {
 
     queue.current = queue.current.then(() =>
       // One append (one disk sync) per save, not one per field.
-      target.setMany(
-        boardChanges(prev, next).map(({ entity, id, field, value, remove }) =>
-          remove ? { entity, id, field: DELETED, value: true } : { entity, id, field, value },
-        ),
-      ),
+      target.setMany(boardWrites(prev, next)),
     ).catch((error: Error) => {
       report(`save failed: ${error.message}`);
       setErrors((list) => [...list, `저장 실패: ${error.message}`]);

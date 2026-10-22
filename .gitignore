@@ -36,3 +36,5 @@ dist-ssr
 
 # llama-server binaries: `npm run fetch:llama`, bundled as Tauri resources
 src-tauri/binaries/
+dist-mcp
+*.tsbuildinfo

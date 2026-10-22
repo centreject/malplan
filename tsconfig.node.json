@@ -6,5 +6,9 @@
     "moduleResolution": "bundler",
     "allowSyntheticDefaultImports": true
   },
-  "include": ["vite.config.ts", "vitest.eval.config.ts"]
+  "include": [
+    "vite.config.ts",
+    "vitest.eval.config.ts",
+    "vite.mcp.config.ts"
+  ]
 }
