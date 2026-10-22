@@ -17,7 +17,19 @@ const SHA256 = "b45d88c70124b1ca8d8969ce073e81bc22906946d2528cab56c09c7e66420fe2
 
 const out = join(import.meta.dirname, "..", "src-tauri", "binaries", "llama");
 
+// Only the server is used; drop the other tools, their libraries and the RPC backend (also from an older fetch).
+const UNUSED = /^(?!llama-server)[\w-]+-impl\.dll$|^ggml-rpc/;
+
+function prune() {
+  for (const name of readdirSync(out)) {
+    if ((name.endsWith(".exe") && name !== "llama-server.exe") || UNUSED.test(name)) {
+      rmSync(join(out, name));
+    }
+  }
+}
+
 if (existsSync(join(out, "llama-server.exe"))) {
+  prune();
   console.log(`already present: ${out}`);
   process.exit(0);
 }
@@ -47,12 +59,7 @@ execFileSync(join(process.env.SystemRoot ?? "C:\\Windows", "System32", "tar.exe"
 
 rmSync(zipPath);
 
-// Only the server is used; drop the other tools.
-for (const name of readdirSync(out)) {
-  if (name.endsWith(".exe") && name !== "llama-server.exe") {
-    rmSync(join(out, name));
-  }
-}
+prune();
 
 if (!existsSync(join(out, "llama-server.exe"))) {
   throw new Error(`llama-server.exe not found in ${ZIP}`);
