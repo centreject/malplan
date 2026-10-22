@@ -4,9 +4,9 @@
   "version": "0.1.0",
   "identifier": "com.centreject.malplan",
   "build": {
-    "beforeDevCommand": "npm run dev",
+    "beforeDevCommand": "npm run build:mcp && npm run dev",
     "devUrl": "http://localhost:1420",
-    "beforeBuildCommand": "npm run build",
+    "beforeBuildCommand": "npm run build && npm run build:mcp",
     "frontendDist": "../dist"
   },
   "app": {
@@ -28,7 +28,8 @@
     "active": true,
     "targets": "all",
     "resources": {
-      "binaries/llama/": "llama/"
+      "binaries/llama/": "llama/",
+      "../dist-mcp/malplan-mcp.mjs": "mcp/malplan-mcp.mjs"
     },
     "icon": [
       "icons/32x32.png",

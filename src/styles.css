@@ -2807,3 +2807,27 @@ ul {
   color: var(--ink-3);
   font-weight: 400;
 }
+
+.mcp-snippet {
+  display: grid;
+  gap: 6px;
+  justify-items: start;
+  padding: 12px 0;
+  border-top: 1px solid var(--line);
+}
+
+.mcp-client {
+  font-weight: 600;
+}
+
+.mcp-snippet pre {
+  width: 100%;
+  margin: 0;
+  padding: 10px;
+  overflow-x: auto;
+  border-radius: var(--radius-field);
+  background: var(--surface-2);
+  color: var(--ink);
+  font-size: 12px;
+  white-space: pre;
+}
