@@ -203,6 +203,13 @@ export default function App() {
 
   const [commandNote, setCommandNote] = useState<string>();
 
+  /** Start the local model while the user is still typing, and prime its cache with the instructions about to be sent. */
+  const prestartAi = (system: string) => {
+    if (llm.provider === "local") {
+      localServer?.prestart(() => warmUpLocal(system));
+    }
+  };
+
   /** "말로 고치기" from the detail view: rules first, the AI for what they cannot read, then the edit screen to confirm. */
   const runCommand = async (target: { item: Item; date: IsoDate | undefined }, text: string) => {
     const card = cardFromItem(target.item, now.today);
@@ -420,11 +427,7 @@ export default function App() {
         today={now.today}
         text={quickText}
         onText={setQuickText}
-        onFocus={() => {
-          if (llm.provider === "local") {
-            localServer?.prestart(() => warmUpLocal(buildPrompt("", categories, loadCorrections(), now.today).system));
-          }
-        }}
+        onFocus={() => prestartAi(buildPrompt("", categories, loadCorrections(), now.today).system)}
         onSubmit={openNew}
         onSettings={() => setSettingsOpen("screen")}
         onSearch={() => setSearchOpen(true)}
@@ -696,6 +699,7 @@ export default function App() {
           date={detail.date}
           categories={categories}
           commandNote={commandNote}
+          onCommandFocus={() => prestartAi(buildEditPrompt(cardFromItem(detail.item, now.today), "", categories).system)}
           onCommand={(text) => void runCommand(detail, text)}
           onClose={() => {
             setCommandNote(undefined);

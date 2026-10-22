@@ -14,12 +14,14 @@ type ItemDetailProps = {
   onClose: () => void;
   /** "말로 고치기": a short request like "3시로 바꿔". */
   onCommand: (text: string) => void;
+  /** The request field got focus: a chance to start the AI before the request arrives. */
+  onCommandFocus: () => void;
   /** Status or hint for the last request. */
   commandNote: string | undefined;
 };
 
 /** Read-only view of a saved item; 수정 opens the edit dialog. New entries go straight to editing instead. */
-export function ItemDetail({ item, date, categories, onEdit, onClose, onCommand, commandNote }: ItemDetailProps) {
+export function ItemDetail({ item, date, categories, onEdit, onClose, onCommand, onCommandFocus, commandNote }: ItemDetailProps) {
   const dialog = useRef<HTMLDialogElement>(null);
   const [request, setRequest] = useState("");
 
@@ -93,6 +95,7 @@ export function ItemDetail({ item, date, categories, onEdit, onClose, onCommand,
             placeholder="예: 3시로 바꿔, 하루 미뤄, 장소는 강남역으로"
             autoComplete="off"
             onChange={(event) => setRequest(event.target.value)}
+            onFocus={onCommandFocus}
           />
           <button type="submit" className="confirm-button">고치기</button>
         </span>
