@@ -55,9 +55,12 @@ function errorText(message: string): string | undefined {
     return undefined;
   }
 
-  return message === "hash-mismatch"
-    ? "받은 파일이 원본과 달라(SHA256 불일치) 지웠습니다. 다시 받아 주세요."
-    : `다운로드 실패: ${message}`;
+  if (message === "hash-mismatch") {
+    return "받은 파일이 원본과 달라(SHA256 불일치) 지웠습니다. 다시 받아 주세요.";
+  }
+
+  // Anything else after the automatic retries is the connection; the raw text stays for reports.
+  return `인터넷 연결이 자꾸 끊겨 멈췄습니다. 받은 만큼은 남아 있으니 이어받기를 눌러 주세요. (${message})`;
 }
 
 /** Download or resume. Resolves when finished, paused or failed; the outcome is in downloadState(). */

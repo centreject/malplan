@@ -19,6 +19,9 @@ const MODEL_URL: &str = "https://huggingface.co/Qwen/Qwen3-4B-GGUF/resolve/main/
 const MODEL_SIZE: u64 = 2_497_280_256;
 const MODEL_SHA256: &str = "7485fe6f11af29433bc51cab58009521f205840f5b4ae3a32fa7f92e8534fdf5";
 
+/// Automatic resumes after a dropped connection, 3s, 6s, … apart.
+const RETRIES: u32 = 5;
+
 /// Emit progress about every 4MB.
 const PROGRESS_STEP: u64 = 4 << 20;
 
@@ -96,10 +99,27 @@ async fn download_model(app: &AppHandle, cancel: &AtomicBool) -> Result<(), Stri
         .build()
         .map_err(|e| e.to_string())?;
 
-    fetch_resumable(&client, MODEL_URL, &part, MODEL_SIZE, cancel, |received| {
-        let _ = app.emit("model-download", Progress { received, total: MODEL_SIZE });
-    })
-    .await?;
+    // A dropped connection resumes from the .part file a few times before the user has to press 이어받기.
+    let mut retries = 0;
+
+    loop {
+        let result = fetch_resumable(&client, MODEL_URL, &part, MODEL_SIZE, cancel, |received| {
+            let _ = app.emit("model-download", Progress { received, total: MODEL_SIZE });
+        })
+        .await;
+
+        match result {
+            Ok(()) => break,
+            Err(error) if error == "cancelled" || error.starts_with("HTTP 4") || retries >= RETRIES => {
+                return Err(error);
+            }
+            Err(_) => {
+                retries += 1;
+                let wait = Duration::from_secs(3 * u64::from(retries));
+                let _ = tauri::async_runtime::spawn_blocking(move || std::thread::sleep(wait)).await;
+            }
+        }
+    }
 
     let hashed = part.clone();
     let actual = tauri::async_runtime::spawn_blocking(move || sha256_file(&hashed))
