@@ -106,7 +106,7 @@ test("overdue tasks collapse missed recurring occurrences into one entry", () =>
 
   expect(overdue).toEqual([
     // Wednesdays 9/2 … 10/21.
-    { item: mailing, latest: "2026-10-21", missed: 8 },
+    { item: mailing, latest: "2026-10-21", missed: ["2026-09-02", "2026-09-09", "2026-09-16", "2026-09-23", "2026-09-30", "2026-10-07", "2026-10-14", "2026-10-21"] },
   ]);
 });
 
@@ -115,8 +115,8 @@ test("unfinished tasks stay overdue however old", () => {
   const weekly = item("log", { kind: "task", when: { kind: "recurring", rule: { freq: "weekly", weekdays: [3], start: "2025-01-01", until: "2025-01-31" } } });
 
   expect(overdueTasks([old, weekly], "2026-10-22")).toEqual([
-    { item: old, latest: "2025-01-10", missed: 1 },
-    { item: weekly, latest: "2025-01-29", missed: 5 },
+    { item: old, latest: "2025-01-10", missed: ["2025-01-10"] },
+    { item: weekly, latest: "2025-01-29", missed: ["2025-01-01", "2025-01-08", "2025-01-15", "2025-01-22", "2025-01-29"] },
   ]);
 });
 

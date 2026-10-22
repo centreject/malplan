@@ -7,7 +7,8 @@ export type Occurrence = { item: Item; date: IsoDate; done: boolean };
 
 export type NextUp = { occurrence: Occurrence; minutesUntil: number };
 
-export type OverdueTask = { item: Item; latest: IsoDate; missed: number };
+/** `missed`: every unfinished occurrence date, oldest first; `latest` is the last of them. */
+export type OverdueTask = { item: Item; latest: IsoDate; missed: IsoDate[] };
 
 /** Where a time-of-day slot sits on the day's timeline. */
 export const SLOT_START: Record<Slot, ClockTime> = {
@@ -74,7 +75,7 @@ export function overdueTasks(items: Item[], today: IsoDate): OverdueTask[] {
     const missed = missedDates(item, today);
     const latest = missed.at(-1);
 
-    return latest === undefined ? [] : [{ item, latest, missed: missed.length }];
+    return latest === undefined ? [] : [{ item, latest, missed }];
   });
 }
 

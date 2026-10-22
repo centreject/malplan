@@ -2969,3 +2969,52 @@ ul {
   color: var(--accent-ink);
   font-weight: 700;
 }
+
+/* 밀린 할 일 "등 N회": the missed dates, newest first. */
+.missed-trigger {
+  border: 0;
+  background: transparent;
+  font: inherit;
+  text-decoration: underline dotted;
+  text-underline-offset: 3px;
+  cursor: pointer;
+}
+
+.missed-dates {
+  position-anchor: --missed-dates;
+  inset: auto;
+  top: anchor(bottom);
+  right: anchor(right);
+  position-try-fallbacks: flip-block;
+  max-height: 280px;
+  overflow-y: auto;
+  margin: 4px 0 0;
+  padding: 10px 14px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-pane);
+  background: var(--surface);
+  color: var(--ink);
+  font-size: 13px;
+  box-shadow:
+    inset 0 var(--band-h) 0 var(--band),
+    0 8px 24px color-mix(in srgb, var(--shadow) 16%, transparent);
+}
+
+.missed-dates-head {
+  margin: 0 0 6px;
+  font-weight: 700;
+}
+
+.missed-dates ul {
+  display: grid;
+  grid-template-columns: repeat(2, auto);
+  gap: 2px 16px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.missed-dates-more {
+  margin: 6px 0 0;
+  color: var(--ink-3);
+}

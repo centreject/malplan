@@ -1,10 +1,13 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { IsoDate } from "../domain/date";
 import type { Category, Item } from "../domain/item";
 import { quickTargets } from "../domain/reschedule";
 import type { OverdueTask } from "../domain/schedule";
-import { shortDate } from "./format";
+import { shortDate, weekdayName } from "./format";
 import { CategoryTag } from "./parts";
+
+/** Newest missed dates listed in the popup; older ones are only counted. */
+const MISSED_SHOWN = 20;
 
 type OverdueListProps = {
   overdue: OverdueTask[];
@@ -24,6 +27,51 @@ export function OverdueList({ overdue, today, categoryOf, onEdit, onReschedule }
     onReschedule(live, target);
     setSelected([]);
   };
+
+  // "등 N회": hovering shows the missed dates and leaving hides them; a click pins them until clicked again or elsewhere.
+  const [pinned, setPinned] = useState<string>();
+  const [hovered, setHovered] = useState<string>();
+  const popup = useRef<HTMLDivElement>(null);
+  const shown = overdue.find((o) => o.item.id === (pinned ?? hovered));
+
+  useEffect(() => {
+    const element = popup.current;
+
+    if (shown === undefined) {
+      element?.hidePopover();
+    } else if (element?.matches(":popover-open") === false) {
+      element.showPopover();
+    }
+  }, [shown]);
+
+  useEffect(() => {
+    if (pinned === undefined) {
+      return;
+    }
+
+    const unpin = (event: Event) => {
+      // SAFETY: pointerdown targets are nodes; the popup and its trigger keep it open.
+      const target = event.target as Node;
+
+      if (!popup.current?.contains(target) && !(target instanceof Element && target.closest(`[data-missed="${pinned}"]`))) {
+        setPinned(undefined);
+      }
+    };
+
+    const escape = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        setPinned(undefined);
+      }
+    };
+
+    document.addEventListener("pointerdown", unpin);
+    document.addEventListener("keydown", escape);
+
+    return () => {
+      document.removeEventListener("pointerdown", unpin);
+      document.removeEventListener("keydown", escape);
+    };
+  }, [pinned]);
 
   const toggle = (id: string) =>
     setSelected((current) => (current.includes(id) ? current.filter((x) => x !== id) : [...current, id]));
@@ -84,14 +132,44 @@ export function OverdueList({ overdue, today, categoryOf, onEdit, onReschedule }
                 <button type="button" className="side-title item-open" onClick={() => onEdit(item, latest)}>
                   {item.title}
                 </button>
-                <span className="side-meta num">
-                  {shortDate(latest)}
-                  {missed > 1 && ` 등 ${missed}회`}
-                </span>
+                {missed.length > 1 ? (
+                  <button
+                    type="button"
+                    className="side-meta num missed-trigger"
+                    data-missed={item.id}
+                    aria-expanded={shown?.item.id === item.id}
+                    aria-controls="missed-dates"
+                    style={shown?.item.id === item.id ? { anchorName: "--missed-dates" } : undefined}
+                    onMouseEnter={() => setHovered(item.id)}
+                    onMouseLeave={() => setHovered(undefined)}
+                    onClick={() => {
+                      // A second click closes it even with the mouse still on it.
+                      setPinned(pinned === item.id ? undefined : item.id);
+                      setHovered(undefined);
+                    }}
+                  >
+                    {shortDate(latest)} 등 {missed.length}회
+                  </button>
+                ) : (
+                  <span className="side-meta num">{shortDate(latest)}</span>
+                )}
                 <CategoryTag category={categoryOf(item)} />
               </li>
             ))}
           </ul>
+          <div ref={popup} id="missed-dates" className="missed-dates" popover="manual" role="tooltip">
+            {shown !== undefined && (
+              <>
+                <p className="missed-dates-head">놓친 날 {shown.missed.length}회</p>
+                <ul className="num">
+                  {shown.missed.toReversed().slice(0, MISSED_SHOWN).map((date) => (
+                    <li key={date}>{shortDate(date)} ({weekdayName(date)})</li>
+                  ))}
+                </ul>
+                {shown.missed.length > MISSED_SHOWN && <p className="missed-dates-more">그 전 {shown.missed.length - MISSED_SHOWN}회</p>}
+              </>
+            )}
+          </div>
         </>
       )}
     </details>
