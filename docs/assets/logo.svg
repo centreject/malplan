@@ -1,0 +1,29 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 400" role="img" aria-label="malplan">
+  <defs>
+    <linearGradient id="body" x1="0" y1="1" x2="1" y2="0">
+      <stop offset="0" stop-color="#3b6ff5"/>
+      <stop offset="0.55" stop-color="#25c4c8"/>
+      <stop offset="1" stop-color="#f5b54a"/>
+    </linearGradient>
+    <linearGradient id="screen" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#1f5d8c"/>
+      <stop offset="1" stop-color="#173a6e"/>
+    </linearGradient>
+  </defs>
+  <rect width="960" height="400" rx="32" fill="#151b2e"/>
+  <!-- speech-bubble calendar -->
+  <g transform="translate(400 40)">
+    <path d="M28 20h104a24 24 0 0 1 24 24v104a24 24 0 0 1-24 24H62l-30 26v-26h-4a24 24 0 0 1-24-24V44a24 24 0 0 1 24-24z" fill="url(#body)"/>
+    <rect x="20" y="44" width="120" height="112" rx="10" fill="url(#screen)"/>
+    <rect x="42" y="0" width="14" height="36" rx="7" fill="#25c4c8" stroke="#151b2e" stroke-width="5"/>
+    <rect x="104" y="0" width="14" height="36" rx="7" fill="#f5b54a" stroke="#151b2e" stroke-width="5"/>
+    <path d="M34 72q14-12 28 0t28 0" fill="none" stroke="#7fd8f0" stroke-width="7" stroke-linecap="round"/>
+    <rect x="34" y="92" width="58" height="7" rx="3.5" fill="#7fd8f0"/>
+    <rect x="34" y="112" width="44" height="7" rx="3.5" fill="#7fd8f0"/>
+    <path d="M102 72l10 10 18-20" fill="none" stroke="#bff3f0" stroke-width="7" stroke-linecap="round" stroke-linejoin="round"/>
+    <circle cx="108" cy="104" r="4" fill="#7fd8f0"/><circle cx="124" cy="104" r="4" fill="#7fd8f0"/>
+    <circle cx="108" cy="120" r="4" fill="#7fd8f0"/><circle cx="124" cy="120" r="4" fill="#7fd8f0"/>
+  </g>
+  <!-- wordmark -->
+  <text x="480" y="330" text-anchor="middle" font-family="Segoe UI, Helvetica Neue, Arial, sans-serif" font-size="104" font-weight="700" letter-spacing="1"><tspan fill="#f8fafc">mal</tspan><tspan fill="#25c4c8">plan</tspan></text>
+</svg>

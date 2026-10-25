@@ -1,0 +1,23 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#1e2a3d"/>
+      <stop offset="1" stop-color="#121a27"/>
+    </linearGradient>
+    <linearGradient id="band" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0" stop-color="#3b82f6"/>
+      <stop offset="1" stop-color="#22c7c7"/>
+    </linearGradient>
+  </defs>
+  <rect x="16" y="16" width="480" height="480" rx="112" fill="url(#bg)"/>
+  <!-- speech-bubble calendar -->
+  <path d="M132 128h248a40 40 0 0 1 40 40v176a40 40 0 0 1-40 40H226l-70 58v-58h-24a40 40 0 0 1-40-40V168a40 40 0 0 1 40-40z" fill="#f8fafc"/>
+  <path d="M132 128h248a40 40 0 0 1 40 40v30H92v-30a40 40 0 0 1 40-40z" fill="url(#band)"/>
+  <!-- rings -->
+  <rect x="172" y="92" width="32" height="76" rx="16" fill="#f8fafc" stroke="#121a27" stroke-width="12"/>
+  <rect x="308" y="92" width="32" height="76" rx="16" fill="#f8fafc" stroke="#121a27" stroke-width="12"/>
+  <!-- lines and check -->
+  <rect x="138" y="240" width="130" height="24" rx="12" fill="#94a3b8"/>
+  <rect x="138" y="296" width="96" height="24" rx="12" fill="#94a3b8"/>
+  <path d="M290 280l34 34 62-70" fill="none" stroke="#f2b705" stroke-width="30" stroke-linecap="round" stroke-linejoin="round"/>
+</svg>

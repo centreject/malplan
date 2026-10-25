@@ -1,6 +1,8 @@
-# malplan
+<p align="center">
+  <img src="docs/assets/logo.svg" width="560" alt="malplan">
+</p>
 
-[English](README.md) | **한국어**
+<p align="center"><a href="README.md">English</a> | <b>한국어</b></p>
 
 일정을 한국어 한 문장으로 입력하고, 채워진 카드를 확인한 뒤, 오늘·이번 주·이번 달에서 한 번에 보는 앱입니다.
 

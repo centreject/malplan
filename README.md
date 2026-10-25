@@ -1,6 +1,8 @@
-# malplan
+<p align="center">
+  <img src="docs/assets/logo.svg" width="560" alt="malplan">
+</p>
 
-**English** | [한국어](README.ko.md)
+<p align="center"><b>English</b> | <a href="README.ko.md">한국어</a></p>
 
 Type a schedule in one Korean sentence, check the card it fills in, and see it in today, this week and this month at once.
 

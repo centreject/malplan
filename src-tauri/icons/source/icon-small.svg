@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <!-- 16-32px: the silhouette only, thicker, no inner lines -->
+  <rect x="16" y="16" width="480" height="480" rx="112" fill="#162133"/>
+  <path d="M120 120h272a40 40 0 0 1 40 40v188a40 40 0 0 1-40 40H230l-84 70v-70h-26a40 40 0 0 1-40-40V160a40 40 0 0 1 40-40z" fill="#f8fafc"/>
+  <path d="M120 120h272a40 40 0 0 1 40 40v48H80v-48a40 40 0 0 1 40-40z" fill="#2ea0e0"/>
+  <path d="M176 296l52 52 108-112" fill="none" stroke="#f2b705" stroke-width="48" stroke-linecap="round" stroke-linejoin="round"/>
+</svg>
