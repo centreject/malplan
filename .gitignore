@@ -38,3 +38,10 @@ dist-ssr
 src-tauri/binaries/
 dist-mcp
 *.tsbuildinfo
+
+# impeccable session state (questions asked, direction drafts); design.json, config and surfaces stay
+.impeccable/questions/
+.impeccable/decision-*.json
+
+# Local MCP test data
+malplan-mcp-test/

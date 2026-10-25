@@ -1,6 +1,6 @@
 # malplan
 
-Natural-language schedule/todo app. Spec: `SPEC.md` (Korean). Stack: Tauri 2 + React + TypeScript.
+Natural-language schedule/todo app. Spec: `docs/SPEC.md` (Korean); plan and progress: `docs/PLAN.md`; product and design context: `docs/PRODUCT.md`, `docs/DESIGN.md`. Stack: Tauri 2 + React + TypeScript.
 
 ## Answer style
 - Conclusion first, then only what's needed. Tables/lists over prose.
