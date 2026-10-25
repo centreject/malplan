@@ -91,4 +91,4 @@ docs/       spec, plan, product and design notes (Korean)
 
 ## License
 
-malplan's own license has not been chosen yet. Bundled and downloaded components keep their licenses: llama.cpp (MIT), Qwen3 4B (Apache 2.0), Tauri (MIT/Apache 2.0), React (MIT), valibot (MIT), Lucide (ISC). The parser test phrases come from korean-datetime (MIT, see `src/parse/fixtures`).
+malplan is released under the [MIT License](LICENSE). Bundled and downloaded components keep their licenses: llama.cpp (MIT), Qwen3 4B (Apache 2.0), Tauri (MIT/Apache 2.0), React (MIT), valibot (MIT), Lucide (ISC). The parser test phrases come from korean-datetime (MIT, see `src/parse/fixtures`).

@@ -91,4 +91,4 @@ docs/       명세, 계획, 제품·디자인 문서
 
 ## 라이선스
 
-malplan 자체의 라이선스는 아직 정하지 않았습니다. 포함되거나 내려받는 구성 요소는 각자의 라이선스를 따릅니다: llama.cpp (MIT), Qwen3 4B (Apache 2.0), Tauri (MIT/Apache 2.0), React (MIT), valibot (MIT), Lucide (ISC). 파서 시험 문장은 korean-datetime (MIT, `src/parse/fixtures` 참고)에서 가져왔습니다.
+malplan은 [MIT 라이선스](LICENSE)로 배포합니다. 포함되거나 내려받는 구성 요소는 각자의 라이선스를 따릅니다: llama.cpp (MIT), Qwen3 4B (Apache 2.0), Tauri (MIT/Apache 2.0), React (MIT), valibot (MIT), Lucide (ISC). 파서 시험 문장은 korean-datetime (MIT, `src/parse/fixtures` 참고)에서 가져왔습니다.
