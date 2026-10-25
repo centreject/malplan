@@ -4,6 +4,16 @@
 
 <p align="center"><a href="README.md">English</a> | <b>한국어</b></p>
 
+<p align="center">
+  <img src="https://img.shields.io/badge/platform-Windows%2010%2F11-0078D4?logo=windows" alt="Windows 10/11">
+  <a href="https://github.com/centreject/malplan/releases/tag/v0.1.0"><img src="https://img.shields.io/github/v/tag/centreject/malplan?label=version&color=25c4c8" alt="version"></a>
+  <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-f5b54a" alt="MIT"></a>
+  <a href="https://github.com/centreject/malplan/actions/workflows/ci.yml"><img src="https://github.com/centreject/malplan/actions/workflows/ci.yml/badge.svg" alt="CI"></a>
+  <img src="https://img.shields.io/badge/tests-471%20passing-brightgreen" alt="471 tests">
+  <img src="https://img.shields.io/badge/AI-local%20(llama.cpp)-3b6ff5" alt="local AI">
+  <img src="https://img.shields.io/badge/MCP-Claude%20%C2%B7%20Gemini%20%C2%B7%20Codex-8b5cf6" alt="MCP">
+</p>
+
 일정을 한국어 한 문장으로 입력하고, 채워진 카드를 확인한 뒤, 오늘·이번 주·이번 달에서 한 번에 보는 앱입니다.
 
 > 12월 28일까지 매주 수요일 오후 4시 회사 우편물 발송
@@ -13,6 +23,21 @@
 malplan은 일정과 할 일을 함께 관리하는 Windows 데스크톱 앱입니다. 날짜와 시간은 코드가 읽고 AI가 추측하지 않습니다. 내 PC에서 도는 작은 AI 모델은 제목·분류·장소만 정리합니다. 확인을 누르기 전에는 아무것도 저장되지 않습니다.
 
 **상태: v0.1.0 (베타).** Windows 10/11 x64. 코드 서명된 설치 파일과 자동 업데이트는 아직 없습니다.
+
+<p align="center">
+  <img src="docs/assets/main.png" width="860" alt="오늘·이번 주·이번 달을 한 화면에">
+</p>
+
+<table>
+  <tr>
+    <td width="50%"><img src="docs/assets/confirm.png" alt="한 문장으로 채워진 확인 카드"></td>
+    <td width="50%"><img src="docs/assets/themes.png" alt="디자인 4종: 버스 안내판, 탁상달력, 기본, 고대비"></td>
+  </tr>
+  <tr>
+    <td align="center">한 문장 → 채워진 카드, 저장 전에 확인</td>
+    <td align="center">디자인 4종, 각각 밝게·어둡게</td>
+  </tr>
+</table>
 
 ## 기능
 
@@ -26,6 +51,18 @@ malplan은 일정과 할 일을 함께 관리하는 Windows 데스크톱 앱입�
 - 디자인 4종(버스 안내판, 탁상달력, 기본, 고대비), 각각 밝게·어둡게, 글자 크기 3단계.
 
 ## 동작 방식
+
+```mermaid
+flowchart LR
+  S["한국어 문장 하나"] --> P["규칙 파서<br/>날짜 · 시간 · 반복"]
+  S --> L["로컬 AI<br/>제목 · 종류 · 분류 · 장소"]
+  P --> C["확인 카드<br/>추측한 값은 추정 표시"]
+  L -- "규칙으로 한 번 더 검사" --> C
+  C -- "사용자가 확인" --> F[("동기화 폴더<br/>기기별 기록")]
+  F --> V["오늘 · 주간 · 월간"]
+  M["AI 도구 (MCP)"] -- "미리보기 후 추가" --> F
+```
+
 
 | 부분 | 정하는 쪽 |
 |---|---|

@@ -4,6 +4,16 @@
 
 <p align="center"><b>English</b> | <a href="README.ko.md">한국어</a></p>
 
+<p align="center">
+  <img src="https://img.shields.io/badge/platform-Windows%2010%2F11-0078D4?logo=windows" alt="Windows 10/11">
+  <a href="https://github.com/centreject/malplan/releases/tag/v0.1.0"><img src="https://img.shields.io/github/v/tag/centreject/malplan?label=version&color=25c4c8" alt="version"></a>
+  <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-f5b54a" alt="MIT"></a>
+  <a href="https://github.com/centreject/malplan/actions/workflows/ci.yml"><img src="https://github.com/centreject/malplan/actions/workflows/ci.yml/badge.svg" alt="CI"></a>
+  <img src="https://img.shields.io/badge/tests-471%20passing-brightgreen" alt="471 tests">
+  <img src="https://img.shields.io/badge/AI-local%20(llama.cpp)-3b6ff5" alt="local AI">
+  <img src="https://img.shields.io/badge/MCP-Claude%20%C2%B7%20Gemini%20%C2%B7%20Codex-8b5cf6" alt="MCP">
+</p>
+
 Type a schedule in one Korean sentence, check the card it fills in, and see it in today, this week and this month at once.
 
 > 12월 28일까지 매주 수요일 오후 4시 회사 우편물 발송
@@ -13,6 +23,21 @@ Type a schedule in one Korean sentence, check the card it fills in, and see it i
 malplan is a Windows desktop app for appointments and to-dos. Dates and times are read by code, never guessed by a model; a small AI model that runs on your PC only tidies the title, category and place. Nothing is saved until you confirm it.
 
 **Status: v0.1.0 (beta).** Windows 10/11 x64. No signed installer or auto-update yet.
+
+<p align="center">
+  <img src="docs/assets/main.png" width="860" alt="Today, this week and this month on one screen">
+</p>
+
+<table>
+  <tr>
+    <td width="50%"><img src="docs/assets/confirm.png" alt="The confirm card filled in from one sentence"></td>
+    <td width="50%"><img src="docs/assets/themes.png" alt="Four themes: bus board, desk calendar, standard, high contrast"></td>
+  </tr>
+  <tr>
+    <td align="center">One sentence → a filled card, checked before saving</td>
+    <td align="center">Four themes, each in light and dark</td>
+  </tr>
+</table>
 
 ## Features
 
@@ -26,6 +51,18 @@ malplan is a Windows desktop app for appointments and to-dos. Dates and times ar
 - Four themes (bus board, desk calendar, standard, high contrast), each in light and dark, and three text sizes.
 
 ## How it works
+
+```mermaid
+flowchart LR
+  S["One Korean sentence"] --> P["Rule parser<br/>date · time · repeat"]
+  S --> L["Local AI<br/>title · kind · category · place"]
+  P --> C["Confirm card<br/>guesses marked 추정"]
+  L -- "checked by the rules" --> C
+  C -- "you confirm" --> F[("Sync folder<br/>per-device logs")]
+  F --> V["Today · week · month"]
+  M["AI tools via MCP"] -- "preview, then add" --> F
+```
+
 
 | Part | What decides it |
 |---|---|
