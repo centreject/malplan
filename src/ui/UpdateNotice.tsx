@@ -1,18 +1,14 @@
 import { useEffect, useRef, useState } from "react";
 import { useUpdate } from "./update";
 
-/** A few seconds after start: if a newer version is out, ask once per launch with 나중에 / 지금 업데이트. */
-const CHECK_DELAY_MS = 5000;
-
+/** Right after start (the check itself takes about a second): if a newer version is out, ask once per launch. */
 export function UpdateNotice() {
   const dialog = useRef<HTMLDialogElement>(null);
   const { state, find, install } = useUpdate();
   const [dismissed, setDismissed] = useState(false);
 
   useEffect(() => {
-    const timer = window.setTimeout(() => void find(), CHECK_DELAY_MS);
-
-    return () => window.clearTimeout(timer);
+    void find();
   }, [find]);
 
   const show = !dismissed && (state.phase === "available" || state.phase === "installing");
