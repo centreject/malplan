@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.2.1 (2026-11-01)
+
+- First update delivered through the in-app updater (checks the 0.2.0 → 0.2.1 path end to end). No other changes.
+
 ## 0.2.0 (2026-11-01)
 
 - Automatic updates: right after start the app checks GitHub Releases and offers 나중에 / 지금 업데이트; 마이페이지 → 정보 has 업데이트 확인. Updates are signed and verified before installing. Install 0.2.0 by hand once; later versions arrive in the app.
