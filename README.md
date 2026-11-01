@@ -2,7 +2,7 @@
   <img src="docs/assets/logo.svg" width="560" alt="malplan">
 </p>
 
-<p align="center"><b>English</b> | <a href="README.ko.md">한국어</a></p>
+<p align="center"><b>한국어</b> | <a href="README.en.md">English</a></p>
 
 <p align="center">
   <img src="https://img.shields.io/badge/platform-Windows%2010%2F11-0078D4?logo=windows" alt="Windows 10/11">
@@ -14,120 +14,122 @@
   <img src="https://img.shields.io/badge/MCP-Claude%20%C2%B7%20Gemini%20%C2%B7%20Codex-8b5cf6" alt="MCP">
 </p>
 
-Type a schedule in one Korean sentence, check the card it fills in, and see it in today, this week and this month at once.
+일정을 한국어 한 문장으로 입력하고, 채워진 카드를 확인한 뒤, 오늘·이번 주·이번 달에서 한 번에 보는 앱입니다.
 
 > 12월 28일까지 매주 수요일 오후 4시 회사 우편물 발송
 >
-> → every Wednesday, 16:00, until 12/28 · category 회사 · task
+> → 매주 수요일 16시, 12/28까지 · 분류 회사 · 할 일
 
-malplan is a Windows desktop app for appointments and to-dos. Dates and times are read by code, never guessed by a model; a small AI model that runs on your PC only tidies the title, category and place. Nothing is saved until you confirm it.
+malplan은 일정과 할 일을 함께 관리하는 Windows 데스크톱 앱입니다. 날짜와 시간은 코드가 읽고 AI가 추측하지 않습니다. 내 PC에서 도는 작은 AI 모델은 제목·분류·장소만 정리합니다. 확인을 누르기 전에는 아무것도 저장되지 않습니다.
 
-**Status: v0.1.0 (beta).** Windows 10/11 x64. No signed installer or auto-update yet.
+**상태: v0.1.1 (베타).** Windows 10/11 x64. 코드 서명된 설치 파일과 자동 업데이트는 아직 없습니다.
 
 <p align="center">
-  <img src="docs/assets/main.png" width="860" alt="Today, this week and this month on one screen">
+  <img src="docs/assets/main.png" width="860" alt="오늘·이번 주·이번 달을 한 화면에">
 </p>
 
 <table>
   <tr>
-    <td width="50%"><img src="docs/assets/confirm.png" alt="The confirm card filled in from one sentence"></td>
-    <td width="50%"><img src="docs/assets/themes.png" alt="Four themes: bus board, desk calendar, standard, high contrast"></td>
+    <td width="50%"><img src="docs/assets/confirm.png" alt="한 문장으로 채워진 확인 카드"></td>
+    <td width="50%"><img src="docs/assets/themes.png" alt="디자인 4종: 버스 안내판, 탁상달력, 기본, 고대비"></td>
   </tr>
   <tr>
-    <td align="center">One sentence → a filled card, checked before saving</td>
-    <td align="center">Four themes, each in light and dark</td>
+    <td align="center">한 문장 → 채워진 카드, 저장 전에 확인</td>
+    <td align="center">디자인 4종, 각각 밝게·어둡게</td>
   </tr>
 </table>
 
-## Features
+## 기능
 
-- **One sentence in, a card out**: dates, times, ranges and repeats ("매주 월·목", "매월 마지막 금요일", "격주", "3개월마다") are parsed by rules; the confirm screen marks every guess as 추정.
-- **Today / week / month on one screen**, with calendar tabs per category, a year/month/week picker in the titles, and an overdue list that keeps every missed task until it is done.
-- **말로 고치기**: edit a saved item by saying what to change ("3시로 바꿔", "하루 미뤄", "장소는 강남역으로").
-- **Local AI, optional API keys**: Qwen3 4B runs through llama.cpp on your PC (one 2.5GB download, then offline). Claude, Gemini or OpenRouter keys can be used instead.
-- **Sync through a folder you choose** (local, NAS or a cloud-synced folder): each device writes its own log and changes merge per field.
-- **AI tools (MCP)**: Claude Code, Claude Desktop, Gemini CLI, Antigravity and Codex can list, find and add schedules.
-- Korean holidays (lunar included), reminders, search, ICS export, backups, tray, autostart, a global shortcut you choose.
-- Four themes (bus board, desk calendar, standard, high contrast), each in light and dark, and three text sizes.
+- **한 문장으로 카드 만들기**: 날짜·시간·기간·반복("매주 월·목", "매월 마지막 금요일", "격주", "3개월마다")은 규칙으로 읽고, 확인 화면은 추측한 값마다 "추정"을 표시합니다.
+- **한 화면에 오늘 / 주간 / 월간**: 분류별 달력 탭, 제목을 눌러 연·월·주 선택, 완료할 때까지 남는 밀린 할 일 목록.
+- **말로 고치기**: 저장한 항목을 "3시로 바꿔", "하루 미뤄", "장소는 강남역으로"처럼 말로 고칩니다.
+- **로컬 AI, API 키는 선택**: Qwen3 4B를 llama.cpp로 내 PC에서 실행합니다(2.5GB 한 번 받으면 이후 인터넷 없이 동작). Claude, Gemini, OpenRouter 키를 대신 쓸 수도 있습니다.
+- **직접 고른 폴더로 동기화**(로컬, NAS, 클라우드 동기화 폴더): 기기마다 자기 기록 파일에만 쓰고, 변경은 필드 단위로 합칩니다.
+- **AI 도구 연결(MCP)**: Claude Code, Claude Desktop, Gemini CLI, Antigravity, Codex에서 일정을 보고, 찾고, 추가할 수 있습니다.
+- 공휴일(음력 포함), 알림, 검색, ICS 내보내기, 백업, 트레이, 자동 실행, 직접 정하는 전역 단축키.
+- 디자인 4종(버스 안내판, 탁상달력, 기본, 고대비), 각각 밝게·어둡게, 글자 크기 3단계.
 
-## How it works
+## 동작 방식
 
 ```mermaid
 flowchart LR
-  S["One Korean sentence"] --> P["Rule parser<br/>date · time · repeat"]
-  S --> L["Local AI<br/>title · kind · category · place"]
-  P --> C["Confirm card<br/>guesses marked 추정"]
-  L -- "checked by the rules" --> C
-  C -- "you confirm" --> F[("Sync folder<br/>per-device logs")]
-  F --> V["Today · week · month"]
-  M["AI tools via MCP"] -- "preview, then add" --> F
+  S["한국어 문장 하나"] --> P["규칙 파서<br/>날짜 · 시간 · 반복"]
+  S --> L["로컬 AI<br/>제목 · 종류 · 분류 · 장소"]
+  P --> C["확인 카드<br/>추측한 값은 추정 표시"]
+  L -- "규칙으로 한 번 더 검사" --> C
+  C -- "사용자가 확인" --> F[("동기화 폴더<br/>기기별 기록")]
+  F --> V["오늘 · 주간 · 월간"]
+  M["AI 도구 (MCP)"] -- "미리보기 후 추가" --> F
 ```
 
 
-| Part | What decides it |
+| 부분 | 정하는 쪽 |
 |---|---|
-| Date, time, repeat | A rule-based Korean parser ([`src/parse`](src/parse)), measured on 1,182 public test phrases: 86.7% of schedule expressions correct |
-| Title, kind, category, place | The local model (or an API), checked against the rules: about 90% of fields correct on 90 held-out sentences |
-| Saving | You, on the confirm screen |
+| 날짜, 시간, 반복 | 규칙 기반 한국어 파서([`src/parse`](src/parse)). 공개 시험 문장 1,182건 기준 일정 표현 86.7% 정답 |
+| 제목, 종류, 분류, 장소 | 로컬 모델(또는 API)을 규칙으로 한 번 더 검사. 튜닝에 쓰지 않은 90문장 기준 약 90% 정답 |
+| 저장 | 사용자가 확인 화면에서 |
 
-The model only starts when you focus the input, and stops after 10 minutes idle. What you type stays on your PC unless you choose an API provider.
+모델은 입력창을 누를 때 켜지고 10분 동안 쓰지 않으면 꺼집니다. API를 고르지 않는 한 입력한 내용은 PC 밖으로 나가지 않습니다.
 
-## Install
+## 설치
 
-There is no release build yet. To run it from source:
+**다운로드**: [Releases](https://github.com/centreject/malplan/releases/latest)에서 설치 파일(`malplan_x.y.z_x64-setup.exe`)을 받으세요. 내 계정에만 설치되고 관리자 권한이 필요 없습니다. 아직 코드 서명이 없어 Windows SmartScreen 경고가 뜰 수 있습니다: **추가 정보 → 실행**을 누르세요.
+
+소스에서 실행하려면:
 
 ```bash
 npm ci
-npm run fetch:llama   # llama-server CPU build (pinned, checked by SHA256)
+npm run fetch:llama   # llama-server CPU 빌드 (버전 고정, SHA256 확인)
 npm run tauri dev
 ```
 
-The first run offers to download the AI model (2.5GB, Apache 2.0) into `%LOCALAPPDATA%\com.centreject.malplan\models`. Without it, dates and times still work by rules.
+처음 실행하면 AI 모델(2.5GB, Apache 2.0)을 `%LOCALAPPDATA%\com.centreject.malplan\models`에 받을지 묻습니다. 받지 않아도 날짜·시간은 규칙으로 읽습니다.
 
-To build the installer (NSIS, per-user, no admin rights): `npx tauri build`.
+설치 파일(NSIS, 사용자 단위 설치, 관리자 권한 불필요) 만들기: `npx tauri build`
 
-**Requirements**: Windows 10/11 x64, WebView2 (built into Windows 11), about 3GB free disk for the model, 8GB RAM recommended.
+**필요 사양**: Windows 10/11 x64, WebView2(Windows 11에 기본 포함), 모델용 여유 공간 약 3GB, RAM 8GB 권장.
 
-## Use it from AI tools (MCP)
+## AI 도구에서 쓰기 (MCP)
 
-malplan ships a small MCP server (`mcp/malplan-mcp.mjs` in the install folder; needs Node.js). 마이페이지 → AI 도구 연결 shows the exact command or config for your PC. For Claude Code:
+설치 폴더의 `mcp/malplan-mcp.mjs`가 MCP 서버입니다(Node.js 필요). 마이페이지 → AI 도구 연결에서 내 PC 경로가 채워진 명령과 설정을 복사할 수 있습니다. Claude Code 예:
 
 ```bash
-claude mcp add malplan -- node "<install folder>\mcp\malplan-mcp.mjs" --dir "<sync folder>"
+claude mcp add malplan -- node "<설치 폴더>\mcp\malplan-mcp.mjs" --dir "<동기화 폴더>"
 ```
 
-Tools: `list_schedule`, `find_schedule`, `preview_schedule`, `add_schedule`, `complete_task`. Dates are always computed by malplan's own parser, and adding goes through a preview first.
+도구: `list_schedule`, `find_schedule`, `preview_schedule`, `add_schedule`, `complete_task`. 날짜는 항상 malplan의 파서가 계산하고, 추가는 미리보기를 거칩니다.
 
-## Development
+## 개발
 
-| Command | What it does |
+| 명령 | 하는 일 |
 |---|---|
-| `npm run check` | oxlint (with the vendored anti-slop rules), TypeScript, Vitest |
-| `npm run build` | Frontend build |
-| `npm run build:mcp` | MCP server bundle (`dist-mcp/`) |
-| `npm run bench:parse` | Parser score on the public test phrases |
-| `npm run bench:llm` | AI extraction score (needs llama-server running) |
+| `npm run check` | oxlint(내장 anti-slop 규칙 포함), TypeScript, Vitest |
+| `npm run build` | 화면 빌드 |
+| `npm run build:mcp` | MCP 서버 묶음(`dist-mcp/`) |
+| `npm run bench:parse` | 공개 시험 문장으로 파서 채점 |
+| `npm run bench:llm` | AI 정리 채점(llama-server 실행 필요) |
 
-Logic lives in TypeScript (`src/`); Rust (`src-tauri/`) only hosts plugins and processes. Every external input (model replies, sync files, MCP calls) is validated with valibot.
+로직은 TypeScript(`src/`)에 있고, Rust(`src-tauri/`)는 플러그인과 프로세스 관리만 합니다. 모델 응답, 동기화 파일, MCP 호출 같은 외부 입력은 모두 valibot으로 검사합니다.
 
 ```
 src/
-  domain/   items, recurrence, schedule, edits (pure, tested)
-  parse/    Korean date/time parser and its test set
-  llm/      prompts, providers, local server control
-  storage/  sync folder: per-device logs, field-level merge
-  mcp/      MCP server (tools.ts is pure; main.ts is the Node glue)
-  ui/       React components
-src-tauri/  Tauri shell: tray, shortcut, llama-server process, model download
-docs/       spec, plan, product and design notes (Korean)
+  domain/   항목, 반복, 일정, 고치기 (순수 함수, 테스트)
+  parse/    한국어 날짜·시간 파서와 시험 문장
+  llm/      지시문, 제공자, 로컬 서버 제어
+  storage/  동기화 폴더: 기기별 기록, 필드 단위 병합
+  mcp/      MCP 서버 (tools.ts는 순수 로직, main.ts는 Node 연결부)
+  ui/       React 컴포넌트
+src-tauri/  Tauri: 트레이, 단축키, llama-server 프로세스, 모델 다운로드
+docs/       명세, 계획, 제품·디자인 문서
 ```
 
-## Docs
+## 문서
 
-- [docs/SPEC.md](docs/SPEC.md): the confirmed spec (Korean)
-- [docs/PLAN.md](docs/PLAN.md): plan, measurements and progress log
-- [docs/DESIGN.md](docs/DESIGN.md): design system
+- [docs/SPEC.md](docs/SPEC.md): 확정 명세
+- [docs/PLAN.md](docs/PLAN.md): 계획, 측정값, 진행 기록
+- [docs/DESIGN.md](docs/DESIGN.md): 디자인 시스템
 
-## License
+## 라이선스
 
-malplan is released under the [MIT License](LICENSE). Bundled and downloaded components keep their licenses: llama.cpp (MIT), Qwen3 4B (Apache 2.0), Tauri (MIT/Apache 2.0), React (MIT), valibot (MIT), Lucide (ISC). The parser test phrases come from korean-datetime (MIT, see `src/parse/fixtures`).
+malplan은 [MIT 라이선스](LICENSE)로 배포합니다. 포함되거나 내려받는 구성 요소는 각자의 라이선스를 따릅니다: llama.cpp (MIT), Qwen3 4B (Apache 2.0), Tauri (MIT/Apache 2.0), React (MIT), valibot (MIT), Lucide (ISC). 파서 시험 문장은 korean-datetime (MIT, `src/parse/fixtures` 참고)에서 가져왔습니다.

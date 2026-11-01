@@ -1,0 +1,135 @@
+<p align="center">
+  <img src="docs/assets/logo.svg" width="560" alt="malplan">
+</p>
+
+<p align="center"><a href="README.md">한국어</a> | <b>English</b></p>
+
+<p align="center">
+  <img src="https://img.shields.io/badge/platform-Windows%2010%2F11-0078D4?logo=windows" alt="Windows 10/11">
+  <a href="https://github.com/centreject/malplan/releases/tag/v0.1.0"><img src="https://img.shields.io/github/v/tag/centreject/malplan?label=version&color=25c4c8" alt="version"></a>
+  <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-f5b54a" alt="MIT"></a>
+  <a href="https://github.com/centreject/malplan/actions/workflows/ci.yml"><img src="https://github.com/centreject/malplan/actions/workflows/ci.yml/badge.svg" alt="CI"></a>
+  <img src="https://img.shields.io/badge/tests-471%20passing-brightgreen" alt="471 tests">
+  <img src="https://img.shields.io/badge/AI-local%20(llama.cpp)-3b6ff5" alt="local AI">
+  <img src="https://img.shields.io/badge/MCP-Claude%20%C2%B7%20Gemini%20%C2%B7%20Codex-8b5cf6" alt="MCP">
+</p>
+
+Type a schedule in one Korean sentence, check the card it fills in, and see it in today, this week and this month at once.
+
+> 12월 28일까지 매주 수요일 오후 4시 회사 우편물 발송
+>
+> → every Wednesday, 16:00, until 12/28 · category 회사 · task
+
+malplan is a Windows desktop app for appointments and to-dos. Dates and times are read by code, never guessed by a model; a small AI model that runs on your PC only tidies the title, category and place. Nothing is saved until you confirm it.
+
+**Status: v0.1.1 (beta).** Windows 10/11 x64, Korean interface only. No signed installer or auto-update yet.
+
+<p align="center">
+  <img src="docs/assets/main.png" width="860" alt="Today, this week and this month on one screen">
+</p>
+
+<table>
+  <tr>
+    <td width="50%"><img src="docs/assets/confirm.png" alt="The confirm card filled in from one sentence"></td>
+    <td width="50%"><img src="docs/assets/themes.png" alt="Four themes: bus board, desk calendar, standard, high contrast"></td>
+  </tr>
+  <tr>
+    <td align="center">One sentence → a filled card, checked before saving</td>
+    <td align="center">Four themes, each in light and dark</td>
+  </tr>
+</table>
+
+## Features
+
+- **One sentence in, a card out**: dates, times, ranges and repeats ("매주 월·목", "매월 마지막 금요일", "격주", "3개월마다") are parsed by rules; the confirm screen marks every guess as 추정.
+- **Today / week / month on one screen**, with calendar tabs per category, a year/month/week picker in the titles, and an overdue list that keeps every missed task until it is done.
+- **말로 고치기**: edit a saved item by saying what to change ("3시로 바꿔", "하루 미뤄", "장소는 강남역으로").
+- **Local AI, optional API keys**: Qwen3 4B runs through llama.cpp on your PC (one 2.5GB download, then offline). Claude, Gemini or OpenRouter keys can be used instead.
+- **Sync through a folder you choose** (local, NAS or a cloud-synced folder): each device writes its own log and changes merge per field.
+- **AI tools (MCP)**: Claude Code, Claude Desktop, Gemini CLI, Antigravity and Codex can list, find and add schedules.
+- Korean holidays (lunar included), reminders, search, ICS export, backups, tray, autostart, a global shortcut you choose.
+- Four themes (bus board, desk calendar, standard, high contrast), each in light and dark, and three text sizes.
+
+## How it works
+
+```mermaid
+flowchart LR
+  S["One Korean sentence"] --> P["Rule parser<br/>date · time · repeat"]
+  S --> L["Local AI<br/>title · kind · category · place"]
+  P --> C["Confirm card<br/>guesses marked 추정"]
+  L -- "checked by the rules" --> C
+  C -- "you confirm" --> F[("Sync folder<br/>per-device logs")]
+  F --> V["Today · week · month"]
+  M["AI tools via MCP"] -- "preview, then add" --> F
+```
+
+
+| Part | What decides it |
+|---|---|
+| Date, time, repeat | A rule-based Korean parser ([`src/parse`](src/parse)), measured on 1,182 public test phrases: 86.7% of schedule expressions correct |
+| Title, kind, category, place | The local model (or an API), checked against the rules: about 90% of fields correct on 90 held-out sentences |
+| Saving | You, on the confirm screen |
+
+The model only starts when you focus the input, and stops after 10 minutes idle. What you type stays on your PC unless you choose an API provider.
+
+## Install
+
+**Download**: the installer (`malplan_x.y.z_x64-setup.exe`) from [Releases](https://github.com/centreject/malplan/releases/latest). It installs for your account only (no admin rights). The installer is not code-signed yet, so Windows SmartScreen may warn: choose **More info → Run anyway**.
+
+To run it from source instead:
+
+```bash
+npm ci
+npm run fetch:llama   # llama-server CPU build (pinned, checked by SHA256)
+npm run tauri dev
+```
+
+The first run offers to download the AI model (2.5GB, Apache 2.0) into `%LOCALAPPDATA%\com.centreject.malplan\models`. Without it, dates and times still work by rules.
+
+To build the installer (NSIS, per-user, no admin rights): `npx tauri build`.
+
+**Requirements**: Windows 10/11 x64, WebView2 (built into Windows 11), about 3GB free disk for the model, 8GB RAM recommended.
+
+## Use it from AI tools (MCP)
+
+malplan ships a small MCP server (`mcp/malplan-mcp.mjs` in the install folder; needs Node.js). 마이페이지 → AI 도구 연결 shows the exact command or config for your PC. For Claude Code:
+
+```bash
+claude mcp add malplan -- node "<install folder>\mcp\malplan-mcp.mjs" --dir "<sync folder>"
+```
+
+Tools: `list_schedule`, `find_schedule`, `preview_schedule`, `add_schedule`, `complete_task`. Dates are always computed by malplan's own parser, and adding goes through a preview first.
+
+## Development
+
+| Command | What it does |
+|---|---|
+| `npm run check` | oxlint (with the vendored anti-slop rules), TypeScript, Vitest |
+| `npm run build` | Frontend build |
+| `npm run build:mcp` | MCP server bundle (`dist-mcp/`) |
+| `npm run bench:parse` | Parser score on the public test phrases |
+| `npm run bench:llm` | AI extraction score (needs llama-server running) |
+
+Logic lives in TypeScript (`src/`); Rust (`src-tauri/`) only hosts plugins and processes. Every external input (model replies, sync files, MCP calls) is validated with valibot.
+
+```
+src/
+  domain/   items, recurrence, schedule, edits (pure, tested)
+  parse/    Korean date/time parser and its test set
+  llm/      prompts, providers, local server control
+  storage/  sync folder: per-device logs, field-level merge
+  mcp/      MCP server (tools.ts is pure; main.ts is the Node glue)
+  ui/       React components
+src-tauri/  Tauri shell: tray, shortcut, llama-server process, model download
+docs/       spec, plan, product and design notes (Korean)
+```
+
+## Docs
+
+- [docs/SPEC.md](docs/SPEC.md): the confirmed spec (Korean)
+- [docs/PLAN.md](docs/PLAN.md): plan, measurements and progress log
+- [docs/DESIGN.md](docs/DESIGN.md): design system
+
+## License
+
+malplan is released under the [MIT License](LICENSE). Bundled and downloaded components keep their licenses: llama.cpp (MIT), Qwen3 4B (Apache 2.0), Tauri (MIT/Apache 2.0), React (MIT), valibot (MIT), Lucide (ISC). The parser test phrases come from korean-datetime (MIT, see `src/parse/fixtures`).

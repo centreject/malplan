@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.1.1 (2026-11-01)
+
+First release with a download.
+
+- New app icon (a speech-bubble calendar) with a simpler version for the tray and taskbar.
+- Smaller bundle: only the llama.cpp files llama-server needs.
+- README in Korean (default, README.md) and English (README.en.md) with logo, badges, screenshots and a flow diagram; MIT license.
+
 ## 0.1.0 (2026-10-25)
 
 First public version (beta, Windows).
