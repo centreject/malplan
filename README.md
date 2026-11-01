@@ -22,7 +22,7 @@
 
 malplan은 일정과 할 일을 함께 관리하는 Windows 데스크톱 앱입니다. 날짜와 시간은 코드가 읽고 AI가 추측하지 않습니다. 내 PC에서 도는 작은 AI 모델은 제목·분류·장소만 정리합니다. 확인을 누르기 전에는 아무것도 저장되지 않습니다.
 
-**상태: v0.1.1 (베타).** Windows 10/11 x64. 코드 서명된 설치 파일과 자동 업데이트는 아직 없습니다.
+**상태: v0.2.0 (베타).** Windows 10/11 x64. 설치 파일은 아직 코드 서명이 없고, 앱은 Releases에서 스스로 업데이트합니다.
 
 <p align="center">
   <img src="docs/assets/main.png" width="860" alt="오늘·이번 주·이번 달을 한 화면에">
@@ -86,7 +86,7 @@ npm run tauri dev
 
 처음 실행하면 AI 모델(2.5GB, Apache 2.0)을 `%LOCALAPPDATA%\com.centreject.malplan\models`에 받을지 묻습니다. 받지 않아도 날짜·시간은 규칙으로 읽습니다.
 
-설치 파일(NSIS, 사용자 단위 설치, 관리자 권한 불필요) 만들기: `npx tauri build`
+설치 파일(NSIS, 사용자 단위 설치, 관리자 권한 불필요) 만들기: `npx tauri build`. 배포용 빌드는 업데이트 서명 키(`TAURI_SIGNING_PRIVATE_KEY`, 관리자만 보유)로 서명합니다. `vX.Y.Z` 태그를 push하면 GitHub Actions가 빌드해 Release 초안을 만듭니다.
 
 **필요 사양**: Windows 10/11 x64, WebView2(Windows 11에 기본 포함), 모델용 여유 공간 약 3GB, RAM 8GB 권장.
 

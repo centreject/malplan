@@ -1,6 +1,6 @@
 [package]
 name = "malplan"
-version = "0.1.1"
+version = "0.2.0"
 license = "MIT"
 description = "Natural-language Korean schedule and to-do app"
 authors = ["centreject"]
@@ -42,7 +42,9 @@ strip = true
 [target.'cfg(not(any(target_os = "android", target_os = "ios")))'.dependencies]
 tauri-plugin-autostart = "2"
 tauri-plugin-global-shortcut = "2"
+tauri-plugin-process = "2"
 tauri-plugin-single-instance = "2"
+tauri-plugin-updater = "2"
 tauri-plugin-window-state = "2"
 
 # Already in the tree via tauri; used only to tie llama-server's lifetime to the app (Job Object).

@@ -22,7 +22,7 @@ Type a schedule in one Korean sentence, check the card it fills in, and see it i
 
 malplan is a Windows desktop app for appointments and to-dos. Dates and times are read by code, never guessed by a model; a small AI model that runs on your PC only tidies the title, category and place. Nothing is saved until you confirm it.
 
-**Status: v0.1.1 (beta).** Windows 10/11 x64, Korean interface only. No signed installer or auto-update yet.
+**Status: v0.2.0 (beta).** Windows 10/11 x64, Korean interface only. The installer is not code-signed yet; the app updates itself from Releases.
 
 <p align="center">
   <img src="docs/assets/main.png" width="860" alt="Today, this week and this month on one screen">
@@ -86,7 +86,7 @@ npm run tauri dev
 
 The first run offers to download the AI model (2.5GB, Apache 2.0) into `%LOCALAPPDATA%\com.centreject.malplan\models`. Without it, dates and times still work by rules.
 
-To build the installer (NSIS, per-user, no admin rights): `npx tauri build`.
+To build the installer (NSIS, per-user, no admin rights): `npx tauri build`. Release builds sign the update with `TAURI_SIGNING_PRIVATE_KEY` (the maintainer's key); pushing a tag `vX.Y.Z` builds and drafts the GitHub Release through Actions.
 
 **Requirements**: Windows 10/11 x64, WebView2 (built into Windows 11), about 3GB free disk for the model, 8GB RAM recommended.
 

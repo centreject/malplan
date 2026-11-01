@@ -40,6 +40,7 @@ import { useBoard } from "./ui/useBoard";
 import type { Board } from "./storage/board";
 import { loadScheme, loadTextSize, loadTheme, resolvedScheme, saveScheme, saveTextSize, saveTheme, type SchemeId, type TextSizeId, type ThemeId } from "./ui/themes";
 import { FirstRunNotice } from "./ui/FirstRunNotice";
+import { UpdateNotice } from "./ui/UpdateNotice";
 import { SettingsDialog, ThemeSettings } from "./ui/SettingsDialog";
 import { WindowSettings } from "./ui/WindowSettings";
 import { TodayPane } from "./ui/TodayPane";
@@ -539,6 +540,7 @@ export default function App() {
           />
         </div>
       </main>
+      <UpdateNotice />
       <FirstRunNotice localAi={llm.provider === "local"} onDownload={() => setSettingsOpen("ai")} />
       <SettingsDialog
         key={settingsOpen ?? "closed"}

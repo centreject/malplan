@@ -52,6 +52,9 @@ pub fn run() {
                 .rotation_strategy(tauri_plugin_log::RotationStrategy::KeepOne)
                 .build(),
         )
+        // Updates: signed installers from GitHub Releases (see tauri.conf.json plugins.updater).
+        .plugin(tauri_plugin_updater::Builder::new().build())
+        .plugin(tauri_plugin_process::init())
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_notification::init())

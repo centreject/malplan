@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.2.0 (2026-11-01)
+
+- Automatic updates: a few seconds after start the app checks GitHub Releases and offers 나중에 / 지금 업데이트; 마이페이지 → 정보 has 업데이트 확인. Updates are signed and verified before installing. Install 0.2.0 by hand once; later versions arrive in the app.
+- Releases are built by GitHub Actions from a version tag.
+
 ## 0.1.1 (2026-11-01)
 
 First release with a download.
