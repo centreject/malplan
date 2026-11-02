@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.2.2 (2026-11-02)
+
+- AI category picks are more accurate: prompt examples now use your own category names, and broad categories like 개인 are chosen last. Held-out test sentences: category 71 → 78 of 90, overall 90% → 92%.
+
 ## 0.2.1 (2026-11-01)
 
 - First update delivered through the in-app updater (checks the 0.2.0 → 0.2.1 path end to end). No other changes.
