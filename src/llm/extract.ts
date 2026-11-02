@@ -90,6 +90,43 @@ export function replySchema(categories: Category[]): ReplyJsonSchema {
   };
 }
 
+type PromptExample = { names: string[]; input: string; title: string; kind: "event" | "task"; place?: string; note?: string };
+
+/** Each example fits a kind of category; `names` are what users call it, the first being the usual name. */
+const PROMPT_EXAMPLES: PromptExample[] = [
+  { names: ["회사", "직장", "업무"], input: "내일 오후 3시 본사 3층에서 분기 실적 발표", title: "분기 실적 발표", kind: "event", place: "본사 3층" },
+  { names: ["회사", "직장", "업무"], input: "목요일까지 협력사에 계약서 보내기", title: "협력사에 계약서 보내기", kind: "task" },
+  { names: ["학교", "학업", "공부", "수업"], input: "수요일까지 경제학 레포트 제출", title: "경제학 레포트 제출", kind: "task" },
+  { names: ["약속", "모임", "친구", "만남"], input: "토요일 점심 민지랑 성수동에서 브런치. 예약은 내가", title: "민지와 브런치", kind: "event", place: "성수동", note: "예약은 내가" },
+  { names: ["공모전", "대회", "대외활동"], input: "다음 달 3일 창업 공모전 접수 마감", title: "창업 공모전 접수 마감", kind: "task" },
+  { names: ["개인", "생활", "일상"], input: "주말에 안경 맞추러 가기", title: "안경 맞추기", kind: "task" },
+  { names: ["운동", "헬스", "건강"], input: "매주 화목 저녁 수영 강습 수영복 챙기기", title: "수영 강습", kind: "event", note: "수영복 챙기기" },
+];
+
+function exampleLine({ input, title, kind, place, note }: PromptExample, category: string): string {
+  return `"${input}" → ${JSON.stringify({ title, kind, category, place, note })}`;
+}
+
+/** Examples in the user's own category names. Too few matches would skew the model, so those get the labelled defaults. */
+function promptExamples(categories: Category[]): string[] {
+  const fitted = PROMPT_EXAMPLES.flatMap((example) => {
+    const name = example.names.find((n) => categories.some((c) => c.name === n));
+
+    return name === undefined ? [] : [exampleLine(example, name)];
+  });
+
+  if (fitted.length >= 2) {
+    return ["예시:", ...fitted];
+  }
+
+  const usual = [...new Set(PROMPT_EXAMPLES.flatMap((example) => example.names.slice(0, 1)))];
+
+  return [
+    `예시 (분류 목록이 ${usual.join(", ")}일 때):`,
+    ...PROMPT_EXAMPLES.map((example) => exampleLine(example, example.names[0] ?? "")),
+  ];
+}
+
 export function buildPrompt(
   input: string,
   categories: Category[],
@@ -111,11 +148,8 @@ export function buildPrompt(
     '- "placeGuessed": place가 장소인지 확실하지 않으면 true.',
     '- "note": 제목에 못 담은 중요한 정보만(준비물, 거리 등). 없으면 이 필드를 빼라.',
     "분류 목록: " + categories.map((c) => c.name).join(", "),
-    "예시 (분류 목록이 회사, 개인, 운동일 때):",
-    '"내일 오후 3시 본사 3층에서 분기 실적 발표" → {"title":"분기 실적 발표","kind":"event","category":"회사","place":"본사 3층"}',
-    '"주말에 안경 맞추러 가기" → {"title":"안경 맞추기","kind":"task","category":"개인"}',
-    '"토요일 점심 민지랑 성수동에서 브런치. 예약은 내가" → {"title":"민지와 브런치","kind":"event","category":"개인","place":"성수동","note":"예약은 내가"}',
-    '"매주 화목 저녁 수영 강습 수영복 챙기기" → {"title":"수영 강습","kind":"event","category":"운동","note":"수영복 챙기기"}',
+    "분류는 문장의 상대와 활동에 가장 구체적으로 맞는 것을 고른다. '개인'처럼 넓은 분류는 다른 분류가 모두 맞지 않을 때만 쓴다.",
+    ...promptExamples(categories),
     examples === "" ? "" : "사용자가 예전에 고친 예:\n" + examples,
   ]
     .filter((line) => line !== "")

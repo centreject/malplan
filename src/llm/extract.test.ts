@@ -46,6 +46,22 @@ describe("buildPrompt", () => {
     expect(system).toContain('"김철수 저녁" → 분류 "약속", kind "task"');
   });
 
+  test("examples use the user's own category names", () => {
+    const { system } = buildPrompt(text, [{ id: "a", name: "직장", colorSlot: 1 }, { id: "b", name: "모임", colorSlot: 2 }], [], today);
+
+    expect(system).toContain('"title":"분기 실적 발표","kind":"event","category":"직장"');
+    expect(system).toContain('"title":"민지와 브런치","kind":"event","category":"모임"');
+    expect(system).not.toContain('"category":"회사"');
+    expect(system).not.toContain("안경");
+  });
+
+  test("categories the examples can't fit get labelled defaults instead", () => {
+    const { system } = buildPrompt(text, [{ id: "a", name: "가족", colorSlot: 1 }], [], today);
+
+    expect(system).toContain("예시 (분류 목록이 회사, 학교, 약속, 공모전, 개인, 운동일 때):");
+    expect(system).toContain('"title":"민지와 브런치","kind":"event","category":"약속"');
+  });
+
   test("the schema limits category to the user's names plus the new-category choice", () => {
     const { schema } = buildPrompt(text, categories, [], today);
 
