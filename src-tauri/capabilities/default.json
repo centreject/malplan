@@ -25,19 +25,25 @@
       "identifier": "http:default",
       "allow": [
         {
-          "url": "https://apis.data.go.kr/*"
+          "url": "https://*:*"
         },
         {
-          "url": "https://generativelanguage.googleapis.com/*"
+          "url": "http://localhost:*"
         },
         {
-          "url": "https://openrouter.ai/*"
+          "url": "http://127.0.0.1:*"
         },
         {
-          "url": "https://api.anthropic.com/*"
+          "url": "http://(10\\.\\d+\\.\\d+\\.\\d+):*"
         },
         {
-          "url": "http://127.0.0.1:8357/*"
+          "url": "http://(172\\.(?:1[6-9]|2\\d|3[01])\\.\\d+\\.\\d+):*"
+        },
+        {
+          "url": "http://(192\\.168\\.\\d+\\.\\d+):*"
+        },
+        {
+          "url": "http://*.local:*"
         }
       ]
     }

@@ -12,7 +12,7 @@ import {
   type ModelStatus,
 } from "../llm/localModel";
 import { localServer, type LocalStatus } from "../llm/localServer";
-import { CLAUDE_MODELS, DEFAULT_MODELS, PROVIDERS, type LlmSettings, type ProviderId } from "../llm/providers";
+import { CLAUDE_MODELS, customEndpoint, DEFAULT_MODELS, PROVIDERS, type LlmSettings, type ProviderId } from "../llm/providers";
 
 type AiSettingsProps = { settings: LlmSettings; onChange: (settings: LlmSettings) => void };
 
@@ -21,6 +21,7 @@ const NOTES: Record<ProviderId, string> = {
   gemini: "aistudio.google.com에서 무료 API 키를 받을 수 있습니다. 무료 등급에서는 입력 내용이 Google 제품 개선에 쓰일 수 있습니다.",
   anthropic: "console.anthropic.com에서 API 키를 만들고 크레딧을 충전해야 합니다. Claude Pro 구독과는 별개입니다.",
   openrouter: "openrouter.ai에서 키를 받고, 사용할 모델 이름을 입력하세요. 무료 모델(:free)은 응답이 불안정할 수 있습니다.",
+  custom: "Ollama, LM Studio, 자체 서버처럼 OpenAI 호환 API를 주는 곳에 연결합니다. 입력한 문장과 키가 이 주소로 전송됩니다. 키가 없는 서버는 비워 두세요.",
   off: "날짜·시간은 그대로 계산하고, 제목·분류는 간단한 규칙으로만 정합니다.",
 };
 
@@ -141,7 +142,8 @@ function LocalModel() {
 export function AiSettings({ settings, onChange }: AiSettingsProps) {
   const [key, setKey] = useState(settings.apiKey);
   const [cleared, setCleared] = useState(false);
-  const needsKey = settings.provider === "gemini" || settings.provider === "anthropic" || settings.provider === "openrouter";
+  const needsKey = settings.provider === "gemini" || settings.provider === "anthropic" || settings.provider === "openrouter" || settings.provider === "custom";
+  const endpoint = customEndpoint(settings.baseUrl);
 
   return (
     <fieldset className="settings-section window-settings">
@@ -166,6 +168,20 @@ export function AiSettings({ settings, onChange }: AiSettingsProps) {
       <p className="window-note">{NOTES[settings.provider]}</p>
       {settings.provider === "local" && isTauri() && <LocalModel />}
 
+      {settings.provider === "custom" && (
+        <>
+          <label className="window-option holiday-key">
+            서버 주소
+            <input
+              value={settings.baseUrl}
+              placeholder="예: http://127.0.0.1:11434/v1"
+              onChange={(event) => onChange({ ...settings, baseUrl: event.target.value.trim() })}
+            />
+          </label>
+          {settings.baseUrl !== "" && "error" in endpoint && <p className="window-error" role="alert">{endpoint.error}</p>}
+        </>
+      )}
+
       {needsKey && (
         <>
           <label className="window-option holiday-key">
@@ -188,7 +204,7 @@ export function AiSettings({ settings, onChange }: AiSettingsProps) {
               모델
               <input
                 value={settings.model}
-                placeholder={settings.provider === "openrouter" ? "예: google/gemini-2.5-flash-lite" : DEFAULT_MODELS[settings.provider]}
+                placeholder={settings.provider === "openrouter" ? "예: google/gemini-2.5-flash-lite" : settings.provider === "custom" ? "서버의 모델 이름 (예: qwen3:4b)" : DEFAULT_MODELS[settings.provider]}
                 onChange={(event) => onChange({ ...settings, model: event.target.value.trim() })}
               />
             </label>

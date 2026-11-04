@@ -12,6 +12,7 @@ export const PROVIDERS = [
   { id: "gemini", name: "Google Gemini API" },
   { id: "anthropic", name: "Claude API" },
   { id: "openrouter", name: "OpenRouter" },
+  { id: "custom", name: "OpenAI 호환 서버 (주소 직접 입력)" },
   { id: "off", name: "사용 안 함 (규칙 기반만)" },
 ] as const;
 
@@ -22,6 +23,7 @@ export const DEFAULT_MODELS: Record<ProviderId, string> = {
   gemini: "gemini-2.5-flash-lite",
   anthropic: "claude-opus-5-5",
   openrouter: "",
+  custom: "",
   off: "",
 };
 
@@ -36,6 +38,7 @@ const SettingsSchema = v.object({
   provider: v.optional(v.picklist(PROVIDERS.map((p) => p.id)), "local"),
   apiKey: v.optional(v.string(), ""),
   model: v.optional(v.string(), ""),
+  baseUrl: v.optional(v.string(), ""),
 });
 
 export type LlmSettings = v.InferOutput<typeof SettingsSchema>;
@@ -46,6 +49,31 @@ const STORAGE_KEY = "malplan.llm";
 export const LOCAL_ENDPOINT = `${LOCAL_ORIGIN}/v1/chat/completions`;
 
 const TIMEOUT_MS = 30_000;
+
+/** A self-hosted server may have to load its model first. */
+const CUSTOM_TIMEOUT_MS = 120_000;
+
+/** Plain http only inside this PC or the home network. Keep in step with the http scope in capabilities/default.json. */
+const PRIVATE_HOST = /^(localhost|127\.0\.0\.1|10\.\d+\.\d+\.\d+|172\.(1[6-9]|2\d|3[01])\.\d+\.\d+|192\.168\.\d+\.\d+|[\w.-]+\.local)$/;
+
+/** The chat endpoint of a user-entered server ("…/v1" or the full path), or why the address can't be used. */
+export function customEndpoint(baseUrl: string): { url: string } | { error: string } {
+  if (!URL.canParse(baseUrl)) {
+    return { error: "주소를 입력하세요. 예: http://127.0.0.1:11434/v1" };
+  }
+
+  const url = new URL(baseUrl);
+
+  if (url.protocol !== "https:" && !(url.protocol === "http:" && PRIVATE_HOST.test(url.hostname))) {
+    return { error: "외부 서버는 https 주소만 쓸 수 있습니다. http는 이 PC와 내부망(10.x, 172.16~31.x, 192.168.x, .local)만 됩니다." };
+  }
+
+  const path = url.pathname.replace(/\/+$/, "");
+
+  url.pathname = path.endsWith("/chat/completions") ? path : `${path}/chat/completions`;
+
+  return { url: url.href };
+}
 
 export function loadLlmSettings(): LlmSettings {
   return loadStored(STORAGE_KEY, SettingsSchema, v.parse(SettingsSchema, {}));
@@ -94,7 +122,7 @@ export function chatBody(url: string, model: string, prompt: Prompt): string {
   return JSON.stringify(body);
 }
 
-async function openAiCompatible(url: string, apiKey: string, model: string, prompt: Prompt): Promise<string> {
+async function openAiCompatible(url: string, apiKey: string, model: string, prompt: Prompt, timeout = TIMEOUT_MS): Promise<string> {
   const headers = new Headers({ "Content-Type": "application/json" });
 
   if (apiKey !== "") {
@@ -105,7 +133,7 @@ async function openAiCompatible(url: string, apiKey: string, model: string, prom
     method: "POST",
     headers,
     body: chatBody(url, model, prompt),
-    signal: AbortSignal.timeout(TIMEOUT_MS),
+    signal: AbortSignal.timeout(timeout),
   });
 
   if (!response.ok) {
@@ -160,6 +188,17 @@ export async function complete(settings: LlmSettings, prompt: Prompt): Promise<s
       }
 
       return openAiCompatible("https://openrouter.ai/api/v1/chat/completions", settings.apiKey, model, prompt);
+    case "custom": {
+      const endpoint = customEndpoint(settings.baseUrl);
+
+      if ("error" in endpoint) {
+        throw new Error(endpoint.error);
+      }
+
+      // llama.cpp ignores the name; servers that need one (Ollama) answer with their own error.
+      return openAiCompatible(endpoint.url, settings.apiKey, model === "" ? "local" : model, prompt, CUSTOM_TIMEOUT_MS);
+    }
+
     case "anthropic":
       return claude(settings.apiKey, model, prompt);
     case "off":

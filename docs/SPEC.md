@@ -18,7 +18,7 @@
 - **하이브리드 방식**
   - 날짜·시간·반복·기간: **규칙 기반 코드**로 결정적으로 계산 (LLM에 맡기지 않음)
   - 제목·분류·장소·비고·종류: **로컬 LLM** (llama.cpp `llama-server`, 2.4~3B급 4bit 모델)
-  - 설정 "AI 변환"에서 선택: **로컬(기본)** / Gemini API / Claude API / OpenRouter / 사용 안 함
+  - 설정 "AI 변환"에서 선택: **로컬(기본)** / Gemini API / Claude API / OpenRouter / OpenAI 호환 서버(주소 직접 입력, http는 이 PC와 내부망만) / 사용 안 함
     - API 키는 사용자 본인 키(BYOK), 이 기기에만 저장. 구독(Claude Pro, Google AI Pro)에는 API가 포함되지 않음
     - Gemini 무료 등급은 입력이 Google 제품 개선에 쓰일 수 있음 → 설정 화면에 안내
     - 어떤 방식이든 실패하면 규칙 기반 결과로 진행
