@@ -7,7 +7,7 @@ import { revertChange } from "./domain/undo";
 import { applyEditReply, buildEditPrompt } from "./llm/edit";
 import { buildPrompt, guardExtraction, parseExtraction, type Extraction } from "./llm/extract";
 import { localServer, warmUpLocal } from "./llm/localServer";
-import { complete, loadLlmSettings, saveLlmSettings } from "./llm/providers";
+import { complete, connectionErrorText, loadLlmSettings, saveLlmSettings } from "./llm/providers";
 import { AiSettings } from "./ui/AiSettings";
 import { addDays, partsOf, type IsoDate } from "./domain/date";
 import type { Category, Item } from "./domain/item";
@@ -178,10 +178,10 @@ export default function App() {
           setAi((current) => ({ ...current, note: undefined }));
         }
       })
-      .catch((error: Error) => {
+      .catch((error: Error | string) => {
         if (aiSession.current === session) {
           const note = llm.provider !== "local"
-            ? `AI 정리 실패 (${error.message}). 규칙 기반 결과를 확인하세요.`
+            ? `AI 정리 실패: ${connectionErrorText(error)} 규칙 기반 결과를 확인하세요.`
             : localServer?.status() === "no-model"
               ? "로컬 AI 모델이 없어 규칙 기반으로만 정리했습니다. 마이페이지 → AI 변환에서 받을 수 있습니다."
               : "로컬 AI 모델이 아직 준비되지 않아 규칙 기반으로만 정리했습니다.";
