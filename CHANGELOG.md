@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.2.3 (2026-11-04)
+
+- AI 변환 can use any OpenAI-compatible server (Ollama, LM Studio, self-hosted): enter its address, an optional key and a model name. External servers need https; plain http works only on this PC and private networks.
+
 ## 0.2.2 (2026-11-02)
 
 - AI category picks are more accurate: prompt examples now use your own category names, and broad categories like 개인 are chosen last. Held-out test sentences: category 71 → 78 of 90, overall 90% → 92%.
