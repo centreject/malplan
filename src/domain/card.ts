@@ -2,6 +2,7 @@
 // functions convert between it, the parser's result and the stored Item.
 import type { ClockTime, Flag, ParseResult, Slot } from "../parse/parseKorean";
 import { partsOf, weekdayOf, type IsoDate, type Weekday } from "./date";
+import { guessCategory } from "./categoryKinds";
 import type { Category, Item, ItemTime, ItemWhen } from "./item";
 import type { Recurrence } from "./recurrence";
 
@@ -69,10 +70,8 @@ export function guessKind(title: string): "event" | "task" {
   return TASK_ENDINGS.some((ending) => trimmed.endsWith(ending)) ? "task" : "event";
 }
 
-/** First category whose name appears in the title, else the first category. The LLM replaces this later. */
-export function guessCategory(title: string, categories: Category[]): string {
-  return categories.find((c) => title.includes(c.name))?.id ?? categories[0]?.id ?? "";
-}
+// The rules' category; the LLM replaces it later when it is on.
+export { guessCategory };
 
 // ponytail: splits only on newlines and ';'; smarter splitting ("내일 치과 그리고 모레 회의") is the LLM's job later.
 export function splitInput(text: string): string[] {

@@ -28,6 +28,6 @@ describe("grade", () => {
   test("an absent place must stay empty", () => {
     const noPlace: EvalRow = ["금요일까지 과제 제출", "과제", "t", "학교", ""];
 
-    expect(grade(noPlace, ruleFields(noPlace[0], today), today)).toEqual({ title: true, kind: true, category: false, place: true });
+    expect(grade(noPlace, ruleFields(noPlace[0], today), today)).toEqual({ title: true, kind: true, category: true, place: true });
   });
 });
