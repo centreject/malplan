@@ -1,6 +1,6 @@
 import { compact, loadState } from "./compact";
 import { applyChanges, emptyState, materialize, type Entities, type State } from "./merge";
-import { DELETED, emptySnapshot, parseLog, parseSnapshot, type Change, type EntityKind, type Json, type Snapshot } from "./schema";
+import { DELETED, emptySnapshot, parseLog, parseSnapshot, type Change, type EntityKind, type Json, type ParsedSnapshot, type Snapshot } from "./schema";
 
 /** A folder of sync files: local, NAS or Drive appData. */
 export interface Backend {
@@ -177,4 +177,54 @@ export class SyncStore {
   entities(): Entities {
     return materialize(this.#state);
   }
+}
+
+/**
+ * Copies one sync folder's files into another ("merge" when switching folders). Logs are appended;
+ * when both folders have a snapshot, they are merged so neither folder's compacted data is dropped.
+ */
+export async function copyInto(from: Backend, to: Backend): Promise<void> {
+  const existing = new Set(await to.list());
+  const names = await from.list();
+
+  const merged = names.includes(SNAPSHOT) && existing.has(SNAPSHOT)
+    ? mergeSnapshots(parseSnapshot((await from.read(SNAPSHOT)) ?? ""), parseSnapshot((await to.read(SNAPSHOT)) ?? ""))
+    : undefined;
+
+  for (const name of names) {
+    const text = (await from.read(name)) ?? "";
+
+    if (name === SNAPSHOT && merged !== undefined) {
+      await to.write(SNAPSHOT, JSON.stringify(merged));
+    } else if (!existing.has(name)) {
+      await to.write(name, text);
+    } else if (name.startsWith("log-")) {
+      await to.append(name, text);
+    }
+  }
+}
+
+/**
+ * Both snapshots' winning changes. `seen` keeps, per device, only the lower watermark of the two, so no log
+ * entry that only one folder had folded is skipped (re-applying an entry the snapshot holds changes nothing).
+ */
+function mergeSnapshots(a: ParsedSnapshot, b: ParsedSnapshot): Snapshot {
+  if (a.error !== undefined || b.error !== undefined) {
+    throw new Error(`${SNAPSHOT} is corrupt; refusing to merge folders`);
+  }
+
+  const seenB = new Map(Object.entries(b.snapshot.seen));
+
+  const seen = Object.entries(a.snapshot.seen).flatMap(([device, ts]): [string, number][] => {
+    const other = seenB.get(device);
+
+    return other === undefined ? [] : [[device, Math.min(ts, other)]];
+  });
+
+  return {
+    version: 1,
+    compactedAt: Math.max(a.snapshot.compactedAt, b.snapshot.compactedAt),
+    seen: Object.fromEntries(seen),
+    entities: [...applyChanges(applyChanges(emptyState, a.snapshot.entities), b.snapshot.entities).values()],
+  };
 }

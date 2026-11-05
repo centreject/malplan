@@ -148,9 +148,23 @@ const server = new Server({ name: "malplan", version: "0.2.3" }, { capabilities:
 
 server.setRequestHandler(ListToolsRequestSchema, () => ({ tools: TOOLS }));
 
+/**
+ * Tool calls run one at a time. A client may send several at once ("mark Mon, Tue and Wed done"); each reads the board
+ * and then writes a whole field, so overlapping calls would overwrite each other while all reporting success.
+ */
+let queue: Promise<unknown> = Promise.resolve();
+
+function oneAtATime<T>(task: () => Promise<T>): Promise<T> {
+  const run = queue.then(task);
+
+  queue = run.catch(() => undefined);
+
+  return run;
+}
+
 server.setRequestHandler(CallToolRequestSchema, async (request) => {
   try {
-    return { content: [{ type: "text", text: await call(v.parse(ToolCallSchema, request.params)) }] };
+    return { content: [{ type: "text", text: await oneAtATime(() => call(v.parse(ToolCallSchema, request.params))) }] };
   } catch (error) {
     const message = v.isValiError(error) ? `입력이 올바르지 않습니다: ${error.issues.map((issue) => issue.message).join(", ")}` : String(error);
 

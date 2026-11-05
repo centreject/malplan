@@ -274,9 +274,16 @@ export function modelsEndpoint(settings: LlmSettings): { url: string } | { error
   }
 
   // Gemini answers only with a key; OpenRouter's list is public.
-  return settings.provider === "gemini" && settings.apiKey === ""
-    ? { error: "API 키를 입력하세요." }
-    : { url: chat.url.replace(/\/chat\/completions$/, "/models") };
+  if (settings.provider === "gemini" && settings.apiKey === "") {
+    return { error: "API 키를 입력하세요." };
+  }
+
+  // On the path only: a query the user typed ("?tenant=me") stays as it is.
+  const url = new URL(chat.url);
+
+  url.pathname = url.pathname.replace(/\/chat\/completions$/, "/models");
+
+  return { url: url.href };
 }
 
 const ModelList = v.object({ data: v.array(v.object({ id: v.string() })) });

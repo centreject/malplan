@@ -83,6 +83,10 @@ describe("modelsEndpoint", () => {
     expect(modelsEndpoint({ ...settings, provider: "gemini" })).toEqual({ url: "https://generativelanguage.googleapis.com/v1beta/openai/models" });
   });
 
+  test("keeps a query in the address on the list path too", () => {
+    expect(modelsEndpoint({ ...custom, baseUrl: "https://ai.example.com/v1?tenant=me" })).toEqual({ url: "https://ai.example.com/v1/models?tenant=me" });
+  });
+
   test("says why it can't be asked", () => {
     expect(modelsEndpoint({ ...custom, baseUrl: "http://example.com/v1" })).toHaveProperty("error");
     expect(modelsEndpoint({ ...settings, provider: "gemini", apiKey: "" })).toEqual({ error: "API 키를 입력하세요." });
