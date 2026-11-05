@@ -60,6 +60,17 @@ describe("reschedule", () => {
     expect(result[1]).toEqual({ ...weekly, id: "copy", when: { kind: "single", date: "2026-10-09" } });
   });
 
+  test("the copy of a recurring task starts unfinished even when today's occurrence was already done", () => {
+    // Daily; yesterday missed, today ticked off. Moving the overdue one to today must not arrive as done.
+    const daily = { ...task("d", { kind: "recurring", rule: { freq: "daily", start: "2026-10-06" } }), done: ["2026-10-06", today] };
+    const [series, copy] = reschedule([daily], ["d"], today, today, () => "copy");
+
+    expect(copy?.when).toEqual({ kind: "single", date: today });
+    expect(copy?.done).toEqual([]);
+    // The series keeps its own record of what was done.
+    expect(series?.done).toEqual(["2026-10-06", today]);
+  });
+
   test("items not selected are untouched", () => {
     const other = task("b", { kind: "single", date: "2026-10-01" });
 
