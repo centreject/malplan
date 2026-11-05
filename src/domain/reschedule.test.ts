@@ -71,6 +71,12 @@ describe("reschedule", () => {
     expect(series?.done).toEqual(["2026-10-06", today]);
   });
 
+  test("a range across the year end keeps its length when moved", () => {
+    const range = task("r", { kind: "range", start: "2025-12-30", end: "2026-01-02" });
+
+    expect(reschedule([range], ["r"], "2026-03-01", today, () => "x")[0]?.when).toEqual({ kind: "range", start: "2026-02-26", end: "2026-03-01" });
+  });
+
   test("items not selected are untouched", () => {
     const other = task("b", { kind: "single", date: "2026-10-01" });
 
