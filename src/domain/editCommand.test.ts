@@ -138,3 +138,25 @@ describe("applyEditCommand", () => {
     expect(edit("음 잘 모르겠네")).toBeUndefined();
   });
 });
+
+describe("applyEditCommand at the edges", () => {
+  test("a range shifts as a whole, across the year end", () => {
+    const range: Item = { ...item, when: { kind: "range", start: "2026-12-30", end: "2027-01-02" } };
+    const result = applyEditCommand(cardFromItem(range, today), "이틀 미뤄", today, categories);
+
+    expect(result !== REPEAT_DATE_REFUSAL && [result?.card.date, result?.card.endDate]).toEqual(["2027-01-01", "2027-01-04"]);
+  });
+
+  test("a counted shift in weeks, pulled earlier across a leap day", () => {
+    const leap: Item = { ...item, when: { kind: "single", date: "2028-03-07" } };
+    const result = applyEditCommand(cardFromItem(leap, today), "1주 당겨", today, categories);
+
+    expect(result !== REPEAT_DATE_REFUSAL && result?.card.date).toBe("2028-02-29");
+  });
+
+  test("a time of day sets the slot", () => {
+    const result = edit("저녁으로 바꿔");
+
+    expect([result?.card.timeMode, result?.card.slot]).toEqual(["slot", "dinner"]);
+  });
+});

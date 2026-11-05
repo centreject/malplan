@@ -1,7 +1,7 @@
 import { describe, expect, test } from "vitest";
 import type { Category, Item } from "../domain/item";
 import type { CalendarTab } from "../domain/tabs";
-import { boardChanges, boardFromEntities, type Board } from "./board";
+import { boardChanges, boardFromEntities, boardWrites, type Board } from "./board";
 import { MemoryBackend, SyncStore } from "./store";
 
 const category: Category = { id: "work", name: "회사", colorSlot: 1 };
@@ -105,5 +105,63 @@ describe("boardFromEntities", () => {
     const result = boardFromEntities({ item: [], category: [], tab: [], settings: [] });
 
     expect(result.board.tabs).toEqual([allTab]);
+  });
+});
+
+/** Writes what changed between two boards, as the app does on each save. */
+const save = (store: SyncStore, prev: Board, next: Board) => store.setMany(boardWrites(prev, next));
+
+/** Two devices on one folder, each with its own clock, both loaded with `board`. */
+async function twoDevices() {
+  const backend = new MemoryBackend();
+  const a = new SyncStore(backend, "dev-a", () => 1_000);
+  const b = new SyncStore(backend, "dev-b", () => 2_000);
+
+  await a.load();
+  await a.setMany(boardWrites(empty, board));
+  await b.load();
+
+  const merged = async () => {
+    const reader = new SyncStore(backend, "reader", () => 9_000);
+
+    await reader.load();
+
+    return boardFromEntities(reader.entities()).board;
+  };
+
+  return { a, b, merged };
+}
+
+describe("saving from a board that is out of date", () => {
+  test("an edit from an old board does not undo another device's newer edit of a different field", async () => {
+    const { a, b, merged } = await twoDevices();
+    const stale = board;
+
+    // B renames; A, still showing the old title, ticks a date done.
+    await save(b, board, { ...board, items: [{ ...mailing, title: "등기 발송" }] });
+    await save(a, stale, { ...stale, items: [{ ...mailing, done: [...mailing.done, "2026-10-14"] }] });
+
+    expect((await merged()).items).toEqual([{ ...mailing, title: "등기 발송", done: ["2026-10-07", "2026-10-14"] }]);
+  });
+
+  test("an item another device added is not removed by a save from a board that never saw it", async () => {
+    const { a, b, merged } = await twoDevices();
+    const added: Item = { ...mailing, id: "dentist", title: "치과", kind: "event", done: [] };
+
+    await save(b, board, { ...board, items: [mailing, added] });
+    await save(a, board, { ...board, items: [{ ...mailing, note: "등기로" }] });
+
+    expect((await merged()).items.map((item) => item.id).toSorted()).toEqual(["dentist", "mail"]);
+  });
+
+  test("a category another device added survives a reorder saved from an old board", async () => {
+    const { a, b, merged } = await twoDevices();
+    const school: Category = { id: "school", name: "학교", colorSlot: 2 };
+    const gym: Category = { id: "gym", name: "운동", colorSlot: 3 };
+
+    await save(b, board, { ...board, categories: [category, school] });
+    await save(a, board, { ...board, categories: [gym, category] });
+
+    expect((await merged()).categories.map((c) => c.id).toSorted()).toEqual(["gym", "school", "work"]);
   });
 });
