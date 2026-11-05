@@ -2,6 +2,7 @@
 // Dates, times and recurrence never come from the model; code already computed them.
 import * as v from "valibot";
 import { guessKind, NEW_CATEGORY, type Card, type CardFlag } from "../domain/card";
+import { CATEGORY_KINDS } from "../domain/categoryKinds";
 import type { IsoDate } from "../domain/date";
 import type { Category } from "../domain/item";
 import { hasDateOrTime } from "../parse/parseKorean";
@@ -92,15 +93,15 @@ export function replySchema(categories: Category[]): ReplyJsonSchema {
 
 type PromptExample = { names: string[]; input: string; title: string; kind: "event" | "task"; place?: string; note?: string };
 
-/** Each example fits a kind of category; `names` are what users call it, the first being the usual name. */
+/** Each example fits a kind of category; `names` are what users call it (shared with the rules), the first being the usual name. */
 const PROMPT_EXAMPLES: PromptExample[] = [
-  { names: ["회사", "직장", "업무"], input: "내일 오후 3시 본사 3층에서 분기 실적 발표", title: "분기 실적 발표", kind: "event", place: "본사 3층" },
-  { names: ["회사", "직장", "업무"], input: "목요일까지 협력사에 계약서 보내기", title: "협력사에 계약서 보내기", kind: "task" },
-  { names: ["학교", "학업", "공부", "수업"], input: "수요일까지 경제학 레포트 제출", title: "경제학 레포트 제출", kind: "task" },
-  { names: ["약속", "모임", "친구", "만남"], input: "토요일 점심 민지랑 성수동에서 브런치. 예약은 내가", title: "민지와 브런치", kind: "event", place: "성수동", note: "예약은 내가" },
-  { names: ["공모전", "대회", "대외활동"], input: "다음 달 3일 창업 공모전 접수 마감", title: "창업 공모전 접수 마감", kind: "task" },
-  { names: ["개인", "생활", "일상"], input: "주말에 안경 맞추러 가기", title: "안경 맞추기", kind: "task" },
-  { names: ["운동", "헬스", "건강"], input: "매주 화목 저녁 수영 강습 수영복 챙기기", title: "수영 강습", kind: "event", note: "수영복 챙기기" },
+  { names: CATEGORY_KINDS.work.names, input: "내일 오후 3시 본사 3층에서 분기 실적 발표", title: "분기 실적 발표", kind: "event", place: "본사 3층" },
+  { names: CATEGORY_KINDS.work.names, input: "목요일까지 협력사에 계약서 보내기", title: "협력사에 계약서 보내기", kind: "task" },
+  { names: CATEGORY_KINDS.school.names, input: "수요일까지 경제학 레포트 제출", title: "경제학 레포트 제출", kind: "task" },
+  { names: CATEGORY_KINDS.meet.names, input: "토요일 점심 민지랑 성수동에서 브런치. 예약은 내가", title: "민지와 브런치", kind: "event", place: "성수동", note: "예약은 내가" },
+  { names: CATEGORY_KINDS.contest.names, input: "다음 달 3일 창업 공모전 접수 마감", title: "창업 공모전 접수 마감", kind: "task" },
+  { names: CATEGORY_KINDS.personal.names, input: "주말에 안경 맞추러 가기", title: "안경 맞추기", kind: "task" },
+  { names: CATEGORY_KINDS.exercise.names, input: "매주 화목 저녁 수영 강습 수영복 챙기기", title: "수영 강습", kind: "event", note: "수영복 챙기기" },
 ];
 
 function exampleLine({ input, title, kind, place, note }: PromptExample, category: string): string {

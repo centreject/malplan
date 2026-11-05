@@ -71,6 +71,45 @@ describe("guessCategory", () => {
     expect(guessCategory("치과", categories)).toBe("work");
     expect(guessCategory("치과", [])).toBe("");
   });
+
+  // Names users give the same kind of category differ; the words of the sentence still point to it.
+  const own: Category[] = [
+    { id: "job", name: "직장", colorSlot: 1 },
+    { id: "study", name: "공부", colorSlot: 2 },
+    { id: "meet", name: "모임", colorSlot: 3 },
+    { id: "gym", name: "헬스", colorSlot: 4 },
+    { id: "life", name: "일상", colorSlot: 5 },
+  ];
+
+  test.each([
+    ["거래처 미팅", "job"],
+    ["팀장님 결재 받기", "job"],
+    ["중간고사 공부 범위", "study"],
+    ["경영학 과제 제출", "study"],
+    ["한강 러닝", "gym"],
+    ["요가 수업 등록", "gym"],
+    ["민지랑 브런치", "meet"],
+    ["대학 동기 결혼식", "meet"],
+  ])("%s goes to the matching kind of category", (title, id) => {
+    expect(guessCategory(title, own)).toBe(id);
+  });
+
+  test("a word naming more of one kind wins: group project meeting is school, not work", () => {
+    expect(guessCategory("조별과제 회의", own)).toBe("study");
+  });
+
+  test("a category name inside a longer word does not count: 고등학교 friends are not 학교", () => {
+    expect(guessCategory("고등학교 친구들 모임", [...categories, { id: "meet", name: "약속", colorSlot: 3 }])).toBe("meet");
+  });
+
+  test("nothing fits: a broad category if there is one, else the first", () => {
+    expect(guessCategory("세탁기 돌리기", own)).toBe("life");
+    expect(guessCategory("세탁기 돌리기", own.filter((c) => c.id !== "life"))).toBe("job");
+  });
+
+  test("a kind the user has no category for falls through to the broad one", () => {
+    expect(guessCategory("헬스장 하체", [{ id: "job", name: "회사", colorSlot: 1 }, { id: "me", name: "개인", colorSlot: 2 }])).toBe("me");
+  });
 });
 
 describe("splitInput", () => {
