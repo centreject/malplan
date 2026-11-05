@@ -2,7 +2,7 @@
 // Dates, times and recurrence never come from the model; code already computed them.
 import * as v from "valibot";
 import { guessKind, NEW_CATEGORY, type Card, type CardFlag } from "../domain/card";
-import { CATEGORY_KINDS } from "../domain/categoryKinds";
+import { CATEGORY_KINDS, namedIn } from "../domain/categoryKinds";
 import type { IsoDate } from "../domain/date";
 import type { Category } from "../domain/item";
 import { hasDateOrTime } from "../parse/parseKorean";
@@ -206,7 +206,8 @@ export function guardExtraction(
   categories: Category[],
   today: IsoDate,
 ): Extraction {
-  const named = categories.find((c) => input.includes(c.name));
+  // Named as the rules see it: at a word's start, so "고등학교" does not name 학교.
+  const named = categories.find((c) => namedIn(input, c.name));
   const { place, placeGuessed, note, ...rest } = extraction;
 
   const guarded: Extraction = {

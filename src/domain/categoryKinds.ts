@@ -46,7 +46,7 @@ function escapeRegExp(text: string): string {
 }
 
 /** The name as a word of its own or a word's start: "학교 과제", "회사업무", but not "고등학교". */
-function namedIn(title: string, name: string): boolean {
+export function namedIn(title: string, name: string): boolean {
   return name !== "" && new RegExp(`(?<![가-힣])${escapeRegExp(name)}`).test(title);
 }
 

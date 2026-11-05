@@ -119,8 +119,8 @@ describe("parseExtraction", () => {
   });
 });
 
-function guard(input: string, extraction: Extraction): Extraction {
-  return guardExtraction(extraction, input, cardFromParse(parseKorean(input, today), today, categories), categories, today);
+function guard(input: string, extraction: Extraction, list: Category[] = categories): Extraction {
+  return guardExtraction(extraction, input, cardFromParse(parseKorean(input, today), today, list), list, today);
 }
 
 describe("guardExtraction", () => {
@@ -143,6 +143,13 @@ describe("guardExtraction", () => {
   test("a category named in the sentence wins", () => {
     expect(guard("회사 우편물 발송", { title: "우편물 발송", kind: "task", category: "개인" }).category).toBe("회사");
     expect(guard("우편물 발송", { title: "우편물 발송", kind: "task", category: "개인" }).category).toBe("개인");
+  });
+
+  test("a category name inside a longer word is not a naming, as in the rules: 고등학교 friends are not 학교", () => {
+    const withSchool: Category[] = [...categories, { id: "school", name: "학교", colorSlot: 2 }];
+
+    expect(guard("고등학교 친구들 모임", { title: "고등학교 친구들 모임", kind: "event", category: "약속" }, withSchool).category).toBe("약속");
+    expect(guard("학교 과제 제출", { title: "과제 제출", kind: "task", category: "개인" }, withSchool).category).toBe("학교");
   });
 
   test("a place not written in the sentence is dropped", () => {
