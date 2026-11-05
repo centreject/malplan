@@ -110,4 +110,15 @@ describe("mcp tools", () => {
     expect(undated.text).toMatch(/^완료했습니다: .*책장 정리하기$/);
     expect(undated.next.items.find((i) => i.id === "u1")?.done).toEqual(["done"]);
   });
+
+  test("a repeating task is completed only on a date it falls on", async () => {
+    const { store, board } = await seeded();
+    // Every Monday; 2026-10-06 is a Tuesday.
+    const { next } = await addSchedule(store, board, "매주 월요일 분리수거 하기", today, () => "r1");
+    const wrong = await completeTask(store, next, "r1", "2026-10-06");
+
+    expect(wrong.text).toMatch(/^그 날짜에는 이 할 일이 없습니다/);
+    expect(wrong.next).toBe(next);
+    expect((await completeTask(store, next, "r1", "2026-10-12")).text).toBe("완료했습니다: 분리수거 하기 (10/12(월))");
+  });
 });

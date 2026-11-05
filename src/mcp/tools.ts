@@ -4,7 +4,7 @@ import { cardErrors, cardFromParse, commitCards, type Card } from "../domain/car
 import { addDays, weekdayOf, type IsoDate } from "../domain/date";
 import { WEEKDAY_NAMES, recurrenceLabel, shortDate } from "../domain/format";
 import type { Category, Item } from "../domain/item";
-import { occurrencesOn } from "../domain/schedule";
+import { occurrencesOn, occursOn } from "../domain/schedule";
 import { searchItems } from "../domain/search";
 import { parseKorean } from "../parse/parseKorean";
 import { boardFromEntities, boardWrites, type Board } from "../storage/board";
@@ -131,6 +131,11 @@ export async function completeTask(store: SyncStore, board: Board, id: string, d
 
   if (key === undefined) {
     return { text: "반복 할 일은 완료할 날짜(date)가 필요합니다.", next: board };
+  }
+
+  // Otherwise the mark lands on a day the task never shows, and nothing on the board changes.
+  if (item.when.kind === "recurring" && !occursOn(item, key)) {
+    return { text: `그 날짜에는 이 할 일이 없습니다: ${item.title} (${day(key)}). list_schedule로 회차 날짜를 확인하세요.`, next: board };
   }
 
   if (item.done.includes(key)) {

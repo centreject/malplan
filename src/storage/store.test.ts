@@ -1,6 +1,6 @@
 import { expect, test } from "vitest";
 import { TOMBSTONE_TTL_MS } from "./compact";
-import { MemoryBackend, SyncStore } from "./store";
+import { copyInto, MemoryBackend, SyncStore } from "./store";
 
 const DAY = 24 * 60 * 60 * 1000;
 
@@ -275,4 +275,37 @@ test("setMany writes all fields with one append, in strictly increasing ts, and 
   expect(ts).toEqual([1000, 1001, 1002]);
   expect(await item(a)).toEqual({ title: "x", place: "p" });
   expect(await item(a, "i2")).toBeUndefined();
+});
+
+test("merging into a folder that has its own snapshot keeps what this device had compacted", async () => {
+  const from = new MemoryBackend();
+  const a = new SyncStore(from, "A", () => 1000);
+  await a.load();
+  await a.set("item", "i1", "title", "compacted in the old folder");
+  await a.compact();
+  await a.set("item", "i2", "title", "still in the old log");
+
+  const to = new MemoryBackend();
+  const b = new SyncStore(to, "B", () => 2000);
+  await b.load();
+  await b.set("item", "i3", "title", "already in the new folder");
+  await b.compact();
+
+  await copyInto(from, to);
+
+  const merged = new SyncStore(to, "B", () => 3000);
+  await merged.load();
+
+  expect(merged.entities().item.map((r) => r.id)).toEqual(["i1", "i2", "i3"]);
+  expect(merged.errors).toEqual([]);
+});
+
+test("merging folders refuses to overwrite a corrupt snapshot", async () => {
+  const from = new MemoryBackend();
+  const to = new MemoryBackend();
+  await from.write("snapshot.json", JSON.stringify({ version: 1, compactedAt: 0, seen: {}, entities: [] }));
+  await to.write("snapshot.json", "{ cut short");
+
+  await expect(copyInto(from, to)).rejects.toThrow("corrupt");
+  expect(await to.read("snapshot.json")).toBe("{ cut short");
 });

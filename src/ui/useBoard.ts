@@ -2,7 +2,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { ALL_TAB_ID } from "../domain/tabs";
 import { deviceId, loadSyncDir, openBackend, saveSyncDir } from "../storage/backends";
 import { boardChanges, boardFromEntities, boardWrites, type Board } from "../storage/board";
-import { SyncStore, type Backend } from "../storage/store";
+import { copyInto, SyncStore } from "../storage/store";
 import { report } from "./report";
 
 const EMPTY: Board = { items: [], categories: [], tabs: [{ id: ALL_TAB_ID, name: "전체", categoryIds: undefined }] };
@@ -209,18 +209,4 @@ export async function folderHasData(dir: string | undefined): Promise<boolean> {
 
 function sameList(a: readonly string[], b: readonly string[]): boolean {
   return a.length === b.length && a.every((item, i) => item === b[i]);
-}
-
-async function copyInto(from: Backend, to: Backend): Promise<void> {
-  const existing = new Set(await to.list());
-
-  for (const name of await from.list()) {
-    const text = (await from.read(name)) ?? "";
-
-    if (!existing.has(name)) {
-      await to.write(name, text);
-    } else if (name.startsWith("log-")) {
-      await to.append(name, text);
-    }
-  }
 }
