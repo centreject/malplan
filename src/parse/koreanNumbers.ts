@@ -35,6 +35,8 @@ function countValue(text: string): number {
   return NATIVE.get(text) ?? sinoValue(text);
 }
 
+const PERIOD = "(?:오전|오후|새벽|아침|낮|점심|저녁|밤)";
+
 const AFTER_CLOCK = "(?=$|[\\s\\d,.~\\-]|반|에|부터|까지|쯤|정각|" + SINO + "\\s*분)";
 
 const RULES: [RegExp, (match: string, ...groups: string[]) => string][] = [
@@ -44,7 +46,11 @@ const RULES: [RegExp, (match: string, ...groups: string[]) => string][] = [
   // 이십구일, 십오일: a bare day of the month with a tens digit ("삼일절", "오일" have none).
   [new RegExp(`(?<![가-힣\\d])([이삼]?십[일이삼사오육칠팔구]?)(?=일(?![가-힣]))`, "g"), (day) => (sinoValue(day) <= 31 ? String(sinoValue(day)) : day)],
   // 세시 반, 저녁 열시, 열한시 십오분.
-  [new RegExp(`(?<![가-힣])(${NATIVE_WORD})\\s*시${AFTER_CLOCK}`, "g"), (_, hour = "") => `${NATIVE.get(hour) ?? 0}시`],
+  // Glued 한시 is also 限時 ("한시 인하", "한시 운영"): before another word it is one o'clock only after a period word.
+  [
+    new RegExp(`(?<![가-힣])(?!(?<!${PERIOD}\\s*)한시\\s+(?!반|정각|${SINO}\\s*분)[가-힣])(${NATIVE_WORD})\\s*시${AFTER_CLOCK}`, "g"),
+    (_, hour = "") => `${NATIVE.get(hour) ?? 0}시`,
+  ],
   [new RegExp(`(\\d시\\s*)(${SINO})\\s*분`, "g"), (_, head = "", minute = "") => `${head}${sinoValue(minute)}분`],
   // 이틀 후, 보름 뒤, 일주일 후, 삼일 후, 한 달 뒤, 일 년 뒤.
   // Not "하루 전날" ("the day before").

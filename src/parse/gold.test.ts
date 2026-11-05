@@ -7,10 +7,11 @@ import { parseGold, scoreGold, type CategoryScore } from "./goldScore";
 // review of ~420 everyday inputs: "N일 전" alone is no longer counted back from today ("회의 3일 전에 자료 공유"),
 // "첫째 주 금요일" is the first Friday rather than the Friday of the first calendar row, and "이번 주 X요일" already
 // past means the coming one. Raised on 2026-10-22 (960 → 984, 84.1% → 86.7%): 지난 + date, "A가 아니라 B", 어젯밤,
-// 퇴근하고, a year-end range, 이십구일.
-const MIN_CORRECT = 984;
+// 퇴근하고, a year-end range, 이십구일. Raised on 2026-11-05 (984 → 986, false positives 9 → 7): "한시 인하" is not 1시.
+// The 7 left read the right time where the date is unknown ("그날 오전 9시", "마지막 영업일 오후 3시"); kept on purpose.
+const MIN_CORRECT = 986;
 
-const MAX_FALSE_POSITIVES = 9;
+const MAX_FALSE_POSITIVES = 7;
 
 const MIN_SCHEDULE_RATE = 0.867;
 

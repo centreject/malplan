@@ -349,6 +349,20 @@ describe("clock words", () => {
   test("한시적 is not one o'clock", () => {
     expect(parseKorean("한시적으로 운영", today).time).toBeUndefined();
   });
+
+  test.each(["유류세 한시 인하 방침", "한시 운영 매장", "한시 지원 사업 신청"])("한시 (limited time) before another word is not one o'clock: %s", (text) => {
+    expect(parseKorean(text, today).time).toBeUndefined();
+  });
+
+  test.each([
+    ["한시 반", "13:30"],
+    ["한시 삼십분", "13:30"],
+    ["한시에 보자", "13:00"],
+    ["오후 한시 회의", "13:00"],
+    ["한 시 회의", "13:00"],
+  ])("%s is still one o'clock", (text, clock) => {
+    expect(clockOf(text)).toBe(clock);
+  });
 });
 
 describe("written dates, holidays and ranges", () => {
