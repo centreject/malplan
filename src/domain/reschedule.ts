@@ -51,7 +51,8 @@ export function reschedule(
 
         return [
           { ...item, when: { kind: "recurring", rule: { ...when.rule, except } } },
-          { ...item, id: newId(), when: { kind: "single", date: target } },
+          // A new one-off: the series' done dates are not its own (today's may be done already).
+          { ...item, id: newId(), when: { kind: "single", date: target }, done: [] },
         ];
       }
 
