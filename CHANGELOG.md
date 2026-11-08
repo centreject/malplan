@@ -1,5 +1,17 @@
 # Changelog
 
+## 0.2.6 (2026-11-08)
+
+- Editing: turning repeat off on one occurrence makes a single item on that date; the repeat interval field can be cleared while typing; an AI-proposed new category name can be edited.
+- After midnight, views left on today move to the new day.
+- 밀린 할 일: a picked date moves items only on the 옮기기 click, not while typing.
+- Deleting a category no longer empties the 전체 filter view. Dragging the custom colour saves once.
+- A late 말로 고치기 answer no longer closes another item's details.
+- .ics export: every-other-week counts from Sunday (WKST=SU); a late event without an end lasts an hour into the next day.
+- Local AI: a real start error shows after a former "no model" state; stopping during startup no longer makes the next request wait 60 s.
+- MCP: a locked sync file fails the call instead of reading as empty.
+- AI examples skip corrections for renamed or deleted categories.
+
 ## 0.2.5 (2026-11-08)
 
 - New categories where you pick them: a 새 분류 button beside the category field in 새 항목 확인, and a "분류 추가" field at the bottom of the 전체 filter and in the tab editor. A name already in use picks that category.

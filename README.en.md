@@ -22,7 +22,7 @@ Type a schedule in one Korean sentence, check the card it fills in, and see it i
 
 malplan is a Windows desktop app for appointments and to-dos. Dates and times are read by code, never guessed by a model; a small AI model that runs on your PC only tidies the title, category and place. Nothing is saved until you confirm it.
 
-**Status: v0.2.5 (beta).** Windows 10/11 x64, Korean interface only. The installer is not code-signed yet; the app updates itself from Releases.
+**Status: v0.2.6 (beta).** Windows 10/11 x64, Korean interface only. The installer is not code-signed yet; the app updates itself from Releases.
 
 <p align="center">
   <img src="docs/assets/main.png" width="860" alt="Today, this week and this month on one screen">
