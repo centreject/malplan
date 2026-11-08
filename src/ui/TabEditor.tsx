@@ -1,4 +1,4 @@
-import { ChevronLeft, ChevronRight, Trash2, X } from "lucide-react";
+import { ChevronLeft, ChevronRight, Plus, Trash2, X } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import type { Category } from "../domain/item";
 import { nextTabName, type CalendarTab } from "../domain/tabs";
@@ -8,11 +8,14 @@ type CategoryChecklistProps = {
   categories: Category[];
   selected: string[];
   onChange: (ids: string[]) => void;
+  /** Creates a category by name and returns its id; the new one is checked. */
+  onAdd: (name: string) => string | undefined;
 };
 
 /** Excel-filter-style list: "모두 선택" plus one checkbox per category. */
-export function CategoryChecklist({ categories, selected, onChange }: CategoryChecklistProps) {
+export function CategoryChecklist({ categories, selected, onChange, onAdd }: CategoryChecklistProps) {
   const selectAll = useRef<HTMLInputElement>(null);
+  const [draft, setDraft] = useState("");
   const allChecked = categories.every((c) => selected.includes(c.id));
 
   useEffect(() => {
@@ -46,6 +49,23 @@ export function CategoryChecklist({ categories, selected, onChange }: CategoryCh
           </label>
         </li>
       ))}
+      <li>
+        <form
+          className="cat-add"
+          onSubmit={(event) => {
+            event.preventDefault();
+            const id = onAdd(draft);
+
+            if (id !== undefined) {
+              setDraft("");
+              onChange(selected.includes(id) ? selected : [...selected, id]);
+            }
+          }}
+        >
+          <Plus size={14} strokeWidth={2} aria-hidden="true" />
+          <input value={draft} onChange={(event) => setDraft(event.target.value)} placeholder="분류 추가 (Enter)" aria-label="새 분류 이름" autoComplete="off" />
+        </form>
+      </li>
     </ul>
   );
 }
@@ -59,11 +79,12 @@ type TabEditorProps = {
   onDelete: () => void;
   /** Moves the edited tab by -1 / +1 right away. */
   onMove: (delta: number) => void;
+  onAddCategory: (name: string) => string | undefined;
   onClose: () => void;
 };
 
 /** Add or edit a calendar tab. Mounted only while open. */
-export function TabEditor({ tab, tabs, categories, onSave, onDelete, onMove, onClose }: TabEditorProps) {
+export function TabEditor({ tab, tabs, categories, onSave, onDelete, onMove, onAddCategory, onClose }: TabEditorProps) {
   const dialog = useRef<HTMLDialogElement>(null);
   const [name, setName] = useState(tab?.name ?? "");
   const [selected, setSelected] = useState<string[]>(tab?.categoryIds ?? []);
@@ -116,7 +137,7 @@ export function TabEditor({ tab, tabs, categories, onSave, onDelete, onMove, onC
 
         <fieldset className="settings-section">
           <legend>보여 줄 분류</legend>
-          <CategoryChecklist categories={categories} selected={selected} onChange={setSelected} />
+          <CategoryChecklist categories={categories} selected={selected} onChange={setSelected} onAdd={onAddCategory} />
           {empty && <p className="tab-editor-hint">분류를 하나 이상 고르세요.</p>}
         </fieldset>
 

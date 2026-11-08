@@ -13,6 +13,18 @@ export function addCategory(categories: Category[], id: string): Category[] {
   return [...categories, { id, name: "새 분류", colorSlot: slot }];
 }
 
+/** Adds a category by name where the user is (filter, tab editor); a name already in use returns that category. */
+export function addNamedCategory(categories: Category[], name: string, id: string): { categories: Category[]; id: string } | undefined {
+  const trimmed = name.trim();
+  const existing = categories.find((c) => c.name === trimmed);
+
+  if (trimmed === "") {
+    return undefined;
+  }
+
+  return existing === undefined ? { categories: renameCategory(addCategory(categories, id), id, trimmed), id } : { categories, id: existing.id };
+}
+
 export function renameCategory(categories: Category[], id: string, name: string): Category[] {
   const trimmed = name.trim();
 

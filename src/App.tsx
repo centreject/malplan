@@ -19,7 +19,7 @@ import { weekLabel, weekStartOf } from "./domain/weeks";
 import { parseKorean } from "./parse/parseKorean";
 import { ItemDetail } from "./ui/ItemDetail";
 import { ConfirmDialog } from "./ui/ConfirmDialog";
-import { addCategory, customColorCss, deleteCategory, recolorCategory, renameCategory, setCustomColor } from "./domain/categories";
+import { addCategory, addNamedCategory, customColorCss, deleteCategory, recolorCategory, renameCategory, setCustomColor } from "./domain/categories";
 import { ALL_TAB_ID, addTab, deleteTab, moveTab, updateTab, type CalendarTab } from "./domain/tabs";
 import { CategorySettings } from "./ui/CategorySettings";
 import { MonthPane } from "./ui/MonthPane";
@@ -90,6 +90,17 @@ export default function App() {
   const setItems = (change: (current: Item[]) => Item[]) => persisted.update((b) => ({ ...b, items: change(b.items) }));
   const setCategories = (next: Category[]) => persisted.update((b) => ({ ...b, categories: next }));
   const setTabs = (next: CalendarTab[]) => persisted.update((b) => ({ ...b, tabs: next }));
+
+  const addCategoryNamed = (name: string) => {
+    const added = addNamedCategory(categories, name, crypto.randomUUID());
+
+    if (added !== undefined) {
+      setCategories(added.categories);
+    }
+
+    return added?.id;
+  };
+
   const [notifications, setNotifications] = useState(loadNotificationSettings);
   const [display, setDisplay] = useState(loadDisplay);
   const [searchOpen, setSearchOpen] = useState(false);
@@ -445,6 +456,14 @@ export default function App() {
         listOpen={view === "list"}
         onList={() => setView(view === "list" ? "board" : "list")}
       />
+      {persisted.warning !== undefined && (
+        <p className="save-warning" role="alert">
+          <span>{persisted.warning}</span>
+          <button type="button" className="text-button" onClick={() => setSettingsOpen("storage")}>
+            저장 설정
+          </button>
+        </p>
+      )}
       {view === "list" && (
         <main className="board list-view">
           <ListPage
@@ -533,6 +552,7 @@ export default function App() {
             onMoveTab={(id, index) => setTabs(moveTab(tabs, id, index))}
             allFilter={allFilter}
             onAllFilter={setAllFilter}
+            onAddCategory={addCategoryNamed}
             onSelect={select}
             onEdit={openEdit}
             onPrev={() => setMonthCursor(shiftMonth(monthCursor, -1))}
@@ -653,6 +673,7 @@ export default function App() {
           tab={editedTab}
           tabs={tabs}
           categories={categories}
+          onAddCategory={addCategoryNamed}
           onSave={(name, categoryIds) => {
             if (editedTab === undefined) {
               const id = crypto.randomUUID();

@@ -367,6 +367,10 @@ ul {
   height: 100%;
 }
 
+.app:has(> .save-warning) {
+  grid-template-rows: auto auto minmax(0, 1fr);
+}
+
 .top-bar {
   display: grid;
   grid-template-columns: auto minmax(0, 1fr) auto;
@@ -536,6 +540,24 @@ ul {
   .theme-cards {
     grid-template-columns: minmax(0, 1fr);
   }
+}
+
+/* Unsaved changes or an unreadable sync folder: shown above the board until resolved. */
+.save-warning {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 0 20px 10px;
+  padding: 6px 8px 6px 14px;
+  border: 1px solid color-mix(in srgb, var(--late) 40%, transparent);
+  border-radius: var(--radius);
+  background: color-mix(in srgb, var(--late) 10%, var(--surface));
+  color: var(--ink);
+  font-size: 13px;
+}
+
+.save-warning span {
+  flex: 1;
 }
 
 .board {
@@ -1499,6 +1521,27 @@ ul {
   accent-color: var(--accent);
 }
 
+/* Inline "분류 추가": type a name, Enter. */
+.cat-add {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 30px;
+  border-top: 1px solid var(--line);
+  color: var(--ink-3);
+}
+
+.cat-add input {
+  flex: 1;
+  min-width: 0;
+  height: 26px;
+  border: 0;
+  background: transparent;
+  color: var(--ink);
+  font: inherit;
+  font-size: 13px;
+}
+
 .cat-check.is-all {
   border-bottom: 1px solid var(--line);
   font-weight: 700;
@@ -1834,6 +1877,11 @@ ul {
   flex-wrap: wrap;
   align-items: center;
   gap: 8px;
+}
+
+.cf-category-row .cf-chip {
+  display: inline-flex;
+  gap: 4px;
 }
 
 .cf-hint {

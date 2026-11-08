@@ -30,6 +30,7 @@ type MonthPaneProps = {
   /** Temporary category filter on 전체; undefined = every category. */
   allFilter: string[] | undefined;
   onAllFilter: (ids: string[] | undefined) => void;
+  onAddCategory: (name: string) => string | undefined;
   onSelect: (date: IsoDate) => void;
   /** date = the occurrence clicked, when there is one. */
   onEdit: (item: Item, date?: IsoDate) => void;
@@ -107,9 +108,9 @@ export function MonthPane(props: MonthPaneProps) {
                     <CategoryChecklist
                       categories={props.categories}
                       selected={props.allFilter ?? props.categories.map((c) => c.id)}
-                      onChange={(ids) =>
-                        props.onAllFilter(ids.length === props.categories.length ? undefined : ids)
-                      }
+                      // Every category checked (a just-added one included) is no filter at all.
+                      onChange={(ids) => props.onAllFilter(props.categories.every((c) => ids.includes(c.id)) ? undefined : ids)}
+                      onAdd={props.onAddCategory}
                     />
                   </div>
                 </>

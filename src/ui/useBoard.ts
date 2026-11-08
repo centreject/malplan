@@ -37,6 +37,7 @@ export function useBoard(seed: () => Board) {
   const [unsaved, setUnsaved] = useState(0);
   /** Bumped to retry a failed load (an offline NAS, a locked file). */
   const [attempt, setAttempt] = useState(0);
+  const [loadFailed, setLoadFailed] = useState(false);
 
   const show = useCallback((next: Board) => {
     current.current = next;
@@ -159,10 +160,12 @@ export function useBoard(seed: () => Board) {
         show(loaded.board);
       }
 
+      setLoadFailed(false);
       setReady(true);
     })().catch((error: Error) => {
       report(`load failed: ${error.message}`);
       setErrors([`불러오기 실패: ${error.message}. 잠시 뒤 다시 시도합니다.`]);
+      setLoadFailed(true);
 
       if (!cancelled) {
         retry = window.setTimeout(() => setAttempt((n) => n + 1), REFRESH_MS);
@@ -220,9 +223,12 @@ export function useBoard(seed: () => Board) {
     [dir],
   );
 
-  const shownErrors = unsaved === 0 ? errors : [...errors, `저장하지 못한 변경 ${unsaved}건: 폴더에 다시 쓸 수 있으면 저장합니다.`];
+  const unsavedText = `저장하지 못한 변경 ${unsaved}건: 폴더에 다시 쓸 수 있으면 저장합니다.`;
+  const shownErrors = unsaved === 0 ? errors : [...errors, unsavedText];
+  /** Shown on the main screen too: data is not where the user thinks it is. */
+  const warning = unsaved > 0 ? unsavedText : loadFailed ? "저장 폴더를 불러오지 못했습니다. 잠시 뒤 다시 시도합니다." : undefined;
 
-  return { board, ready, errors: shownErrors, update, dir, switchFolder, reload };
+  return { board, ready, errors: shownErrors, warning, update, dir, switchFolder, reload };
 }
 
 /** Folder holds sync data already? Used to ask merge vs replace. */

@@ -1,4 +1,4 @@
-import { CircleAlert, Trash2, X } from "lucide-react";
+import { CircleAlert, Plus, Trash2, X } from "lucide-react";
 import { useEffect, useId, useRef, useState, type ReactNode } from "react";
 import { categoryClass } from "../domain/categories";
 import { NEW_CATEGORY, cardErrors, repeatSeed, type Card, type CardErrors, type CardKind, type Draft, type RepeatFreq } from "../domain/card";
@@ -345,18 +345,26 @@ function CardEditor({ card, errors, categories, heading, onChange, onExclude }: 
       )}
 
       <Field label="분류" htmlFor={id("category")} badge={card.flags.includes("categoryGuessed") ? <Guess text="AI가 고른 분류" /> : undefined}>
-        <select
-          id={id("category")}
-          // The calendar's category colour, as a bar on the field and on each option.
-          className={`cf-input cf-select cf-category ${categoryClass(categories.find((c) => c.id === card.categoryId))}`}
-          value={card.categoryId}
-          onChange={(event) => set({ categoryId: event.target.value })}
-        >
-          {categories.map((category) => (
-            <option key={category.id} value={category.id} className={categoryClass(category)}>{category.name}</option>
-          ))}
-          <option value={NEW_CATEGORY}>+ 분류 추가</option>
-        </select>
+        <div className="cf-row cf-category-row">
+          <select
+            id={id("category")}
+            // The calendar's category colour, as a bar on the field and on each option.
+            className={`cf-input cf-select cf-category ${categoryClass(categories.find((c) => c.id === card.categoryId))}`}
+            value={card.categoryId}
+            onChange={(event) => set({ categoryId: event.target.value })}
+          >
+            {categories.map((category) => (
+              <option key={category.id} value={category.id} className={categoryClass(category)}>{category.name}</option>
+            ))}
+            <option value={NEW_CATEGORY}>+ 분류 추가</option>
+          </select>
+          {card.categoryId !== NEW_CATEGORY && (
+            <button type="button" className="cf-chip" onClick={() => set({ categoryId: NEW_CATEGORY })}>
+              <Plus size={14} strokeWidth={2} aria-hidden="true" />
+              새 분류
+            </button>
+          )}
+        </div>
         {card.categoryId === NEW_CATEGORY && (
           <input
             className="cf-input"

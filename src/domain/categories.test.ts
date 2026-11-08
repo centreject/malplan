@@ -6,6 +6,7 @@ import {
   setCustomColor,
   UNCATEGORIZED_ID,
   addCategory,
+  addNamedCategory,
   deleteCategory,
   recolorCategory,
   renameCategory,
@@ -139,4 +140,14 @@ describe("custom colours", () => {
 
     expect(css).toBe(".catc-a-1{--c:#123456;--c-ink:#ffffff}");
   });
+});
+
+test("adding by name: trimmed, an existing name reuses that category, a blank name adds nothing", () => {
+  const start = [{ id: "a", name: "회사", colorSlot: 1 }];
+  const added = addNamedCategory(start, "  동아리 ", "n");
+
+  expect(added?.id).toBe("n");
+  expect(added?.categories.at(-1)?.name).toBe("동아리");
+  expect(addNamedCategory(start, "회사", "n")).toEqual({ categories: start, id: "a" });
+  expect(addNamedCategory(start, "  ", "n")).toBeUndefined();
 });
