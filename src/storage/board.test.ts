@@ -144,6 +144,36 @@ describe("saving from a board that is out of date", () => {
     expect((await merged()).items).toEqual([{ ...mailing, title: "등기 발송", done: ["2026-10-07", "2026-10-14"] }]);
   });
 
+  test("two devices ticking different days of a repeating task both count; unticking one day leaves the others", async () => {
+    const { a, b, merged } = await twoDevices();
+
+    await save(a, board, { ...board, items: [{ ...mailing, done: [...mailing.done, "2026-10-14"] }] });
+    await save(b, board, { ...board, items: [{ ...mailing, done: [...mailing.done, "2026-10-21"] }] });
+
+    expect((await merged()).items[0]?.done.toSorted()).toEqual(["2026-10-07", "2026-10-14", "2026-10-21"]);
+
+    await save(b, board, { ...board, items: [{ ...mailing, done: [] }] });
+
+    expect((await merged()).items[0]?.done.toSorted()).toEqual(["2026-10-14", "2026-10-21"]);
+  });
+
+  test("a done list written by an older version is read, and a per-date untick overrides it", async () => {
+    const store = new SyncStore(new MemoryBackend(), "old", () => 1_000);
+    const { done: _done, id, ...fields } = mailing;
+
+    for (const [field, value] of Object.entries({ ...fields, done: ["2026-10-07", "2026-10-14"] })) {
+      await store.set("item", id, field, JSON.parse(JSON.stringify(value)));
+    }
+
+    const loaded = boardFromEntities(store.entities()).board;
+
+    expect(loaded.items[0]?.done).toEqual(["2026-10-07", "2026-10-14"]);
+
+    await store.setMany(boardWrites(loaded, { ...loaded, items: [{ ...mailing, done: ["2026-10-14"] }] }));
+
+    expect(boardFromEntities(store.entities()).board.items[0]?.done).toEqual(["2026-10-14"]);
+  });
+
   test("an item another device added is not removed by a save from a board that never saw it", async () => {
     const { a, b, merged } = await twoDevices();
     const added: Item = { ...mailing, id: "dentist", title: "치과", kind: "event", done: [] };

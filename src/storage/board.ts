@@ -1,6 +1,7 @@
 // Maps the app's board (items, categories, tabs) to sync-store entities and back.
 // Every top-level field of an entity is one sync field, so two devices editing
-// different fields of the same item both win.
+// different fields of the same item both win. An item's completions are one field per date
+// ("done:2026-11-05"), so two devices ticking different days of a repeating task both count.
 import * as v from "valibot";
 import type { Category, Item } from "../domain/item";
 import { ALL_TAB_ID, type CalendarTab } from "../domain/tabs";
@@ -11,6 +12,28 @@ import type { FieldWrite } from "./store";
 export type Board = { items: Item[]; categories: Category[]; tabs: CalendarTab[] };
 
 export type BoardChange = { entity: EntityKind; id: string; field: string; value: Json; remove: boolean };
+
+const DoneListSchema = v.array(v.string());
+
+/** Prefix of an item's per-date completion fields. */
+const DONE = "done:";
+
+/**
+ * An item's `done` list from its fields. The whole-list `done` field is what versions before 0.2.7 wrote; a
+ * per-date field, once written (true, or null when unticked), overrides it for that date.
+ */
+function doneOf(fields: Record<string, Json>): string[] {
+  const legacy = v.is(DoneListSchema, fields.done) ? fields.done : [];
+  const ticked = Object.entries(fields).flatMap(([field, value]) => (field.startsWith(DONE) && value === true ? [field.slice(DONE.length)] : []));
+
+  return [...new Set([...legacy.filter((key) => !(`${DONE}${key}` in fields)), ...ticked])];
+}
+
+function withDone(record: EntityRecord): EntityRecord {
+  const fields = Object.fromEntries(Object.entries(record.fields).filter(([field]) => !field.startsWith(DONE)));
+
+  return { id: record.id, fields: { ...fields, done: doneOf(record.fields) } };
+}
 
 const ALL_TAB: CalendarTab = { id: ALL_TAB_ID, name: "전체", categoryIds: undefined };
 
@@ -76,7 +99,7 @@ const TabSchema = v.object({
 /** Field values of each entity, keyed by id. `order` keeps list positions. */
 function boardRecords(board: Board): Record<"item" | "category" | "tab", Map<string, Map<string, Json>>> {
   return {
-    item: new Map(board.items.map(({ id, ...fields }) => [id, fieldsOf(fields)])),
+    item: new Map(board.items.map(({ id, done, ...fields }) => [id, new Map([...fieldsOf(fields), ...done.map((key): [string, Json] => [`${DONE}${key}`, true])])])),
     category: new Map(board.categories.map(({ id, ...fields }, order) => [id, fieldsOf({ ...fields, order })])),
     tab: new Map(
       board.tabs.map(({ id, name, categoryIds }, order) => [id, fieldsOf({ name, categoryIds: categoryIds ?? null, order })]),
@@ -85,7 +108,7 @@ function boardRecords(board: Board): Record<"item" | "category" | "tab", Map<str
 }
 
 type EntityFields =
-  | Omit<Item, "id">
+  | Omit<Item, "id" | "done">
   | (Omit<Category, "id"> & { order: number })
   | { name: string; categoryIds: string[] | null; order: number };
 
@@ -171,7 +194,7 @@ export function boardFromEntities(entities: Entities): LoadedBoard {
     .map(({ order: _order, ...category }): Category => category);
 
   return {
-    board: { items: parse("item", ItemSchema, entities.item), categories, tabs: [ALL_TAB, ...tabs] },
+    board: { items: parse("item", ItemSchema, entities.item.map(withDone)), categories, tabs: [ALL_TAB, ...tabs] },
     errors,
   };
 }
