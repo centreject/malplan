@@ -160,3 +160,13 @@ describe("applyEditCommand at the edges", () => {
     expect([result?.card.timeMode, result?.card.slot]).toEqual(["slot", "dinner"]);
   });
 });
+
+test("an undated task given a date becomes a dated task, and saving keeps the date", () => {
+  const undated: Item = { ...item, id: "u", kind: "task", when: { kind: "none" }, time: { kind: "anytime" } };
+  const result = applyEditCommand(cardFromItem(undated, today), "하루 미뤄", today, categories);
+
+  expect(result === undefined || result === REPEAT_DATE_REFUSAL ? undefined : itemFromCard(result.card, "u").when).toEqual({
+    kind: "single",
+    date: "2026-10-06",
+  });
+});

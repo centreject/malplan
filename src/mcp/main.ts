@@ -9,7 +9,7 @@ import { Server } from "@modelcontextprotocol/sdk/server/index.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import { CallToolRequestSchema, ListToolsRequestSchema } from "@modelcontextprotocol/sdk/types.js";
 import * as v from "valibot";
-import type { IsoDate } from "../domain/date";
+import { isRealDate, type IsoDate } from "../domain/date";
 import { SyncStore, type Backend } from "../storage/store";
 import { addSchedule, completeTask, findSchedule, listSchedule, loadBoard, previewSchedule } from "./tools";
 
@@ -80,7 +80,7 @@ function localToday(): IsoDate {
   return [now.getFullYear(), String(now.getMonth() + 1).padStart(2, "0"), String(now.getDate()).padStart(2, "0")].join("-");
 }
 
-const IsoDateSchema = v.pipe(v.string(), v.regex(/^\d{4}-\d{2}-\d{2}$/));
+const IsoDateSchema = v.pipe(v.string(), v.check(isRealDate, "없는 날짜입니다. YYYY-MM-DD로 실제 있는 날짜를 주세요."));
 
 const Sentence = v.pipe(v.string(), v.trim(), v.minLength(1));
 

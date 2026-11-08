@@ -18,6 +18,13 @@ export function makeDate(year: number, month: number, day: number): IsoDate {
   return fromDayNumber(Date.UTC(year, month - 1, day) / MS_PER_DAY);
 }
 
+/** "YYYY-MM-DD" naming a day that exists (not 2026-02-31). */
+export function isRealDate(text: string): boolean {
+  const { year, month, day } = partsOf(text);
+
+  return /^\d{4}-\d{2}-\d{2}$/.test(text) && makeDate(year, month, day) === text;
+}
+
 /** Days since 1970-01-01. */
 export function dayNumber(date: IsoDate): number {
   const { year, month, day } = partsOf(date);

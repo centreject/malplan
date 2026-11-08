@@ -161,6 +161,15 @@ function LocalModel() {
 }
 
 /** What is stored now, so the user can see their input took. Only the key's end is shown. */
+/** The server an address points at; text that is not a URL yet compares as itself. */
+function hostOf(address: string): string {
+  try {
+    return new URL(address).host;
+  } catch {
+    return address;
+  }
+}
+
 function savedSummary({ provider, apiKey, model, baseUrl }: LlmSettings): string {
   const key = apiKey === "" ? "키 없음" : apiKey.length > 8 ? `키 ••••${apiKey.slice(-4)}` : "키 입력됨";
 
@@ -171,6 +180,9 @@ function savedSummary({ provider, apiKey, model, baseUrl }: LlmSettings): string
 export function AiSettings({ settings, onChange }: AiSettingsProps) {
   // A result belongs to the settings it tested: any edit hides it, and a late answer for old settings never shows.
   const [test, setTest] = useState<{ tested: LlmSettings; result?: ConnectionResult }>();
+  /** The address when the field was entered: a key typed for one server is not sent to another. */
+  const [addressBefore, setAddressBefore] = useState<string>();
+  const [keyCleared, setKeyCleared] = useState(false);
   const shownTest = test?.tested === settings ? test : undefined;
   // A list belongs to the server and key it came from; choosing a model from it must not hide it.
   const listSource = `${settings.provider} ${settings.baseUrl} ${settings.apiKey}`;
@@ -212,8 +224,19 @@ export function AiSettings({ settings, onChange }: AiSettingsProps) {
               value={settings.baseUrl}
               placeholder="예: http://127.0.0.1:11434/v1"
               onChange={(event) => onChange({ ...settings, baseUrl: event.target.value.trim() })}
+              onFocus={() => setAddressBefore(settings.baseUrl)}
+              onBlur={() => {
+                const moved = addressBefore !== undefined && hostOf(addressBefore) !== hostOf(settings.baseUrl);
+
+                if (moved && settings.apiKey !== "") {
+                  onChange({ ...settings, apiKey: "" });
+                }
+
+                setKeyCleared(moved && settings.apiKey !== "");
+              }}
             />
           </label>
+          {keyCleared && <p className="window-note" role="status">서버가 바뀌어 저장된 키를 지웠습니다. 새 서버의 키가 있으면 다시 입력하세요.</p>}
           {addressError !== undefined && <p className="window-error" role="alert">{addressError}</p>}
         </>
       )}

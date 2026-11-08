@@ -98,7 +98,8 @@ export function applyEditCommand(
   }
 
   if (!card.repeat) {
-    return editResult(card, { ...next, date }, categories);
+    // An undated task has no date to keep: given one ("하루 미뤄" from today, "금요일로"), it becomes a dated task.
+    return editResult(card, { ...next, date, kind: card.kind === "undated" ? "task" : next.kind }, categories);
   }
 
   if (occurrence === undefined) {
