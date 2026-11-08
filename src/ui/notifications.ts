@@ -72,7 +72,8 @@ export function useReminders(items: Item[], now: Now, settings: NotificationSett
       return;
     }
 
-    // On start or a new day, look back one minute only: never replay a whole morning at once.
+    // On start or a new day, look back one minute only. After a same-day gap (sleep), dueReminders
+    // skips items that already started, so the gap never replays as a burst of stale reminders.
     const from = previous?.today === now.today ? previous.minutes : now.minutes - 1;
     const sent = loadSent();
     const due = dueReminders(items, now.today, from, now.minutes, settings.lead).filter((r) => !sent.has(r.key));

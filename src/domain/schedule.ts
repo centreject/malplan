@@ -31,10 +31,26 @@ export function occursOn(item: Item, date: IsoDate): boolean {
   }
 }
 
+/**
+ * What a completion is stored under in `done`: the date for single and recurring items, the last day for a
+ * range task (one task, done once, however many days it shows on), "done" for an undated one.
+ */
+export function doneKey(item: Item, date: string | undefined): string {
+  switch (item.when.kind) {
+    case "range":
+      return item.when.end;
+    case "none":
+      return "done";
+    case "single":
+    case "recurring":
+      return date ?? "done";
+  }
+}
+
 /** Items on `date`, untimed first, then by start time. */
 export function occurrencesOn(items: Item[], date: IsoDate): Occurrence[] {
   return items
-    .flatMap((item) => (occursOn(item, date) ? [{ item, date, done: item.done.includes(date) }] : []))
+    .flatMap((item) => (occursOn(item, date) ? [{ item, date, done: item.done.includes(doneKey(item, date)) }] : []))
     .toSorted((a, b) => sortKey(a.item.time) - sortKey(b.item.time));
 }
 

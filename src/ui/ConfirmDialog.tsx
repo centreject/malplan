@@ -4,6 +4,7 @@ import { categoryClass } from "../domain/categories";
 import { NEW_CATEGORY, cardErrors, repeatSeed, type Card, type CardErrors, type CardKind, type Draft, type RepeatFreq } from "../domain/card";
 import type { IsoDate, Weekday } from "../domain/date";
 import type { Category, ItemTime } from "../domain/item";
+import { NO_REMINDER } from "../domain/reminders";
 import type { SeriesScope } from "../domain/series";
 import type { Slot } from "../parse/parseKorean";
 import { applyExtraction, type EditedField, type Extraction } from "../llm/extract";
@@ -50,7 +51,7 @@ const NTHS: [number, string][] = [[1, "첫째"], [2, "둘째"], [3, "셋째"], [
 
 const SLOTS: Slot[] = ["morning", "lunch", "dinner", "night"];
 
-const REMINDERS: [string, string][] = [["", "없음"], ["10", "10분 전"], ["30", "30분 전"], ["60", "1시간 전"], ["1440", "하루 전"]];
+const REMINDERS: [string, string][] = [["", "기본 (알림 설정)"], [String(NO_REMINDER), "없음"], ["10", "10분 전"], ["30", "30분 전"], ["60", "1시간 전"], ["1440", "하루 전"]];
 
 const WEEKDAYS: Weekday[] = [0, 1, 2, 3, 4, 5, 6];
 
@@ -509,7 +510,8 @@ function RepeatFields({ card, set, id, invalid, error }: RepeatFieldsProps) {
             value={card.until}
             min={card.date}
             disabled={card.until === ""}
-            onChange={(event) => set({ until: event.target.value })}
+            // A half-cleared date reads as "" here; keep the old end date rather than turning the series endless.
+            onChange={(event) => event.target.value !== "" && set({ until: event.target.value })}
             {...invalid("until")}
           />
           <label className="cf-check">

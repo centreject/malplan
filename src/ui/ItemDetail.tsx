@@ -2,6 +2,8 @@ import { X } from "lucide-react";
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import type { IsoDate } from "../domain/date";
 import type { Category, Item } from "../domain/item";
+import { NO_REMINDER } from "../domain/reminders";
+import { doneKey } from "../domain/schedule";
 import { monthDay, recurrenceLabel, timeLabel, weekdayName } from "./format";
 import { CategoryTag } from "./parts";
 
@@ -45,11 +47,11 @@ export function ItemDetail({ item, date, categories, onEdit, onClose, onCommand,
   }
 
   if (item.remindMinutes !== undefined) {
-    rows.push(["알림", `${item.remindMinutes}분 전`]);
+    rows.push(["알림", item.remindMinutes === NO_REMINDER ? "없음" : `${item.remindMinutes}분 전`]);
   }
 
   if (item.kind === "task") {
-    rows.push(["상태", item.done.includes(date ?? "done") ? "완료" : "미완료"]);
+    rows.push(["상태", item.done.includes(doneKey(item, date)) ? "완료" : "미완료"]);
   }
 
   return (

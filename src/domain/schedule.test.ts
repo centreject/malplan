@@ -3,6 +3,8 @@ import type { Item } from "./item";
 import type { Recurrence } from "./recurrence";
 import {
   daysAround,
+  doneKey,
+  missedDates,
   firstOccurrence,
   formatClock,
   monthCells,
@@ -162,4 +164,21 @@ test("days around a center: 3 before, the day, 3 after", () => {
   expect(daysAround("2026-10-10")).toEqual([
     "2026-10-07", "2026-10-08", "2026-10-09", "2026-10-10", "2026-10-11", "2026-10-12", "2026-10-13",
   ]);
+});
+
+describe("a range task is one task, done once", () => {
+  const trip = item("trip", { kind: "task", when: { kind: "range", start: "2026-11-03", end: "2026-11-07" } });
+
+  test("checked on any day of the range, it shows done on every day and is never overdue", () => {
+    const checked = { ...trip, done: [doneKey(trip, "2026-11-05")] };
+
+    expect(occurrencesOn([checked], "2026-11-03")[0]?.done).toBe(true);
+    expect(occurrencesOn([checked], "2026-11-06")[0]?.done).toBe(true);
+    expect(missedDates(checked, "2026-11-08")).toEqual([]);
+  });
+
+  test("other kinds keep their own keys", () => {
+    expect(doneKey(item("s", { kind: "task" }), "2026-10-05")).toBe("2026-10-05");
+    expect(doneKey(item("n", { kind: "task", when: { kind: "none" } }), undefined)).toBe("done");
+  });
 });

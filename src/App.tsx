@@ -14,7 +14,7 @@ import type { Category, Item } from "./domain/item";
 import { holidaysForYears, mergeHolidays } from "./domain/holidays";
 import { reschedule } from "./domain/reschedule";
 import { deleteOccurrence, editOccurrence, type SeriesScope } from "./domain/series";
-import { daysAround, overdueTasks } from "./domain/schedule";
+import { daysAround, doneKey, overdueTasks } from "./domain/schedule";
 import { weekLabel, weekStartOf } from "./domain/weeks";
 import { parseKorean } from "./parse/parseKorean";
 import { ItemDetail } from "./ui/ItemDetail";
@@ -419,9 +419,11 @@ export default function App() {
           return item;
         }
 
-        const done = item.done.includes(date)
-          ? item.done.filter((d) => d !== date)
-          : [...item.done, date];
+        const key = doneKey(item, date);
+
+        const done = item.done.includes(key)
+          ? item.done.filter((d) => d !== key)
+          : [...item.done, key];
 
         return { ...item, done };
       }),
