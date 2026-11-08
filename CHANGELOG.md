@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.2.5 (2026-11-08)
+
+- New categories where you pick them: a 새 분류 button beside the category field in 새 항목 확인, and a "분류 추가" field at the bottom of the 전체 filter and in the tab editor. A name already in use picks that category.
+- Unsaved changes or an unreadable sync folder show as a bar above the board, with a link to 저장 설정.
+- A range with a time ("11/3~11/5 오후 2시") exports to .ics as 14:00 on each day, matching reminders and the day view, instead of one long event.
+
 ## 0.2.4 (2026-11-08)
 
 - AI settings: 연결 테스트 for online and custom servers names what to check; 모델 목록 받기 offers the server's models. Key, address and model save as typed and show what is saved. Keys are kept per provider.

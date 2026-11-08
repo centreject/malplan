@@ -1,6 +1,6 @@
 [package]
 name = "malplan"
-version = "0.2.4"
+version = "0.2.5"
 license = "MIT"
 description = "Natural-language Korean schedule and to-do app"
 authors = ["centreject"]
