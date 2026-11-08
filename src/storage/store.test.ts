@@ -1,6 +1,6 @@
 import { expect, test } from "vitest";
 import { TOMBSTONE_TTL_MS } from "./compact";
-import { copyInto, MemoryBackend, Outbox, SyncStore } from "./store";
+import { copyInto, MemoryBackend, Outbox, PRUNE_AFTER_MS, SyncStore } from "./store";
 
 const DAY = 24 * 60 * 60 * 1000;
 
@@ -110,10 +110,13 @@ test("compaction then further edits", async () => {
   tick("A", 10);
   await a.compact();
 
+  // Folded entries stay in A's own log for a while, then a load prunes them.
+  expect(await backend.read("log-A.jsonl")).toContain("x");
+  tick("A", PRUNE_AFTER_MS);
+  await a.load();
   expect(await backend.read("log-A.jsonl")).toBe("");
 
-  tick("A", 10);
-  tick("B", 30);
+  tick("B", PRUNE_AFTER_MS + 30);
   await a.set("item", "i1", "place", "카페");
   await b.set("item", "i1", "title", "x2");
 
@@ -153,7 +156,8 @@ test("compaction race: entries folded by another device are ignored, newer ones 
 
   expect(await item(a)).toEqual({ title: "a", note: "after" });
 
-  // On its next load B prunes entries already in the snapshot from its own log.
+  // Once they are old enough, B prunes entries already in the snapshot from its own log.
+  tick("B", PRUNE_AFTER_MS);
   await b.load();
 
   expect(await backend.read("log-B.jsonl")).not.toContain("b-old");
@@ -430,4 +434,33 @@ test("with no store yet (still loading or switching folders), writes wait in the
   await outbox.flush(undefined);
 
   expect(outbox.size).toBe(1);
+});
+
+test("two devices compacting at once (a cloud folder syncing late) lose nothing, whichever snapshot wins", async () => {
+  // Each device sees the folder as its cloud client last synced it.
+  const seenByA = new MemoryBackend();
+  const seenByB = new MemoryBackend();
+  const a = new SyncStore(seenByA, "A", () => 1000);
+  const b = new SyncStore(seenByB, "B", () => 2000);
+
+  await a.load();
+  await b.load();
+  await a.set("item", "a1", "title", "from A");
+  await b.set("item", "b1", "title", "from B");
+  // B has received A's log; A has not received B's.
+  await copyInto(seenByA, seenByB);
+  await a.compact();
+  await b.compact();
+
+  // The cloud keeps A's snapshot (written last) and each device's own log.
+  const synced = new MemoryBackend();
+
+  await synced.write("snapshot.json", (await seenByA.read("snapshot.json")) ?? "");
+  await synced.write("log-A.jsonl", (await seenByA.read("log-A.jsonl")) ?? "");
+  await synced.write("log-B.jsonl", (await seenByB.read("log-B.jsonl")) ?? "");
+
+  const c = new SyncStore(synced, "C", () => 3000);
+
+  await c.load();
+  expect(c.entities().item.map((entity) => entity.id).toSorted()).toEqual(["a1", "b1"]);
 });

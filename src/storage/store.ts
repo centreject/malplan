@@ -47,6 +47,9 @@ const DEFAULTS_BEFORE = 1000;
 
 const isReal = (change: Change) => change.ts >= DEFAULTS_BEFORE;
 
+/** How long a device keeps its own folded log entries before pruning them. */
+export const PRUNE_AFTER_MS = 7 * 24 * 60 * 60 * 1000;
+
 const logName = (device: string) => `log-${device}.jsonl`;
 
 const toLines = (changes: readonly Change[]) => changes.map((c) => `${JSON.stringify(c)}\n`).join("");
@@ -54,10 +57,11 @@ const toLines = (changes: readonly Change[]) => changes.map((c) => `${JSON.strin
 /**
  * Each device appends only to its own log and reads everyone else's.
  *
- * Compaction must be run by one designated device. It rewrites snapshot.json and truncates only
- * its own log; other devices' logs keep entries already folded in, and load() skips them because
+ * Compaction is run by one designated device. It rewrites snapshot.json; no log is truncated
+ * there. Logs keep entries already folded in, and load() skips them because
  * their ts <= snapshot.seen[device]. Each device later prunes those entries from its own log.
- * Two devices compacting at once could drop each other's work, hence the single compactor.
+ * Two devices compacting at once (a cloud folder syncing late) both fold; whichever snapshot wins, entries
+ * only the other one held are still in their device's log, which is pruned only after PRUNE_AFTER_MS.
  */
 export class SyncStore {
   /** Problems found by the last load: corrupt lines or a corrupt snapshot. Bad data is skipped. */
@@ -107,7 +111,9 @@ export class SyncStore {
 
     const seenSelf = new Map(Object.entries(parsed.snapshot.seen)).get(this.#deviceId) ?? -Infinity;
     const own = logs.get(this.#deviceId) ?? [];
-    const live = own.filter((c) => c.ts > seenSelf);
+    // Folded entries stay a while: if another device compacted at the same time and its snapshot wins (a cloud
+    // folder syncing late), entries only our snapshot held are still in our log.
+    const live = own.filter((c) => c.ts > seenSelf || c.ts > this.#now() - PRUNE_AFTER_MS);
 
     for (const c of own) this.#lastTs = Math.max(this.#lastTs, c.ts);
 
@@ -169,9 +175,8 @@ export class SyncStore {
     const known = [...new Set([...this.#logs.keys(), this.#deviceId])];
     const result = compact(this.#snapshot, this.#logs, this.#now(), known);
 
-    // Snapshot first: if we stop in between, our old log entries are simply skipped as folded.
+    // Our own log is pruned by load(), past PRUNE_AFTER_MS, not here: see there.
     await this.#backend.write(SNAPSHOT, JSON.stringify(result.snapshot));
-    await this.#backend.write(logName(this.#deviceId), toLines(result.keptChanges.filter((c) => c.device === this.#deviceId)));
     await this.load();
   }
 
@@ -182,7 +187,9 @@ export class SyncStore {
    */
   async compactIfDue(threshold: number): Promise<boolean> {
     const devices = [...new Set([...this.#logs.keys(), this.#deviceId])].toSorted();
-    const pending = [...this.#logs.values()].reduce((sum, log) => sum + log.length, 0);
+    const seen = new Map(Object.entries(this.#snapshot.seen));
+    // Entries already folded but kept for a while (PRUNE_AFTER_MS) are not pending.
+    const pending = [...this.#logs.values()].flat().filter((c) => c.ts > (seen.get(c.device) ?? -Infinity)).length;
 
     if (devices[0] !== this.#deviceId || pending <= threshold || this.#snapshotCorrupt) {
       return false;
