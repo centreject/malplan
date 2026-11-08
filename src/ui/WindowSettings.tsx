@@ -19,6 +19,7 @@ export function WindowSettings() {
   const [settings, setSettings] = useState<AppSettings>(loadAppSettings);
   const [autostart, setAutostart] = useState(false);
   const [shortcutError, setShortcutError] = useState<string | null>(null);
+  const [autostartError, setAutostartError] = useState<string>();
   const [recording, setRecording] = useState(false);
 
   useEffect(() => {
@@ -48,11 +49,16 @@ export function WindowSettings() {
   };
 
   const toggleAutostart = async (on: boolean) => {
+    setAutostartError(undefined);
+
     try {
       await (on ? enable() : disable());
-    } finally {
-      setAutostart(await isEnabled());
+    } catch (error) {
+      setAutostartError(`자동 실행을 바꾸지 못했습니다: ${error instanceof Error ? error.message : String(error)}`);
     }
+
+    // The checkbox shows what Windows actually has.
+    setAutostart(await isEnabled().catch(() => !on));
   };
 
   return (
@@ -68,6 +74,11 @@ export function WindowSettings() {
         />
         Windows 시작 시 자동 실행
       </label>
+      {autostartError !== undefined && (
+        <p className="window-error" role="alert">
+          {autostartError}
+        </p>
+      )}
 
       <label className="window-option">
         <input

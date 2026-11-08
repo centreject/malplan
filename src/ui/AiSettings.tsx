@@ -57,6 +57,7 @@ function LocalModel() {
   const server = useSyncExternalStore(localServer?.subscribe ?? noSubscribe, () => localServer?.status() ?? "off");
   const [model, setModel] = useState<ModelStatus>();
   const [confirmDelete, setConfirmDelete] = useState(false);
+  const [deleteError, setDeleteError] = useState<string>();
   const load = () => void modelStatus().then(setModel);
 
   // Read on open and again whenever a download finishes, pauses or fails.
@@ -89,8 +90,16 @@ function LocalModel() {
                 type="button"
                 className="text-button bordered"
                 onClick={async () => {
-                  await localServer?.stop();
-                  await deleteModel();
+                  setDeleteError(undefined);
+
+                  try {
+                    await localServer?.stop();
+                    await deleteModel();
+                  } catch (error) {
+                    // A file still in use (the server not yet closed) stays; say so instead of nothing happening.
+                    setDeleteError(`모델을 지우지 못했습니다: ${error instanceof Error ? error.message : String(error)}`);
+                  }
+
                   setConfirmDelete(false);
                   load();
                 }}
@@ -107,6 +116,7 @@ function LocalModel() {
             </button>
           )}
         </div>
+        {deleteError !== undefined && <p className="window-error" role="alert">{deleteError}</p>}
       </>
     );
   }

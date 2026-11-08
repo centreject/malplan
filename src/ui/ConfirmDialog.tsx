@@ -53,6 +53,13 @@ const SLOTS: Slot[] = ["morning", "lunch", "dinner", "night"];
 
 const REMINDERS: [string, string][] = [["", "기본 (알림 설정)"], [String(NO_REMINDER), "없음"], ["10", "10분 전"], ["30", "30분 전"], ["60", "1시간 전"], ["1440", "하루 전"]];
 
+/** A lead set elsewhere (MCP, an older version) stays a visible choice instead of the select showing another one. */
+function reminderChoices(current: number | undefined): [string, string][] {
+  return current === undefined || REMINDERS.some(([value]) => value === String(current))
+    ? REMINDERS
+    : [...REMINDERS, [String(current), `${current}분 전`]];
+}
+
 const WEEKDAYS: Weekday[] = [0, 1, 2, 3, 4, 5, 6];
 
 /** Fields whose manual edits the AI must not overwrite. */
@@ -408,7 +415,7 @@ function CardEditor({ card, errors, categories, occurrence, heading, onChange, o
             value={card.remindMinutes === undefined ? "" : String(card.remindMinutes)}
             onChange={(event) => set({ remindMinutes: event.target.value === "" ? undefined : Number(event.target.value) })}
           >
-            {REMINDERS.map(([value, label]) => (
+            {reminderChoices(card.remindMinutes).map(([value, label]) => (
               <option key={value} value={value}>{label}</option>
             ))}
           </select>

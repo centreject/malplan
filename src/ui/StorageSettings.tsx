@@ -14,22 +14,34 @@ type StorageSettingsProps = {
 export function StorageSettings({ dir, errors, onSwitch }: StorageSettingsProps) {
   const [pending, setPending] = useState<string | null>();
   const [busy, setBusy] = useState(false);
+  const [failure, setFailure] = useState<string>();
   const desktop = isTauri();
+  /** The same warning from several lines shows once. */
+  const warnings = [...new Set(errors)];
 
-  const choose = async (next: string | undefined) => {
+  /** A folder that cannot be read or written (offline NAS, no permission) says so; the current folder stays. */
+  const attempt = async (work: () => Promise<void>) => {
     setBusy(true);
+    setFailure(undefined);
 
     try {
+      await work();
+    } catch (error) {
+      setFailure(`폴더를 바꾸지 못했습니다: ${error instanceof Error ? error.message : String(error)}`);
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const choose = (next: string | undefined) =>
+    attempt(async () => {
       if (await folderHasData(next)) {
         // Ask: merge into the existing data, or use only what is there.
         setPending(next ?? null);
       } else {
         await onSwitch(next, "merge");
       }
-    } finally {
-      setBusy(false);
-    }
-  };
+    });
 
   const pick = async () => {
     const picked = await open({ directory: true, multiple: false, title: "동기화 폴더 선택" });
@@ -39,17 +51,12 @@ export function StorageSettings({ dir, errors, onSwitch }: StorageSettingsProps)
     }
   };
 
-  const confirm = async (mode: FolderMode) => {
+  const confirm = (mode: FolderMode) => {
     const next = pending ?? undefined;
 
     setPending(undefined);
-    setBusy(true);
 
-    try {
-      await onSwitch(next, mode);
-    } finally {
-      setBusy(false);
-    }
+    return attempt(() => onSwitch(next, mode));
   };
 
   return (
@@ -93,11 +100,17 @@ export function StorageSettings({ dir, errors, onSwitch }: StorageSettingsProps)
         </div>
       )}
 
-      {errors.length > 0 && (
+      {failure !== undefined && (
+        <p className="window-error" role="alert">
+          {failure}
+        </p>
+      )}
+
+      {warnings.length > 0 && (
         <details className="storage-errors">
-          <summary>저장 데이터 경고 {errors.length}건</summary>
+          <summary>저장 데이터 경고 {warnings.length}건</summary>
           <ul>
-            {errors.map((error) => (
+            {warnings.map((error) => (
               <li key={error}>{error}</li>
             ))}
           </ul>

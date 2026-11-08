@@ -110,7 +110,11 @@ export default function App() {
     const onKey = (event: KeyboardEvent) => {
       if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === "f") {
         event.preventDefault();
-        setSearchOpen(true);
+
+        // Not over an open dialog (editor, settings): search would stack on top of unsaved work.
+        if (document.querySelector("dialog[open]") === null) {
+          setSearchOpen(true);
+        }
       }
     };
 
@@ -786,6 +790,8 @@ export default function App() {
       )}
       {confirm !== undefined && (
         <ConfirmDialog
+          // A different set of drafts is a new form, never the previous one's state.
+          key={confirm.drafts.map((draft) => draft.id).join(" ")}
           drafts={confirm.drafts}
           editing={confirm.editing}
           occurrence={confirm.occurrence}
