@@ -14,6 +14,18 @@ import { SyncStore, type Backend } from "../storage/store";
 import { addSchedule, completeTask, findSchedule, listSchedule, loadBoard, previewSchedule } from "./tools";
 
 /** The sync folder on disk, written the same way as the app's Rust side: append + fsync, replace via rename. */
+/**
+ * Only a missing file or folder reads as empty. A locked or unreadable one (OneDrive, an open handle) fails the call,
+ * so a tool never writes over data it could not read.
+ */
+function missing<T>(error: NodeJS.ErrnoException, empty: T): T {
+  if (error.code === "ENOENT") {
+    return empty;
+  }
+
+  throw error;
+}
+
 class NodeFolder implements Backend {
   readonly #dir: string;
 
@@ -22,19 +34,11 @@ class NodeFolder implements Backend {
   }
 
   async list() {
-    try {
-      return await readdir(this.#dir);
-    } catch {
-      return [];
-    }
+    return readdir(this.#dir).catch((error: NodeJS.ErrnoException) => missing(error, []));
   }
 
   async read(name: string) {
-    try {
-      return await readFile(join(this.#dir, name), "utf8");
-    } catch {
-      return undefined;
-    }
+    return readFile(join(this.#dir, name), "utf8").catch((error: NodeJS.ErrnoException) => missing(error, undefined));
   }
 
   async write(name: string, content: string) {

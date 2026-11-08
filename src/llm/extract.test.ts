@@ -40,6 +40,12 @@ describe("buildPrompt", () => {
     expect(system).toContain("김철수 저녁");
   });
 
+  test("a correction naming a category that no longer exists is not an example", () => {
+    const { system } = buildPrompt(text, categories, [{ input: "김철수 저녁", category: "모임" }], today);
+
+    expect(system).not.toContain("김철수 저녁");
+  });
+
   test("kind corrections show up in the example", () => {
     const { system } = buildPrompt(text, categories, [{ input: "김철수 저녁", category: "약속", kind: "task" }], today);
 

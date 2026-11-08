@@ -1,6 +1,9 @@
 import { useState } from "react";
 import type { SpecialDaysStatus } from "./specialDays";
 
+/** fetchedAt is the local date at UTC midnight (Date.parse of an ISO date): read it back in UTC, or zones west of UTC show the day before. */
+const UTC_DAY = { timeZone: "UTC" } as const;
+
 type HolidaySettingsProps = {
   apiKey: string;
   status: SpecialDaysStatus;
@@ -66,12 +69,12 @@ function StatusLine({ status }: { status: SpecialDaysStatus }) {
     case "loading":
       return <p className="window-note" role="status">공휴일 정보를 받는 중…</p>;
     case "ok":
-      return <p className="window-note" role="status">마지막 갱신: {new Date(status.fetchedAt).toLocaleDateString("ko-KR")}</p>;
+      return <p className="window-note" role="status">마지막 갱신: {new Date(status.fetchedAt).toLocaleDateString("ko-KR", UTC_DAY)}</p>;
     case "error":
       return (
         <p className="window-error" role="status">
           갱신 실패: {status.message}
-          {status.fetchedAt !== undefined && ` (이전 정보 사용 중: ${new Date(status.fetchedAt).toLocaleDateString("ko-KR")})`}
+          {status.fetchedAt !== undefined && ` (이전 정보 사용 중: ${new Date(status.fetchedAt).toLocaleDateString("ko-KR", UTC_DAY)})`}
         </p>
       );
   }

@@ -134,7 +134,10 @@ export function buildPrompt(
   corrections: Correction[],
   today: IsoDate,
 ): Prompt {
-  const examples = pickCorrections(corrections, input, today)
+  // A category renamed or deleted since the correction would be taught back as a new category: skip those.
+  const current = corrections.filter((c) => categories.some((category) => category.name === c.category));
+
+  const examples = pickCorrections(current, input, today)
     .map((c) => `- "${c.input}" → 분류 "${c.category}"` + (c.kind === undefined ? "" : `, kind "${c.kind}"`))
     .join("\n");
 

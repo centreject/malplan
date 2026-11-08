@@ -46,6 +46,9 @@ function fake(startResult: "started" | "no-model", failedPolls: number): Fake {
   };
 }
 
+/** Nothing to release yet. */
+const settled = async () => {};
+
 const OPTIONS = { idleMs: 600_000, readyTimeoutMs: 1000, pollMs: 250 };
 
 describe("createLocalServer", () => {
@@ -114,6 +117,60 @@ describe("createLocalServer", () => {
     await new Promise((resolve) => setTimeout(resolve, 0));
 
     expect(warmUps).toBe(1);
+    expect(server.status()).toBe("ready");
+  });
+
+  it("a start error after no-model shows as an error", async () => {
+    let installed = false;
+    const f = fake("no-model", 0);
+
+    const server = createLocalServer(
+      {
+        ...f.control,
+        start: async () => {
+          if (installed) {
+            throw new Error("port in use");
+          }
+
+          return "no-model";
+        },
+      },
+      OPTIONS,
+    );
+
+    await expect(server.ensure()).rejects.toThrow("모델");
+    expect(server.status()).toBe("no-model");
+
+    installed = true;
+    await expect(server.ensure()).rejects.toThrow("port in use");
+    expect(server.status()).toBe("error");
+  });
+
+  it("stop() during startup ends that start; the next ensure() starts afresh", async () => {
+    const f = fake("started", 1000);
+    let healthyNow = false;
+    /** Ends the wait the start is in. */
+    let release = settled;
+
+    const server = createLocalServer(
+      {
+        ...f.control,
+        healthy: async () => healthyNow,
+        wait: () => new Promise<void>((resolve) => (release = () => Promise.resolve(resolve()))),
+      },
+      OPTIONS,
+    );
+
+    const first = server.ensure();
+
+    await Promise.resolve();
+    await server.stop();
+    await release();
+    await expect(first).rejects.toThrow("중지");
+    expect(server.status()).toBe("off");
+
+    healthyNow = true;
+    await server.ensure();
     expect(server.status()).toBe("ready");
   });
 });

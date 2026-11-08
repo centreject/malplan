@@ -39,6 +39,8 @@ export function createLocalServer(control: ServerControl, options: ServerOptions
   let status: LocalStatus = "off";
   let pending: Promise<void> | undefined;
   let cancelIdle = noop;
+  /** Bumped by stop(): a start still in progress gives up instead of making the next ensure() wait for it. */
+  let generation = 0;
 
   const listeners = new Set<() => void>();
 
@@ -53,28 +55,50 @@ export function createLocalServer(control: ServerControl, options: ServerOptions
   };
 
   const stop = async () => {
+    generation += 1;
+    pending = undefined;
     cancelIdle();
     await control.stop();
     set("off");
   };
 
-  const bringUp = async () => {
-    try {
-      if ((await control.start()) === "no-model") {
-        set("no-model");
+  const bringUp = async (run: number) => {
+    const stopped = async () => {
+      if (generation === run) {
+        return false;
+      }
 
-        throw new Error("로컬 AI 모델이 없습니다.");
-      }
-    } catch (error) {
-      if (status !== "no-model") {
-        set("error");
-      }
+      // stop() may have run before the process was spawned: make sure it is gone.
+      await control.stop().catch(() => undefined);
+
+      return true;
+    };
+
+    // A real start error after "no-model" (the model was installed since) must show, not the old "no-model".
+    const started = await control.start().catch((error: Error) => {
+      set("error");
 
       throw error;
+    });
+
+    if (await stopped()) {
+      throw new Error("로컬 AI 서버를 중지했습니다.");
+    }
+
+    if (started === "no-model") {
+      set("no-model");
+
+      throw new Error("로컬 AI 모델이 없습니다.");
     }
 
     for (let waited = 0; waited <= options.readyTimeoutMs; waited += options.pollMs) {
-      if (await control.healthy()) {
+      const healthy = await control.healthy();
+
+      if (await stopped()) {
+        throw new Error("로컬 AI 서버를 중지했습니다.");
+      }
+
+      if (healthy) {
         set("ready");
 
         return;
@@ -92,9 +116,16 @@ export function createLocalServer(control: ServerControl, options: ServerOptions
   };
 
   const ensure = async () => {
-    pending ??= bringUp().finally(() => {
-      pending = undefined;
-    });
+    if (pending === undefined) {
+      const run = bringUp(generation).finally(() => {
+        if (pending === run) {
+          pending = undefined;
+        }
+      });
+
+      pending = run;
+    }
+
     await pending;
     cancelIdle();
     cancelIdle = control.setTimer(() => void stop(), options.idleMs);
