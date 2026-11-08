@@ -53,8 +53,10 @@ pub fn sync_list(dir: String) -> Result<Vec<String>, String> {
 
 #[tauri::command(async)]
 pub fn sync_read(dir: String, name: String) -> Result<Option<String>, String> {
-    match fs::read_to_string(file_path(&dir, &name)?) {
-        Ok(text) => Ok(Some(text)),
+    match fs::read(file_path(&dir, &name)?) {
+        // A line cut short inside a multi-byte character must not make the whole log unreadable:
+        // decode lossily, and the log parser drops just that broken line.
+        Ok(bytes) => Ok(Some(String::from_utf8_lossy(&bytes).into_owned())),
         Err(e) if e.kind() == std::io::ErrorKind::NotFound => Ok(None),
         Err(e) => Err(e.to_string()),
     }
@@ -103,4 +105,28 @@ pub fn sync_append(dir: String, name: String, line: String) -> Result<(), String
 #[tauri::command(async)]
 pub fn save_text_file(path: String, content: String) -> Result<(), String> {
     fs::write(path, content).map_err(text_error)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn a_line_cut_inside_a_character_costs_only_that_line() {
+        let dir = std::env::temp_dir().join(format!("malplan-sync-test-{}", std::process::id()));
+        fs::create_dir_all(&dir).unwrap();
+        let dir_name = dir.to_string_lossy().into_owned();
+        // An append cut short (power loss) inside "치" (0xEC 0xB9 0x98), then the next save.
+        let mut bytes = b"{\"v\":\"ok\"}\n{\"v\":\"".to_vec();
+        bytes.push(0xEC);
+        fs::write(dir.join("log-x.jsonl"), &bytes).unwrap();
+        sync_append(dir_name.clone(), "log-x.jsonl".into(), "{\"v\":\"next\"}\n".into()).unwrap();
+
+        let text = sync_read(dir_name, "log-x.jsonl".into());
+        fs::remove_dir_all(&dir).unwrap();
+
+        let text = text.unwrap().unwrap();
+        assert!(text.starts_with("{\"v\":\"ok\"}\n"));
+        assert!(text.ends_with("\n{\"v\":\"next\"}\n"));
+    }
 }

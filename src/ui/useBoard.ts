@@ -2,7 +2,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { ALL_TAB_ID } from "../domain/tabs";
 import { deviceId, loadSyncDir, openBackend, saveSyncDir } from "../storage/backends";
 import { boardChanges, boardFromEntities, boardWrites, type Board } from "../storage/board";
-import { copyInto, SyncStore } from "../storage/store";
+import { copyInto, Outbox, SyncStore } from "../storage/store";
 import { report } from "./report";
 
 const EMPTY: Board = { items: [], categories: [], tabs: [{ id: ALL_TAB_ID, name: "전체", categoryIds: undefined }] };
@@ -33,27 +33,36 @@ export function useBoard(seed: () => Board) {
   /** Counts local edits, so a reload that overlapped one does not overwrite the screen. */
   const edits = useRef(0);
   const reloading = useRef<Promise<void>>(undefined);
+  const outbox = useRef(new Outbox());
+  const [unsaved, setUnsaved] = useState(0);
+  /** Bumped to retry a failed load (an offline NAS, a locked file). */
+  const [attempt, setAttempt] = useState(0);
 
   const show = useCallback((next: Board) => {
     current.current = next;
     setBoard(next);
   }, []);
 
-  const write = useCallback((prev: Board, next: Board) => {
-    const target = store.current;
-
-    if (target === undefined) {
-      return;
+  /** Sends what waits in the outbox. A failure keeps it there for the next save, reload or load: nothing is dropped. */
+  const flush = useCallback(async (target: SyncStore | undefined) => {
+    try {
+      // One append (one disk sync) per flush, not one per field.
+      await outbox.current.flush(target);
+    } catch (error) {
+      report(`save failed: ${error instanceof Error ? error.message : String(error)}`);
     }
 
-    queue.current = queue.current.then(() =>
-      // One append (one disk sync) per save, not one per field.
-      target.setMany(boardWrites(prev, next)),
-    ).catch((error: Error) => {
-      report(`save failed: ${error.message}`);
-      setErrors((list) => [...list, `저장 실패: ${error.message}`]);
-    });
+    setUnsaved(outbox.current.size);
   }, []);
+
+  /** Queues the change; it is written once the store is ready (still loading, a failed load, or a folder switch). */
+  const write = useCallback(
+    (prev: Board, next: Board) => {
+      outbox.current.add(boardWrites(prev, next));
+      queue.current = queue.current.then(() => flush(store.current));
+    },
+    [flush],
+  );
 
   const update = useCallback(
     (change: (board: Board) => Board) => {
@@ -82,9 +91,9 @@ export function useBoard(seed: () => Board) {
 
       setErrors((list) => (sameList(list, found) ? list : found));
 
-      // An edit made meanwhile is not in what was read; showing it would revert the screen.
-      // The next reload shows both.
-      if (edits.current === editsBefore && boardChanges(current.current, loaded.board).length > 0) {
+      // An edit made meanwhile, or one still waiting to be saved, is not in what was read; showing it
+      // would revert the screen. The next reload shows both.
+      if (edits.current === editsBefore && outbox.current.size === 0 && boardChanges(current.current, loaded.board).length > 0) {
         show(loaded.board);
       }
     };
@@ -96,6 +105,7 @@ export function useBoard(seed: () => Board) {
 
     // Queued with the writes, so a write never runs while the store is reloading.
     const run = queue.current.then(async () => {
+      await flush(target);
       await target.refresh();
       // Cheap unless due; the app stays open for days, so startup alone is not enough.
       await target.compactIfDue(COMPACT_THRESHOLD).catch(() => false);
@@ -107,12 +117,17 @@ export function useBoard(seed: () => Board) {
     });
 
     return reloading.current;
-  }, [show]);
+  }, [show, flush]);
 
   useEffect(() => {
     let cancelled = false;
+    let retry: number | undefined;
 
     void (async () => {
+      if (attempt > 0) {
+        report(`load retry ${attempt}`);
+      }
+
       const backend = await openBackend(dir);
       const target = new SyncStore(backend, deviceId(), Date.now);
 
@@ -125,6 +140,9 @@ export function useBoard(seed: () => Board) {
       }
 
       store.current = target;
+      // Edits made before the store was ready go out first, so the board read next includes them.
+      queue.current = queue.current.then(() => flush(target));
+      await queue.current;
 
       const loaded = boardFromEntities(target.entities());
 
@@ -136,7 +154,7 @@ export function useBoard(seed: () => Board) {
         const seeded = seedRef.current();
 
         show(seeded);
-        write(EMPTY, seeded);
+        await target.seed(boardWrites(EMPTY, seeded));
       } else {
         show(loaded.board);
       }
@@ -144,13 +162,18 @@ export function useBoard(seed: () => Board) {
       setReady(true);
     })().catch((error: Error) => {
       report(`load failed: ${error.message}`);
-      setErrors([`불러오기 실패: ${error.message}`]);
+      setErrors([`불러오기 실패: ${error.message}. 잠시 뒤 다시 시도합니다.`]);
+
+      if (!cancelled) {
+        retry = window.setTimeout(() => setAttempt((n) => n + 1), REFRESH_MS);
+      }
     });
 
     return () => {
       cancelled = true;
+      window.clearTimeout(retry);
     };
-  }, [dir, show, write]);
+  }, [dir, attempt, show, flush]);
 
   useEffect(() => {
     if (!ready) {
@@ -197,7 +220,9 @@ export function useBoard(seed: () => Board) {
     [dir],
   );
 
-  return { board, ready, errors, update, dir, switchFolder, reload };
+  const shownErrors = unsaved === 0 ? errors : [...errors, `저장하지 못한 변경 ${unsaved}건: 폴더에 다시 쓸 수 있으면 저장합니다.`];
+
+  return { board, ready, errors: shownErrors, update, dir, switchFolder, reload };
 }
 
 /** Folder holds sync data already? Used to ask merge vs replace. */

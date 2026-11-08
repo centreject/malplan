@@ -1,6 +1,6 @@
 import { expect, test } from "vitest";
 import { TOMBSTONE_TTL_MS } from "./compact";
-import { copyInto, MemoryBackend, SyncStore } from "./store";
+import { copyInto, MemoryBackend, Outbox, SyncStore } from "./store";
 
 const DAY = 24 * 60 * 60 * 1000;
 
@@ -308,4 +308,126 @@ test("merging folders refuses to overwrite a corrupt snapshot", async () => {
 
   await expect(copyInto(from, to)).rejects.toThrow("corrupt");
   expect(await to.read("snapshot.json")).toBe("{ cut short");
+});
+
+/** Like the desktop folder backend: names outside [A-Za-z0-9._-] cannot be read. */
+class DesktopNames extends MemoryBackend {
+  override async read(name: string) {
+    if (!/^[\w.-]+$/.test(name)) {
+      throw new Error(`invalid sync file name: ${name}`);
+    }
+
+    return super.read(name);
+  }
+}
+
+test("a cloud conflicted copy of a log is skipped, so loading still works", async () => {
+  const backend = new DesktopNames();
+  const a = new SyncStore(backend, "A", () => 1000);
+  await a.load();
+  await a.set("item", "i1", "title", "x");
+  backend.files.set("log-A (1).jsonl", backend.files.get("log-A.jsonl") ?? "");
+  backend.files.set("새 텍스트 문서.txt", "memo");
+
+  const b = new SyncStore(backend, "B", () => 2000);
+  await b.load();
+
+  expect(b.entities().item.find((r) => r.id === "i1")?.fields.title).toBe("x");
+});
+
+test("a merge copies only sync files, not whatever else the folder holds", async () => {
+  const from = new MemoryBackend();
+  const a = new SyncStore(from, "A", () => 1000);
+  await a.load();
+  await a.set("item", "i1", "title", "x");
+  from.files.set("새 텍스트 문서.txt", "memo");
+  from.files.set("log-A (1).jsonl", "");
+
+  const to = new DesktopNames();
+  await copyInto(from, to);
+
+  expect([...to.files.keys()]).toEqual(["log-A.jsonl"]);
+});
+
+test("first-run defaults never override the folder they are merged into", async () => {
+  const { backend: shared, device } = setup();
+  const a = await device("A", 5000);
+  await a.set("category", "work", "name", "회사");
+  await a.set("category", "contest", "name", "공모전");
+  await a.set("category", "work", "name", "직장");
+  await a.remove("category", "contest");
+  // The tombstone is purged here, so only the defaults' age can keep 공모전 from coming back.
+  await a.compact();
+
+  const local = new MemoryBackend();
+  const b = new SyncStore(local, "B", () => 9000);
+  await b.load();
+  await b.seed([
+    { entity: "category", id: "work", field: "name", value: "회사" },
+    { entity: "category", id: "contest", field: "name", value: "공모전" },
+  ]);
+  await b.set("item", "i9", "title", "B에서 만든 일정");
+  await copyInto(local, shared);
+
+  const merged = new SyncStore(shared, "A", () => 10_000);
+  await merged.load();
+  const categories = merged.entities().category;
+
+  expect(categories.find((r) => r.id === "work")?.fields.name).toBe("직장");
+  expect(categories.find((r) => r.id === "contest")).toBeUndefined();
+  expect(merged.entities().item.find((r) => r.id === "i9")?.fields.title).toBe("B에서 만든 일정");
+});
+
+test("defaults merged into an empty folder are kept", async () => {
+  const local = new MemoryBackend();
+  const b = new SyncStore(local, "B", () => 9000);
+  await b.load();
+  await b.seed([{ entity: "category", id: "work", field: "name", value: "회사" }]);
+
+  const empty = new MemoryBackend();
+  await copyInto(local, empty);
+  const merged = new SyncStore(empty, "B", () => 10_000);
+  await merged.load();
+
+  expect(merged.entities().category.find((r) => r.id === "work")?.fields.name).toBe("회사");
+});
+
+/** A folder that refuses appends while `locked` (OneDrive or NAS holding the file). */
+class LockableFolder extends MemoryBackend {
+  locked = true;
+
+  override async append(name: string, line: string) {
+    if (this.locked) {
+      throw new Error("locked");
+    }
+
+    return super.append(name, line);
+  }
+}
+
+test("writes that fail stay in the outbox and go out on the next flush", async () => {
+  const backend = new LockableFolder();
+  const store = new SyncStore(backend, "A", () => 1000);
+  await store.load();
+  const outbox = new Outbox();
+
+  outbox.add([{ entity: "item", id: "i1", field: "title", value: "x" }]);
+  await expect(outbox.flush(store)).rejects.toThrow("locked");
+  expect(outbox.size).toBe(1);
+
+  backend.locked = false;
+  await outbox.flush(store);
+  await store.refresh();
+
+  expect(outbox.size).toBe(0);
+  expect(store.entities().item.find((r) => r.id === "i1")?.fields.title).toBe("x");
+});
+
+test("with no store yet (still loading or switching folders), writes wait in the outbox", async () => {
+  const outbox = new Outbox();
+
+  outbox.add([{ entity: "item", id: "i1", field: "title", value: "x" }]);
+  await outbox.flush(undefined);
+
+  expect(outbox.size).toBe(1);
 });

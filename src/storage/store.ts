@@ -34,7 +34,18 @@ export type FieldWrite = Pick<Change, "entity" | "id" | "field" | "value">;
 
 const SNAPSHOT = "snapshot.json";
 
-const LOG_NAME = /^log-(.+)\.jsonl$/;
+/** Same characters the desktop backend can read, so a cloud "conflicted copy" of a log is skipped, not fatal. */
+const LOG_NAME = /^log-([\w.-]+)\.jsonl$/;
+
+const isSyncFile = (name: string) => name === SNAPSHOT || LOG_NAME.test(name);
+
+/**
+ * First-run defaults are dated 1, 2, 3… instead of now (there are far fewer than 1000 of them, and real
+ * clocks are far above it), so any real edit wins over them and a merge into a folder with data leaves them out.
+ */
+const DEFAULTS_BEFORE = 1000;
+
+const isReal = (change: Change) => change.ts >= DEFAULTS_BEFORE;
 
 const logName = (device: string) => `log-${device}.jsonl`;
 
@@ -118,10 +129,18 @@ export class SyncStore {
   }
 
   /** Writes several fields in one append (one disk sync). Use DELETED/true to remove an entity. */
-  async setMany(writes: readonly FieldWrite[]): Promise<void> {
+  setMany(writes: readonly FieldWrite[]): Promise<void> {
+    return this.#append(writes, this.#now());
+  }
+
+  /** First-run defaults (fixed ids such as the starter categories), dated so that they never override real data. */
+  seed(writes: readonly FieldWrite[]): Promise<void> {
+    return this.#append(writes, 1);
+  }
+
+  async #append(writes: readonly FieldWrite[], now: number): Promise<void> {
     if (writes.length === 0) return;
 
-    const now = this.#now();
     let ts = this.#lastTs;
 
     // Strictly increasing per device, even if the clock steps back: compaction relies on it.
@@ -182,40 +201,51 @@ export class SyncStore {
 /**
  * Copies one sync folder's files into another ("merge" when switching folders). Logs are appended;
  * when both folders have a snapshot, they are merged so neither folder's compacted data is dropped.
+ * Only sync files are copied. Into a folder that already has data, first-run defaults are left out:
+ * their ids are fixed, so they would otherwise undo that folder's renames and bring back deleted entries.
  */
 export async function copyInto(from: Backend, to: Backend): Promise<void> {
-  const existing = new Set(await to.list());
-  const names = await from.list();
-
-  const merged = names.includes(SNAPSHOT) && existing.has(SNAPSHOT)
-    ? mergeSnapshots(parseSnapshot((await from.read(SNAPSHOT)) ?? ""), parseSnapshot((await to.read(SNAPSHOT)) ?? ""))
-    : undefined;
+  const existing = new Set((await to.list()).filter(isSyncFile));
+  const names = (await from.list()).filter(isSyncFile);
 
   for (const name of names) {
     const text = (await from.read(name)) ?? "";
 
-    if (name === SNAPSHOT && merged !== undefined) {
-      await to.write(SNAPSHOT, JSON.stringify(merged));
-    } else if (!existing.has(name)) {
+    if (existing.size === 0) {
       await to.write(name, text);
-    } else if (name.startsWith("log-")) {
-      await to.append(name, text);
+    } else if (name === SNAPSHOT) {
+      const ours = withoutDefaults(checked(parseSnapshot(text)));
+      const theirs = existing.has(SNAPSHOT) ? checked(parseSnapshot((await to.read(SNAPSHOT)) ?? "")) : undefined;
+
+      await to.write(SNAPSHOT, JSON.stringify(theirs === undefined ? ours : mergeSnapshots(ours, theirs)));
+    } else {
+      const lines = toLines(parseLog(text, LOG_NAME.exec(name)?.[1] ?? "").changes.filter(isReal));
+
+      await (existing.has(name) ? to.append(name, lines) : to.write(name, lines));
     }
   }
+}
+
+function checked(parsed: ParsedSnapshot): Snapshot {
+  if (parsed.error !== undefined) {
+    throw new Error(`${SNAPSHOT} is corrupt; refusing to merge folders`);
+  }
+
+  return parsed.snapshot;
+}
+
+function withoutDefaults(snapshot: Snapshot): Snapshot {
+  return { ...snapshot, entities: snapshot.entities.filter(isReal) };
 }
 
 /**
  * Both snapshots' winning changes. `seen` keeps, per device, only the lower watermark of the two, so no log
  * entry that only one folder had folded is skipped (re-applying an entry the snapshot holds changes nothing).
  */
-function mergeSnapshots(a: ParsedSnapshot, b: ParsedSnapshot): Snapshot {
-  if (a.error !== undefined || b.error !== undefined) {
-    throw new Error(`${SNAPSHOT} is corrupt; refusing to merge folders`);
-  }
+function mergeSnapshots(a: Snapshot, b: Snapshot): Snapshot {
+  const seenB = new Map(Object.entries(b.seen));
 
-  const seenB = new Map(Object.entries(b.snapshot.seen));
-
-  const seen = Object.entries(a.snapshot.seen).flatMap(([device, ts]): [string, number][] => {
+  const seen = Object.entries(a.seen).flatMap(([device, ts]): [string, number][] => {
     const other = seenB.get(device);
 
     return other === undefined ? [] : [[device, Math.min(ts, other)]];
@@ -223,8 +253,31 @@ function mergeSnapshots(a: ParsedSnapshot, b: ParsedSnapshot): Snapshot {
 
   return {
     version: 1,
-    compactedAt: Math.max(a.snapshot.compactedAt, b.snapshot.compactedAt),
+    compactedAt: Math.max(a.compactedAt, b.compactedAt),
     seen: Object.fromEntries(seen),
-    entities: [...applyChanges(applyChanges(emptyState, a.snapshot.entities), b.snapshot.entities).values()],
+    entities: [...applyChanges(applyChanges(emptyState, a.entities), b.entities).values()],
   };
+}
+
+/** Field writes not yet on disk. A failed save, or a store still loading, keeps them for the next try. */
+export class Outbox {
+  #writes: FieldWrite[] = [];
+
+  get size(): number {
+    return this.#writes.length;
+  }
+
+  add(writes: readonly FieldWrite[]): void {
+    this.#writes = [...this.#writes, ...writes];
+  }
+
+  /** Sends everything waiting, in order. Run one at a time. On failure all of it stays and the error is rethrown. */
+  async flush(store: SyncStore | undefined): Promise<void> {
+    const sending = this.#writes;
+
+    if (store === undefined || sending.length === 0) return;
+
+    await store.setMany(sending);
+    this.#writes = this.#writes.slice(sending.length);
+  }
 }
