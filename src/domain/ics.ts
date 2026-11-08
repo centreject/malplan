@@ -40,11 +40,17 @@ function component(item: Item, stamp: string): string[] {
   const last = when.kind === "range" ? when.end : first;
   const clock = startClock(item);
 
+  // A timed range happens at that time on each of its days (as reminders and the day view show it), not as one long event.
   const timing = clock === undefined
     ? [`DTSTART;VALUE=DATE:${compact(first)}`, `DTEND;VALUE=DATE:${compact(addDays(last, 1))}`]
-    : [`DTSTART:${stampOf(first, clock)}`, `DTEND:${stampOf(last, endClock(item, clock))}`];
+    : [`DTSTART:${stampOf(first, clock)}`, `DTEND:${stampOf(first, endClock(item, clock))}`];
 
-  const recurrence = when.kind === "recurring" ? recurrenceLines(when.rule, clock) : [];
+  const recurrence =
+    when.kind === "recurring"
+      ? recurrenceLines(when.rule, clock)
+      : when.kind === "range" && clock !== undefined
+        ? [`RRULE:FREQ=DAILY;UNTIL=${compact(last)}T235959`]
+        : [];
 
   return ["BEGIN:VEVENT", ...common, ...timing, ...recurrence, "END:VEVENT"];
 }

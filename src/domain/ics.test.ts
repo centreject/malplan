@@ -40,6 +40,16 @@ test("untimed event is all-day; a range ends the day after its last day", () => 
   expect(lines([item({ when: { kind: "range", start: "2026-10-10", end: "2026-10-12" } })])).toContain("DTEND;VALUE=DATE:20261013");
 });
 
+test("a timed range repeats daily at its time, like its reminders", () => {
+  const out = lines([
+    item({ when: { kind: "range", start: "2026-11-03", end: "2026-11-05" }, time: { kind: "exact", start: { hour: 14, minute: 0 } } }),
+  ]);
+
+  expect(out).toContain("DTSTART:20261103T140000");
+  expect(out).toContain("DTEND:20261103T150000");
+  expect(out).toContain("RRULE:FREQ=DAILY;UNTIL=20261105T235959");
+});
+
 test("weekly with until, interval and skipped dates", () => {
   const out = lines([
     item({
