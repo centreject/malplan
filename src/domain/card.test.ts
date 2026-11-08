@@ -94,6 +94,11 @@ describe("guessCategory", () => {
     expect(guessCategory(title, own)).toBe(id);
   });
 
+  // Words with another common meaning are not clues: syncing (동기화), an IPO (공모주), a film on your own.
+  test.each(["폰 사진 동기화", "공모주 청약", "영화 보기", "운전면허 시험"])("%s falls back to the broad category", (title) => {
+    expect(guessCategory(title, own)).toBe("life");
+  });
+
   test("a word naming more of one kind wins: group project meeting is school, not work", () => {
     expect(guessCategory("조별과제 회의", own)).toBe("study");
   });
