@@ -1,5 +1,5 @@
 import { Plus, Trash2, TriangleAlert } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { UNCATEGORIZED_ID } from "../domain/categories";
 import type { Category } from "../domain/item";
 import { ALL_TAB_ID, type CalendarTab } from "../domain/tabs";
@@ -49,12 +49,7 @@ export function CategorySettings({ categories, tabs, onAdd, onRename, onRecolor,
                   />
                 ))}
                 <label className={`cat-custom ${c.color === undefined ? "" : "is-on"}`} title="직접 지정">
-                  <input
-                    type="color"
-                    value={c.color ?? "#888888"}
-                    aria-label={`${c.name} 색 직접 지정`}
-                    onChange={(event) => onCustomColor(c.id, event.target.value)}
-                  />
+                  <ColorInput key={c.color ?? "none"} value={c.color ?? "#888888"} label={`${c.name} 색 직접 지정`} onPick={(hex) => onCustomColor(c.id, hex)} />
                 </label>
                 <input
                   key={c.color ?? "none"}
@@ -127,4 +122,33 @@ export function CategorySettings({ categories, tabs, onAdd, onRename, onRecolor,
       ))}
     </fieldset>
   );
+}
+
+/**
+ * Saves once, when the picker closes (the native change event). React's onChange fires on every step of a drag,
+ * and each save is a line in the sync log.
+ */
+function ColorInput({ value, label, onPick }: { value: string; label: string; onPick: (hex: string) => void }) {
+  const input = useRef<HTMLInputElement>(null);
+  const pick = useRef(onPick);
+
+  useEffect(() => {
+    pick.current = onPick;
+  });
+
+  useEffect(() => {
+    const element = input.current;
+
+    const commit = () => {
+      if (element !== null) {
+        pick.current(element.value);
+      }
+    };
+
+    element?.addEventListener("change", commit);
+
+    return () => element?.removeEventListener("change", commit);
+  }, []);
+
+  return <input ref={input} type="color" defaultValue={value} aria-label={label} />;
 }

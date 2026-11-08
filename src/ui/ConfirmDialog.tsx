@@ -99,6 +99,10 @@ export function ConfirmDialog(props: ConfirmDialogProps) {
   const update = (id: string, card: Card) => {
     const before = drafts.find((draft) => draft.id === id)?.card;
     const touched = TRACKED.filter((field) => before !== undefined && before[field] !== card[field]);
+    // Typing the new category's name is a category edit too: the AI's proposed name must not come back.
+    const renamed: EditedField[] = before !== undefined && before.newCategory !== card.newCategory ? ["categoryId"] : [];
+
+    touched.push(...renamed);
 
     if (touched.length > 0) {
       setEdited((current) => ({ ...current, [id]: [...new Set([...(current[id] ?? []), ...touched])] }));
@@ -120,7 +124,8 @@ export function ConfirmDialog(props: ConfirmDialogProps) {
       return;
     }
 
-    onConfirm(drafts, scope);
+    // Repeat turned off: the scope choice is hidden and the series becomes the one item shown.
+    onConfirm(drafts, recurring ? scope : "all");
   };
 
   const recurring = editing && drafts[0]?.card.repeat === true;
@@ -166,6 +171,7 @@ export function ConfirmDialog(props: ConfirmDialogProps) {
               card={draft.card}
               errors={errors[index] ?? {}}
               categories={categories}
+              occurrence={occurrence}
               heading={drafts.length > 1 ? `${index + 1} / ${drafts.length}` : undefined}
               onChange={(card) => update(draft.id, card)}
               onExclude={drafts.length > 1 ? () => exclude(draft.id) : undefined}
@@ -196,12 +202,14 @@ type CardEditorProps = {
   card: Card;
   errors: CardErrors;
   categories: Category[];
+  /** The series date that was opened: turning repeat off keeps that date, not the series start. */
+  occurrence: IsoDate | undefined;
   heading: string | undefined;
   onChange: (card: Card) => void;
   onExclude: (() => void) | undefined;
 };
 
-function CardEditor({ card, errors, categories, heading, onChange, onExclude }: CardEditorProps) {
+function CardEditor({ card, errors, categories, occurrence, heading, onChange, onExclude }: CardEditorProps) {
   const base = useId();
   const id = (field: string) => `${base}-${field}`;
   const set = (patch: Partial<Card>) => onChange({ ...card, ...patch });
@@ -270,7 +278,7 @@ function CardEditor({ card, errors, categories, heading, onChange, onExclude }: 
                 <input
                   type="checkbox"
                   checked={card.repeat}
-                  onChange={(event) => set(event.target.checked ? { repeat: true, ...repeatSeed(card.date) } : { repeat: false })}
+                  onChange={(event) => set(event.target.checked ? { repeat: true, ...repeatSeed(card.date) } : { repeat: false, date: occurrence ?? card.date })}
                 />
                 반복
               </label>
@@ -441,15 +449,7 @@ function RepeatFields({ card, set, id, invalid, error }: RepeatFieldsProps) {
           </select>
 
           <label className="cf-interval">
-            <input
-              type="number"
-              className="cf-input"
-              min={1}
-              max={99}
-              value={card.interval}
-              aria-label="반복 간격"
-              onChange={(event) => set({ interval: Math.min(99, Math.max(1, Math.round(Number(event.target.value) || 1))) })}
-            />
+            <IntervalInput value={card.interval} onChange={(interval) => set({ interval })} />
             {INTERVAL_UNITS[card.freq]}마다
           </label>
 
@@ -546,6 +546,32 @@ type FieldProps = {
   badge?: ReactNode;
   children: ReactNode;
 };
+
+/** The field may be empty while typing ("1" deleted to type "2"); the card keeps the last whole number from 1 to 99. */
+function IntervalInput({ value, onChange }: { value: number; onChange: (value: number) => void }) {
+  const [text, setText] = useState(String(value));
+
+  return (
+    <input
+      type="number"
+      className="cf-input"
+      min={1}
+      max={99}
+      value={text}
+      aria-label="반복 간격"
+      onChange={(event) => {
+        const typed = Number(event.target.value);
+
+        setText(event.target.value);
+
+        if (Number.isInteger(typed) && typed >= 1 && typed <= 99) {
+          onChange(typed);
+        }
+      }}
+      onBlur={() => setText(String(value))}
+    />
+  );
+}
 
 function Field({ label, htmlFor, groupId, badge, children }: FieldProps) {
   return (

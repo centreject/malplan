@@ -125,6 +125,23 @@ export default function App() {
   const [weekAnchor, setWeekAnchor] = useState<IsoDate>(now.today);
   const [monthCursor, setMonthCursor] = useState<MonthCursor>(() => partsOf(now.today));
   const [activeTab, setActiveTab] = useState(ALL_TAB_ID);
+  const shownToday = useRef(now.today);
+
+  // The app stays open for days in the tray: views left on "today" follow the date when it changes.
+  useEffect(() => {
+    const before = shownToday.current;
+
+    if (before === now.today) {
+      return;
+    }
+
+    const old = partsOf(before);
+
+    shownToday.current = now.today;
+    setSelected((date) => (date === before ? now.today : date));
+    setWeekAnchor((date) => (date === before ? now.today : date));
+    setMonthCursor((cursor) => (cursor.year === old.year && cursor.month === old.month ? partsOf(now.today) : cursor));
+  }, [now.today]);
   /** The settings page shown, or undefined while settings are closed. */
   const [settingsOpen, setSettingsOpen] = useState<string>();
   const [allFilter, setAllFilter] = useState<string[]>();
@@ -203,9 +220,14 @@ export default function App() {
   };
 
   const [detail, setDetail] = useState<{ item: Item; date: IsoDate | undefined }>();
+  const [commandNote, setCommandNote] = useState<string>();
+  /** Bumped per "말로 고치기" request and whenever the detail view closes or changes: a late AI answer is dropped. */
+  const commandRun = useRef(0);
 
   /** Clicking a saved item shows its details first; 수정 there opens the editor. */
   const openEdit = (item: Item, date?: IsoDate) => {
+    commandRun.current += 1;
+    setCommandNote(undefined);
     setDetail({ item, date });
   };
 
@@ -216,7 +238,6 @@ export default function App() {
     setConfirm({ drafts: [{ id: item.id, card }], editing: true, occurrence, back: { item, date }, changes: edited?.changes });
   };
 
-  const [commandNote, setCommandNote] = useState<string>();
 
   /** Start the local model while the user is still typing, and prime its cache with the instructions about to be sent. */
   const prestartAi = (system: string) => {
@@ -227,6 +248,7 @@ export default function App() {
 
   /** "말로 고치기" from the detail view: rules first, the AI for what they cannot read, then the edit screen to confirm. */
   const runCommand = async (target: { item: Item; date: IsoDate | undefined }, text: string) => {
+    const run = ++commandRun.current;
     const card = cardFromItem(target.item, now.today);
     let result = applyEditCommand(card, text, now.today, categories, target.date);
 
@@ -242,10 +264,18 @@ export default function App() {
       try {
         result = applyEditReply(card, await complete(llm, buildEditPrompt(card, text, categories)), categories);
       } catch {
+        if (commandRun.current !== run) {
+          return;
+        }
+
         setCommandNote("AI에 연결하지 못했습니다. 규칙으로 읽는 요청은 됩니다. 예: 3시로 바꿔, 하루 미뤄, 장소는 강남역으로");
 
         return;
       }
+    }
+
+    if (commandRun.current !== run) {
+      return;
     }
 
     if (result === undefined) {
@@ -364,7 +394,11 @@ export default function App() {
   }, [scheme]);
 
   const tab = tabs.find((t) => t.id === activeTab);
-  const shownIds = tab?.categoryIds ?? allFilter;
+  // A category deleted here or on another device drops out of the 전체 filter; a filter left with nothing, or
+  // with every category, shows everything.
+  const liveFilter = allFilter?.filter((id) => categories.some((c) => c.id === id));
+  const filterAll = liveFilter === undefined || (liveFilter.length === 0 && allFilter?.length !== 0) || categories.every((c) => liveFilter.includes(c.id));
+  const shownIds = tab?.categoryIds ?? (filterAll ? undefined : liveFilter);
 
   // Memoized: App re-renders on every keystroke in the sentence input, and overdue walks whole series.
   const visible = useMemo(() => (shownIds === undefined ? items : items.filter((item) => shownIds.includes(item.categoryId))), [items, shownIds]);
@@ -550,7 +584,7 @@ export default function App() {
             onAddTab={() => setEditing("new")}
             onEditTab={setEditing}
             onMoveTab={(id, index) => setTabs(moveTab(tabs, id, index))}
-            allFilter={allFilter}
+            allFilter={filterAll ? undefined : liveFilter}
             onAllFilter={setAllFilter}
             onAddCategory={addCategoryNamed}
             onSelect={select}
@@ -738,10 +772,13 @@ export default function App() {
           onCommandFocus={() => prestartAi(buildEditPrompt(cardFromItem(detail.item, now.today), "", categories).system)}
           onCommand={(text) => void runCommand(detail, text)}
           onClose={() => {
+            commandRun.current += 1;
             setCommandNote(undefined);
             setDetail(undefined);
           }}
           onEdit={() => {
+            commandRun.current += 1;
+            setCommandNote(undefined);
             setDetail(undefined);
             openEditor(detail.item, detail.date);
           }}

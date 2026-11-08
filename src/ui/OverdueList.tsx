@@ -23,9 +23,13 @@ export function OverdueList({ overdue, today, categoryOf, onEdit, onReschedule }
   const live = selected.filter((id) => overdue.some((o) => o.item.id === id));
   const targets = quickTargets(today);
 
+  /** Typing a date fires change on partial values ("2" = year 0002), so a typed or picked date waits for a click. */
+  const [picked, setPicked] = useState<IsoDate>();
+
   const move = (target: IsoDate) => {
     onReschedule(live, target);
     setSelected([]);
+    setPicked(undefined);
   };
 
   // "등 N회": hovering shows the missed dates and leaving hides them; a click pins them until clicked again or elsewhere.
@@ -110,13 +114,14 @@ export function OverdueList({ overdue, today, categoryOf, onEdit, onReschedule }
                   <input
                     type="date"
                     aria-label="옮길 날짜"
-                    onChange={(event) => {
-                      if (event.target.value !== "") {
-                        move(event.target.value);
-                      }
-                    }}
+                    onChange={(event) => setPicked(event.target.value >= today ? event.target.value : undefined)}
                   />
                 </label>
+                {picked !== undefined && (
+                  <button type="button" className="chip-button" onClick={() => move(picked)}>
+                    {shortDate(picked)} 옮기기
+                  </button>
+                )}
               </>
             )}
           </div>
