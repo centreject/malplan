@@ -62,7 +62,7 @@ test("weekly with until, interval and skipped dates", () => {
   ]);
 
   expect(out).toContain("DTSTART:20261005T160000");
-  expect(out).toContain("RRULE:FREQ=WEEKLY;INTERVAL=2;BYDAY=MO,WE;UNTIL=20261228T235959");
+  expect(out).toContain("RRULE:FREQ=WEEKLY;INTERVAL=2;BYDAY=MO,WE;WKST=SU;UNTIL=20261228T235959");
   expect(out).toContain("EXDATE:20261007T160000");
 });
 
@@ -87,4 +87,15 @@ test("long lines are folded at 75 octets", () => {
 
   expect(longest).toBeLessThanOrEqual(75);
   expect(text).toContain("\r\n ");
+});
+
+test("an end past midnight lands on the next day; weekly rules count weeks from Sunday", () => {
+  const late = lines([item({ time: { kind: "exact", start: { hour: 23, minute: 30 } } })]);
+
+  expect(late).toContain("DTSTART:20261031T233000");
+  expect(late).toContain("DTEND:20261101T003000");
+  expect(lines([item({ time: { kind: "exact", start: { hour: 22, minute: 0 }, end: { hour: 1, minute: 0 } } })])).toContain("DTEND:20261101T010000");
+  expect(
+    lines([item({ when: { kind: "recurring", rule: { freq: "weekly", weekdays: [0, 3], interval: 2, start: "2026-11-01" } } })]),
+  ).toContain("RRULE:FREQ=WEEKLY;INTERVAL=2;BYDAY=SU,WE;WKST=SU");
 });

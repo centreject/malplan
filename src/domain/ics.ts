@@ -43,7 +43,7 @@ function component(item: Item, stamp: string): string[] {
   // A timed range happens at that time on each of its days (as reminders and the day view show it), not as one long event.
   const timing = clock === undefined
     ? [`DTSTART;VALUE=DATE:${compact(first)}`, `DTEND;VALUE=DATE:${compact(addDays(last, 1))}`]
-    : [`DTSTART:${stampOf(first, clock)}`, `DTEND:${stampOf(first, endClock(item, clock))}`];
+    : [`DTSTART:${stampOf(first, clock)}`, `DTEND:${endStamp(item, first, clock)}`];
 
   const recurrence =
     when.kind === "recurring"
@@ -63,13 +63,13 @@ function startClock(item: Item): ClockTime | undefined {
   return item.time.kind === "slot" ? SLOT_START[item.time.slot] : undefined;
 }
 
-/** Exact end if given, else one hour after the start. */
-function endClock(item: Item, start: ClockTime): ClockTime {
-  if (item.time.kind === "exact" && item.time.end !== undefined) {
-    return item.time.end;
-  }
+/** Exact end if given, else one hour after the start; an end at or before the start is on the next day. */
+function endStamp(item: Item, date: IsoDate, start: ClockTime): string {
+  const from = start.hour * 60 + start.minute;
+  const end = item.time.kind === "exact" && item.time.end !== undefined ? item.time.end.hour * 60 + item.time.end.minute : from + 60;
+  const to = end > from ? end : end + 24 * 60;
 
-  return { hour: Math.min(start.hour + 1, 23), minute: start.minute };
+  return stampOf(addDays(date, Math.floor(to / (24 * 60))), { hour: Math.floor(to / 60) % 24, minute: to % 60 });
 }
 
 function recurrenceLines(rule: Recurrence, clock: ClockTime | undefined): string[] {
@@ -80,7 +80,8 @@ function recurrenceLines(rule: Recurrence, clock: ClockTime | undefined): string
   }
 
   if (rule.freq === "weekly") {
-    parts.push(`BYDAY=${rule.weekdays.map((d) => BYDAY[d]).join(",")}`);
+    // malplan counts every-other-week from Sunday; other calendars default to Monday.
+    parts.push(`BYDAY=${rule.weekdays.map((d) => BYDAY[d]).join(",")}`, "WKST=SU");
   } else if (rule.freq === "monthly") {
     // ponytail: malplan clamps day 31 to the month's last day; RFC 5545 skips such months instead.
     parts.push("day" in rule ? `BYMONTHDAY=${rule.day}` : `BYDAY=${rule.nth}${BYDAY[rule.weekday] ?? "SU"}`);
