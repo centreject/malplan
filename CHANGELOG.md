@@ -1,5 +1,17 @@
 # Changelog
 
+## 0.2.7 (2026-11-12)
+
+- Sync: ticking different days of a repeating task on two devices keeps both. Items added on this version still show on devices running 0.2.6 or older.
+- Sync: two devices compacting at once (a cloud folder syncing late) no longer lose entries; a device keeps folded entries for 7 days after the compaction.
+- Local AI starts on a free port, so another program on port 8357 no longer blocks it.
+- Editing: 말로 고치기 "하루 미뤄" on an undated task makes it a dated task; the custom AI server's key is cleared when its address points to another server.
+- A failed update install says so, and the app checks for updates once a day. Folder switch, model delete and autostart failures are shown.
+- Ctrl+F does not open search over an open dialog; a reminder lead set elsewhere shows as itself in the form.
+- Rules without AI no longer treat 공모, 동기, 시험, 영화 as category clues.
+- MCP rejects dates that do not exist.
+- Release builds: actions pinned to commits, the signing key kept out of npm steps, redirects checked against allowed addresses.
+
 ## 0.2.6 (2026-11-08)
 
 - Editing: turning repeat off on one occurrence makes a single item on that date; the repeat interval field can be cleared while typing; an AI-proposed new category name can be edited.
