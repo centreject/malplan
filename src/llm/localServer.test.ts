@@ -1,5 +1,7 @@
 import { describe, expect, it } from "vitest";
-import { createLocalServer, type ServerControl } from "./localServer";
+import { createLocalServer, type Connection, type ServerControl } from "./localServer";
+
+const CONNECTION: Connection = { origin: "http://127.0.0.1:50123", key: "k".repeat(64) };
 
 /** A scripted server: healthy after `failedPolls` polls; idle timers are held until fired. */
 type Fake = { control: ServerControl; calls: string[]; fireIdle: () => void; pendingTimers: () => number };
@@ -13,7 +15,7 @@ function fake(startResult: "started" | "no-model", failedPolls: number): Fake {
     start: async () => {
       calls.push("start");
 
-      return startResult;
+      return startResult === "started" ? CONNECTION : "no-model";
     },
     stop: async () => {
       calls.push("stop");
@@ -172,5 +174,43 @@ describe("createLocalServer", () => {
     healthyNow = true;
     await server.ensure();
     expect(server.status()).toBe("ready");
+  });
+
+  it("hands out the connection it started with, to requests and the warm-up", async () => {
+    const f = fake("started", 0);
+    const checked: Connection[] = [];
+
+    const server = createLocalServer(
+      {
+        ...f.control,
+        healthy: async (connection) => {
+          checked.push(connection);
+
+          return true;
+        },
+      },
+      OPTIONS,
+    );
+
+    const warmed: Connection[] = [];
+
+    expect(await server.ensure()).toEqual(CONNECTION);
+    await server.stop();
+    server.prestart(async (connection) => {
+      warmed.push(connection);
+    });
+    await server.ensure();
+    await Promise.resolve();
+
+    expect(checked.every((connection) => connection === CONNECTION)).toBe(true);
+    expect(warmed).toEqual([CONNECTION]);
+  });
+
+  it("a server that does not answer as ours never becomes ready", async () => {
+    const f = fake("started", 0);
+    const server = createLocalServer({ ...f.control, healthy: async () => false }, OPTIONS);
+
+    await expect(server.ensure()).rejects.toThrow("응답");
+    expect(server.status()).toBe("error");
   });
 });

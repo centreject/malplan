@@ -5,7 +5,7 @@ import { fetch as tauriFetch } from "@tauri-apps/plugin-http";
 import * as v from "valibot";
 import { loadStored, saveStored } from "../storage/localStore";
 import { replySchema, type Prompt, type ReplyJsonSchema } from "./extract";
-import { LOCAL_ORIGIN, localServer } from "./localServer";
+import { LOCAL_ORIGIN, localServer, MANUAL_SERVER } from "./localServer";
 
 export const PROVIDERS = [
   { id: "local", name: "로컬 (이 PC에서 처리)" },
@@ -117,7 +117,10 @@ type ChatBody = {
 };
 
 /** Request body. Only the local server gets the reply schema (it constrains sampling); others keep plain JSON. */
-export function chatBody(url: string, model: string, prompt: Prompt): string {
+/** The model name the bundled server is called with; its replies are held to the JSON schema. */
+export const LOCAL_MODEL = "local";
+
+export function chatBody(model: string, prompt: Prompt): string {
   const body: ChatBody = {
     model,
     temperature: 0,
@@ -127,7 +130,7 @@ export function chatBody(url: string, model: string, prompt: Prompt): string {
     ],
   };
 
-  if (url === LOCAL_ENDPOINT) {
+  if (model === LOCAL_MODEL) {
     body.response_format = { type: "json_schema", json_schema: { name: "extraction", schema: prompt.schema } };
   }
 
@@ -144,7 +147,7 @@ async function openAiCompatible(url: string, apiKey: string, model: string, prom
   const response = await httpFetch(url, {
     method: "POST",
     headers,
-    body: chatBody(url, model, prompt),
+    body: chatBody(model, prompt),
     signal: AbortSignal.timeout(timeout),
   });
 
@@ -188,10 +191,12 @@ export async function complete(settings: LlmSettings, prompt: Prompt): Promise<s
   const model = settings.model === "" ? DEFAULT_MODELS[settings.provider] : settings.model;
 
   switch (settings.provider) {
-    case "local":
-      await localServer?.ensure();
+    case "local": {
+      const { origin, key } = (await localServer?.ensure()) ?? MANUAL_SERVER;
 
-      return openAiCompatible(LOCAL_ENDPOINT, "", "local", prompt);
+      return openAiCompatible(`${origin}/v1/chat/completions`, key, LOCAL_MODEL, prompt);
+    }
+
     case "gemini":
       return openAiCompatible(GEMINI_ENDPOINT, settings.apiKey, model, prompt);
     case "openrouter":

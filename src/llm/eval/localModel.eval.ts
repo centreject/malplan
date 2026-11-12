@@ -2,7 +2,7 @@
 // Start the server, then: npm run bench:llm   (only one set: npm run bench:llm -- -t held)
 import { describe, test } from "vitest";
 import { buildPrompt, parseExtraction } from "../extract";
-import { chatBody, chatContent, LOCAL_ENDPOINT } from "../providers";
+import { chatBody, chatContent, LOCAL_ENDPOINT, LOCAL_MODEL } from "../providers";
 import { DEV, HELD, type EvalRow } from "./cases";
 import { EVAL_CATEGORY_LIST, FIELDS, grade, guardedFields, modelFields, ruleFields, type Field, type Fields } from "./score";
 
@@ -16,7 +16,7 @@ async function ask(input: string): Promise<{ reply: string; ms: number }> {
   const response = await fetch(LOCAL_ENDPOINT, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: chatBody(LOCAL_ENDPOINT, "local", prompt),
+    body: chatBody(LOCAL_MODEL, prompt),
   });
 
   // A malformed reply just scores as unreadable.

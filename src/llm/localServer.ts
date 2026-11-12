@@ -2,18 +2,25 @@
 // focused, stopped after an idle period. Rust only spawns and kills the process.
 import { invoke, isTauri } from "@tauri-apps/api/core";
 import { fetch as tauriFetch } from "@tauri-apps/plugin-http";
+import * as v from "valibot";
 
-/** Must match PORT in src-tauri/src/llm_server.rs. */
+/** Outside Tauri (browser preview, benches): a server started by hand on this port, without a key. */
 export const LOCAL_ORIGIN = "http://127.0.0.1:8357";
+
+/** Where the app's server listens and the key it takes; new on every start. */
+export type Connection = { origin: string; key: string };
+
+export const MANUAL_SERVER: Connection = { origin: LOCAL_ORIGIN, key: "" };
 
 export type LocalStatus = "off" | "starting" | "ready" | "error" | "no-model";
 
 /** Process and clock seams; the app passes Tauri and window timers, tests pass fakes. */
 export type ServerControl = {
   /** Starts the process unless it runs; "no-model" when the model file is missing. */
-  start: () => Promise<"started" | "no-model">;
+  start: () => Promise<Connection | "no-model">;
   stop: () => Promise<void>;
-  healthy: () => Promise<boolean>;
+  /** Our process runs and answers at `connection`, and only with the key. */
+  healthy: (connection: Connection) => Promise<boolean>;
   wait: (ms: number) => Promise<void>;
   /** Runs `run` after `ms`; returns a cancel function. */
   setTimer: (run: () => void, ms: number) => () => void;
@@ -24,10 +31,10 @@ export type ServerOptions = { idleMs: number; readyTimeoutMs: number; pollMs: nu
 export type LocalServer = {
   status: () => LocalStatus;
   subscribe: (listener: () => void) => () => void;
-  /** Resolves once the server answers /health. Restarts the idle countdown. */
-  ensure: () => Promise<void>;
+  /** Resolves once the server is ready, with where to reach it. Restarts the idle countdown. */
+  ensure: () => Promise<Connection>;
   /** Start in the background and, if it was not running, send one warm-up request. */
-  prestart: (warmUp: () => Promise<void>) => void;
+  prestart: (warmUp: (connection: Connection) => Promise<void>) => void;
   stop: () => Promise<void>;
 };
 
@@ -37,7 +44,7 @@ const noop = () => {};
 
 export function createLocalServer(control: ServerControl, options: ServerOptions): LocalServer {
   let status: LocalStatus = "off";
-  let pending: Promise<void> | undefined;
+  let pending: Promise<Connection> | undefined;
   let cancelIdle = noop;
   /** Bumped by stop(): a start still in progress gives up instead of making the next ensure() wait for it. */
   let generation = 0;
@@ -62,7 +69,7 @@ export function createLocalServer(control: ServerControl, options: ServerOptions
     set("off");
   };
 
-  const bringUp = async (run: number) => {
+  const bringUp = async (run: number): Promise<Connection> => {
     const stopped = async () => {
       if (generation === run) {
         return false;
@@ -92,7 +99,7 @@ export function createLocalServer(control: ServerControl, options: ServerOptions
     }
 
     for (let waited = 0; waited <= options.readyTimeoutMs; waited += options.pollMs) {
-      const healthy = await control.healthy();
+      const healthy = await control.healthy(started);
 
       if (await stopped()) {
         throw new Error("로컬 AI 서버를 중지했습니다.");
@@ -101,7 +108,7 @@ export function createLocalServer(control: ServerControl, options: ServerOptions
       if (healthy) {
         set("ready");
 
-        return;
+        return started;
       }
 
       set("starting");
@@ -126,9 +133,12 @@ export function createLocalServer(control: ServerControl, options: ServerOptions
       pending = run;
     }
 
-    await pending;
+    const connection = await pending;
+
     cancelIdle();
     cancelIdle = control.setTimer(() => void stop(), options.idleMs);
+
+    return connection;
   };
 
   return {
@@ -144,7 +154,7 @@ export function createLocalServer(control: ServerControl, options: ServerOptions
 
       // Failures show up in status(); the real request reports them to the user.
       void ensure()
-        .then(() => (cold ? warmUp() : undefined))
+        .then((connection) => (cold ? warmUp(connection) : undefined))
         .catch(() => undefined);
     },
     stop,
@@ -152,10 +162,10 @@ export function createLocalServer(control: ServerControl, options: ServerOptions
 }
 
 /** One tiny request with the real system prompt, so llama-server caches its prefix. */
-export async function warmUpLocal(system: string): Promise<void> {
-  await tauriFetch(`${LOCAL_ORIGIN}/v1/chat/completions`, {
+export async function warmUpLocal(connection: Connection, system: string): Promise<void> {
+  await tauriFetch(`${connection.origin}/v1/chat/completions`, {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers: { "Content-Type": "application/json", Authorization: `Bearer ${connection.key}` },
     body: JSON.stringify({
       model: "local",
       max_tokens: 1,
@@ -167,12 +177,14 @@ export async function warmUpLocal(system: string): Promise<void> {
   });
 }
 
+const StartedSchema = v.object({ port: v.pipe(v.number(), v.integer(), v.minValue(1), v.maxValue(65535)), key: v.pipe(v.string(), v.minLength(32)) });
+
 const tauriControl: ServerControl = {
   start: async () => {
     try {
-      await invoke("llm_start");
+      const { port, key } = v.parse(StartedSchema, await invoke("llm_start"));
 
-      return "started";
+      return { origin: `http://127.0.0.1:${port}`, key };
     } catch (error) {
       if (error === "no-model") {
         return "no-model";
@@ -182,9 +194,16 @@ const tauriControl: ServerControl = {
     }
   },
   stop: () => invoke("llm_stop"),
-  healthy: async () => {
+  healthy: async ({ origin }) => {
     try {
-      return (await tauriFetch(`${LOCAL_ORIGIN}/health`, { signal: AbortSignal.timeout(2000) })).ok;
+      const signal = AbortSignal.timeout(2000);
+
+      // The process we started still runs (nothing else took its port first), it is up, and it wants the key.
+      return (
+        (await invoke<boolean>("llm_running")) &&
+        (await tauriFetch(`${origin}/health`, { signal })).ok &&
+        (await tauriFetch(`${origin}/v1/models`, { signal })).status === 401
+      );
     } catch {
       return false;
     }

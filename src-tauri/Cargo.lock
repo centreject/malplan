@@ -2292,6 +2292,7 @@ dependencies = [
 name = "malplan"
 version = "0.2.6"
 dependencies = [
+ "getrandom 0.3.4",
  "log",
  "serde",
  "serde_json",

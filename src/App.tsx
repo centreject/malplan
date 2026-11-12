@@ -246,7 +246,7 @@ export default function App() {
   /** Start the local model while the user is still typing, and prime its cache with the instructions about to be sent. */
   const prestartAi = (system: string) => {
     if (llm.provider === "local") {
-      localServer?.prestart(() => warmUpLocal(system));
+      localServer?.prestart((connection) => warmUpLocal(connection, system));
     }
   };
 
