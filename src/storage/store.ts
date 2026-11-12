@@ -111,9 +111,11 @@ export class SyncStore {
 
     const seenSelf = new Map(Object.entries(parsed.snapshot.seen)).get(this.#deviceId) ?? -Infinity;
     const own = logs.get(this.#deviceId) ?? [];
-    // Folded entries stay a while: if another device compacted at the same time and its snapshot wins (a cloud
-    // folder syncing late), entries only our snapshot held are still in our log.
-    const live = own.filter((c) => c.ts > seenSelf || c.ts > this.#now() - PRUNE_AFTER_MS);
+    // Folded entries stay until the snapshot that folded them is PRUNE_AFTER_MS old: if another device compacted at
+    // the same time and its snapshot wins (a cloud folder syncing late), entries only ours held are still in our log.
+    // Measured from the compaction, not the entry: the first compaction folds mostly old entries.
+    const settled = this.#now() - parsed.snapshot.compactedAt > PRUNE_AFTER_MS;
+    const live = own.filter((c) => c.ts > seenSelf || !settled);
 
     for (const c of own) this.#lastTs = Math.max(this.#lastTs, c.ts);
 

@@ -112,7 +112,7 @@ test("compaction then further edits", async () => {
 
   // Folded entries stay in A's own log for a while, then a load prunes them.
   expect(await backend.read("log-A.jsonl")).toContain("x");
-  tick("A", PRUNE_AFTER_MS);
+  tick("A", PRUNE_AFTER_MS + 1);
   await a.load();
   expect(await backend.read("log-A.jsonl")).toBe("");
 
@@ -434,6 +434,37 @@ test("with no store yet (still loading or switching folders), writes wait in the
   await outbox.flush(undefined);
 
   expect(outbox.size).toBe(1);
+});
+
+test("entries folded long after they were written still wait out the grace before pruning", async () => {
+  const seenByA = new MemoryBackend();
+  const seenByB = new MemoryBackend();
+  let now = 1_000_000;
+  const a = new SyncStore(seenByA, "A", () => now);
+  const b = new SyncStore(seenByB, "B", () => now);
+
+  await a.load();
+  await b.load();
+  await a.set("item", "a1", "title", "from A");
+  await b.set("item", "b1", "title", "from B");
+  // A month without compaction (the threshold was not reached), then both compact at once.
+  now += 30 * DAY;
+  await copyInto(seenByA, seenByB);
+  await a.compact();
+  await b.compact();
+
+  expect(await seenByB.read("log-B.jsonl")).toContain("from B");
+
+  const synced = new MemoryBackend();
+
+  await synced.write("snapshot.json", (await seenByA.read("snapshot.json")) ?? "");
+  await synced.write("log-A.jsonl", (await seenByA.read("log-A.jsonl")) ?? "");
+  await synced.write("log-B.jsonl", (await seenByB.read("log-B.jsonl")) ?? "");
+
+  const c = new SyncStore(synced, "C", () => now);
+
+  await c.load();
+  expect(c.entities().item.map((entity) => entity.id).toSorted()).toEqual(["a1", "b1"]);
 });
 
 test("two devices compacting at once (a cloud folder syncing late) lose nothing, whichever snapshot wins", async () => {

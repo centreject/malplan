@@ -99,7 +99,13 @@ const TabSchema = v.object({
 /** Field values of each entity, keyed by id. `order` keeps list positions. */
 function boardRecords(board: Board): Record<"item" | "category" | "tab", Map<string, Map<string, Json>>> {
   return {
-    item: new Map(board.items.map(({ id, done, ...fields }) => [id, new Map([...fieldsOf(fields), ...done.map((key): [string, Json] => [`${DONE}${key}`, true])])])),
+    // `done: []` is written once, with a new item: versions up to 0.2.6 require the field to show the item.
+    item: new Map(
+      board.items.map(({ id, done, ...fields }) => [
+        id,
+        new Map<string, Json>([...fieldsOf(fields), ["done", []], ...done.map((key): [string, Json] => [`${DONE}${key}`, true])]),
+      ]),
+    ),
     category: new Map(board.categories.map(({ id, ...fields }, order) => [id, fieldsOf({ ...fields, order })])),
     tab: new Map(
       board.tabs.map(({ id, name, categoryIds }, order) => [id, fieldsOf({ name, categoryIds: categoryIds ?? null, order })]),

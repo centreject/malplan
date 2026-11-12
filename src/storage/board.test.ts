@@ -157,6 +157,18 @@ describe("saving from a board that is out of date", () => {
     expect((await merged()).items[0]?.done.toSorted()).toEqual(["2026-10-14", "2026-10-21"]);
   });
 
+  test("a new item is written with an empty done list, which versions up to 0.2.6 require; later ticks do not touch it", async () => {
+    const store = new SyncStore(new MemoryBackend(), "new", () => 1_000);
+    const fresh: Item = { ...mailing, done: [] };
+
+    await save(store, empty, { ...empty, items: [fresh] });
+    expect(store.entities().item[0]?.fields.done).toEqual([]);
+
+    const writes = boardWrites({ ...empty, items: [fresh] }, { ...empty, items: [{ ...fresh, done: ["2026-10-07"] }] });
+
+    expect(writes.map((write) => write.field)).toEqual(["done:2026-10-07"]);
+  });
+
   test("a done list written by an older version is read, and a per-date untick overrides it", async () => {
     const store = new SyncStore(new MemoryBackend(), "old", () => 1_000);
     const { done: _done, id, ...fields } = mailing;
