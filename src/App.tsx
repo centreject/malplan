@@ -1,6 +1,7 @@
 import { AppWindow, Bell, CalendarDays, HardDrive, Info, Palette, Plug, Sparkles, Tags } from "lucide-react";
-import { useEffect, useMemo, useRef, useState } from "react";
-import { NEW_CATEGORY, cardFromItem, cardFromParse, commitCards, splitInput, type Draft } from "./domain/card";
+import { useEffect, useMemo, useRef, useState, type MouseEvent } from "react";
+import { ContextMenu, ItemMenu, type MenuAction, type MenuRequest } from "./ui/ContextMenu";
+import { NEW_CATEGORY, applyEdit, cardFromItem, cardFromParse, commitCards, splitInput, type Draft } from "./domain/card";
 import { addCorrections, loadCorrections } from "./llm/corrections";
 import { REPEAT_DATE_REFUSAL, applyEditCommand, type EditResult } from "./domain/editCommand";
 import { revertChange } from "./domain/undo";
@@ -37,7 +38,7 @@ import { SearchDialog } from "./ui/SearchDialog";
 import { StorageSettings } from "./ui/StorageSettings";
 import { TabEditor } from "./ui/TabEditor";
 import { useBoard } from "./ui/useBoard";
-import type { Board } from "./storage/board";
+import { restoreBackup, type Board } from "./storage/board";
 import { loadScheme, loadTextSize, loadTheme, resolvedScheme, saveScheme, saveTextSize, saveTheme, type SchemeId, type TextSizeId, type ThemeId } from "./ui/themes";
 import { FirstRunNotice } from "./ui/FirstRunNotice";
 import { UpdateNotice } from "./ui/UpdateNotice";
@@ -87,7 +88,6 @@ export default function App() {
   const [textSize, setTextSize] = useState<TextSizeId>(loadTextSize);
   const persisted = useBoard(() => firstBoard(now.today));
   const { items, categories, tabs } = persisted.board;
-  const setItems = (change: (current: Item[]) => Item[]) => persisted.update((b) => ({ ...b, items: change(b.items) }));
   const setCategories = (next: Category[]) => persisted.update((b) => ({ ...b, categories: next }));
   const setTabs = (next: CalendarTab[]) => persisted.update((b) => ({ ...b, tabs: next }));
 
@@ -151,7 +151,8 @@ export default function App() {
   const [allFilter, setAllFilter] = useState<string[]>();
   /** Tab being edited: an id, "new", or undefined when the editor is closed. */
   const [editing, setEditing] = useState<string>();
-  const [quickText, setQuickText] = useState("");
+  /** Bumped when new items are saved, so the sentence input empties. */
+  const [inputClear, setInputClear] = useState(0);
 
   const [confirm, setConfirm] = useState<{
     drafts: Draft[];
@@ -168,7 +169,7 @@ export default function App() {
   /** Bumped per dialog so late AI answers for a closed dialog are dropped. */
   const aiSession = useRef(0);
 
-  const openNew = () => {
+  const openNew = (quickText: string) => {
     // Nothing typed: a blank form for direct entry, no AI.
     if (quickText.trim() === "") {
       setConfirm({ drafts: [{ id: crypto.randomUUID(), card: cardFromParse(parseKorean("", now.today), now.today, categories) }], editing: false });
@@ -335,23 +336,26 @@ export default function App() {
       }),
     );
     const occurrence = confirm?.occurrence;
+    const opened = confirm?.editing === true ? confirm.back?.item : undefined;
 
     act(confirm?.editing === true ? "수정했습니다" : `${drafts.length}개 추가했습니다`, (board) => {
       const result = commitCards(drafts, board.items, board.categories, () => crypto.randomUUID());
       const original = board.items.find((item) => item.id === drafts[0]?.id);
-      const edited = result.items.find((item) => item.id === original?.id);
+      const form = result.items.find((item) => item.id === original?.id);
+      // Only what the form changed is saved: the item may have changed on another device since it was opened.
+      const edited = original !== undefined && form !== undefined && opened !== undefined ? applyEdit(original, opened, form) : form;
 
       return {
         ...board,
         categories: result.categories,
         items: original !== undefined && edited !== undefined && occurrence !== undefined
           ? editOccurrence(board.items, original, edited, occurrence, scope, () => crypto.randomUUID())
-          : result.items,
+          : result.items.map((item) => (item.id === edited?.id ? edited : item)),
       };
     });
 
     if (confirm?.editing === false) {
-      setQuickText("");
+      setInputClear((n) => n + 1);
     }
 
     setConfirm(undefined);
@@ -404,7 +408,7 @@ export default function App() {
   const filterAll = liveFilter === undefined || (liveFilter.length === 0 && allFilter?.length !== 0) || categories.every((c) => liveFilter.includes(c.id));
   const shownIds = tab?.categoryIds ?? (filterAll ? undefined : liveFilter);
 
-  // Memoized: App re-renders on every keystroke in the sentence input, and overdue walks whole series.
+  // Memoized: App re-renders every minute and on every dialog change, and overdue walks whole series.
   const visible = useMemo(() => (shownIds === undefined ? items : items.filter((item) => shownIds.includes(item.categoryId))), [items, shownIds]);
   const overdue = useMemo(() => overdueTasks(visible, now.today), [visible, now.today]);
 
@@ -461,32 +465,74 @@ export default function App() {
     setWeekAnchor(date);
   };
 
+  /** Undoable: a check in 밀린 할 일 or 날짜 없는 할 일 takes the row off the screen. */
   const toggleDone = (target: Item, date: string) => {
-    setItems((current) =>
-      current.map((item) => {
+    const wasDone = target.done.includes(doneKey(target, date));
+
+    act(wasDone ? "완료를 취소했습니다" : "완료했습니다", (board) => ({
+      ...board,
+      items: board.items.map((item) => {
         if (item.id !== target.id) {
           return item;
         }
 
         const key = doneKey(item, date);
 
-        const done = item.done.includes(key)
-          ? item.done.filter((d) => d !== key)
-          : [...item.done, key];
-
-        return { ...item, done };
+        return { ...item, done: wasDone ? item.done.filter((d) => d !== key) : [...new Set([...item.done, key])] };
       }),
-    );
+    }));
   };
 
+  const [menu, setMenu] = useState<MenuRequest>();
+
+  /** Right-click on an item: the things its detail view can do, without opening it. */
+  const itemMenu = (event: MouseEvent, item: Item, date?: IsoDate) => {
+    const recurring = item.when.kind === "recurring";
+    // A repeating task is done per occurrence: without a date there is nothing to tick.
+    const key = item.kind === "task" && !(recurring && date === undefined) ? doneKey(item, date) : undefined;
+
+    const actions: MenuAction[] = [
+      { label: "열기", run: () => openEdit(item, date) },
+      { label: "수정", run: () => openEditor(item, date) },
+    ];
+
+    if (key !== undefined) {
+      actions.push({ label: item.done.includes(key) ? "완료 취소" : "완료", run: () => toggleDone(item, key) });
+    }
+
+    // One occurrence or the whole series is a choice the edit screen asks.
+    if (!recurring) {
+      actions.push({
+        label: "삭제",
+        run: () => act("삭제했습니다", (board) => ({ ...board, items: board.items.filter((other) => other.id !== item.id) })),
+      });
+    }
+
+    event.preventDefault();
+    setMenu({ x: event.clientX, y: event.clientY, actions });
+  };
+
+  // The webview's own menu (back, reload, print) has no place in the app; text fields keep it for copy and paste.
+  useEffect(() => {
+    const block = (event: Event) => {
+      if (!(event.target instanceof Element && event.target.closest("input, textarea") !== null)) {
+        event.preventDefault();
+      }
+    };
+
+    document.addEventListener("contextmenu", block);
+
+    return () => document.removeEventListener("contextmenu", block);
+  }, []);
+
   return (
+    <ItemMenu value={itemMenu}>
     <div className="app">
       {/* Custom category colours: one rule per category, generated from validated hex values. */}
       <style>{customColorCss(categories)}</style>
       <TopBar
         today={now.today}
-        text={quickText}
-        onText={setQuickText}
+        clearKey={inputClear}
         onFocus={() => prestartAi(buildPrompt("", categories, loadCorrections(), now.today).system)}
         onSubmit={openNew}
         onSettings={() => setSettingsOpen("screen")}
@@ -581,12 +627,16 @@ export default function App() {
             items={visible}
             categories={categories}
             holidays={holidays}
-            cellCapacity={theme === "desk" ? 2 : 3}
+            cellCapacity={3}
             tabs={tabs}
             activeTab={activeTab}
             onTab={chooseTab}
             onAddTab={() => setEditing("new")}
             onEditTab={setEditing}
+            onTabMenu={(event, id) => {
+              event.preventDefault();
+              setMenu({ x: event.clientX, y: event.clientY, actions: [{ label: "탭 편집", run: () => setEditing(id) }] });
+            }}
             onMoveTab={(id, index) => setTabs(moveTab(tabs, id, index))}
             allFilter={filterAll ? undefined : liveFilter}
             onAllFilter={setAllFilter}
@@ -683,7 +733,11 @@ export default function App() {
             content: (
               <>
                 <StorageSettings dir={persisted.dir} errors={persisted.errors} onSwitch={persisted.switchFolder} />
-                <BackupSettings board={persisted.board} today={now.today} />
+                <BackupSettings
+                  board={persisted.board}
+                  today={now.today}
+                  onRestore={(backup) => act("백업에서 복원했습니다", (board) => restoreBackup(board, backup))}
+                />
               </>
             ),
           },
@@ -786,6 +840,18 @@ export default function App() {
             setDetail(undefined);
             openEditor(detail.item, detail.date);
           }}
+          onToggle={(key) => {
+            commandRun.current += 1;
+            setCommandNote(undefined);
+            setDetail(undefined);
+            toggleDone(detail.item, key);
+          }}
+          onDelete={() => {
+            commandRun.current += 1;
+            setCommandNote(undefined);
+            setDetail(undefined);
+            act("삭제했습니다", (board) => ({ ...board, items: board.items.filter((item) => item.id !== detail.item.id) }));
+          }}
         />
       )}
       {confirm !== undefined && (
@@ -808,6 +874,8 @@ export default function App() {
           }}
         />
       )}
+      {menu !== undefined && <ContextMenu key={`${menu.x},${menu.y}`} request={menu} onClose={() => setMenu(undefined)} />}
     </div>
+    </ItemMenu>
   );
 }

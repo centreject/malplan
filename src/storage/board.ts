@@ -96,6 +96,55 @@ const TabSchema = v.object({
   order: v.number(),
 });
 
+/** The backup file (설정 → 백업): the board as shown, marked as malplan's. */
+const BackupSchema = v.object({
+  app: v.literal("malplan"),
+  items: v.array(ItemSchema),
+  categories: v.array(v.omit(CategorySchema, ["order"])),
+  // JSON drops 전체's undefined categoryIds.
+  tabs: v.array(v.object({ id: v.string(), name: v.string(), categoryIds: v.exactOptional(v.array(v.string())) })),
+});
+
+export function backupJson(board: Board, exportedAt: string): string {
+  return JSON.stringify({ app: "malplan", version: 1, exportedAt, ...board }, null, 2);
+}
+
+/** The board in a backup file. Anything else (another file, a damaged record) gives undefined: all or nothing. */
+export function parseBackup(text: string): Board | undefined {
+  try {
+    const parsed = v.safeParse(BackupSchema, JSON.parse(text));
+
+    if (!parsed.success) {
+      return undefined;
+    }
+
+    const { items, categories, tabs } = parsed.output;
+
+    return { items, categories, tabs: tabs.map(({ id, name, categoryIds }) => ({ id, name, categoryIds })) };
+  } catch {
+    return undefined;
+  }
+}
+
+/**
+ * Puts a backup's records back: one with the same id takes the backup's content, a missing one is added, and
+ * what the backup does not have (added since) stays. Nothing is deleted, so a wrong file cannot empty the board.
+ */
+export function restoreBackup(current: Board, backup: Board): Board {
+  return {
+    items: restoreById(current.items, backup.items),
+    categories: restoreById(current.categories, backup.categories),
+    tabs: restoreById(current.tabs, backup.tabs),
+  };
+}
+
+function restoreById<T extends { id: string }>(now: T[], saved: T[]): T[] {
+  const restored = new Map(saved.map((record) => [record.id, record]));
+  const known = new Set(now.map((record) => record.id));
+
+  return [...now.map((record) => restored.get(record.id) ?? record), ...saved.filter((record) => !known.has(record.id))];
+}
+
 /** Field values of each entity, keyed by id. `order` keeps list positions. */
 function boardRecords(board: Board): Record<"item" | "category" | "tab", Map<string, Map<string, Json>>> {
   return {

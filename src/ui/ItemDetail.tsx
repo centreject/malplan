@@ -1,10 +1,10 @@
-import { X } from "lucide-react";
+import { Trash2, X } from "lucide-react";
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import type { IsoDate } from "../domain/date";
 import type { Category, Item } from "../domain/item";
 import { NO_REMINDER } from "../domain/reminders";
 import { doneKey } from "../domain/schedule";
-import { monthDay, recurrenceLabel, timeLabel, weekdayName } from "./format";
+import { leadText, monthDay, recurrenceLabel, timeLabel, weekdayName } from "./format";
 import { CategoryTag } from "./parts";
 
 type ItemDetailProps = {
@@ -20,12 +20,19 @@ type ItemDetailProps = {
   onCommandFocus: () => void;
   /** Status or hint for the last request. */
   commandNote: string | undefined;
+  /** Ticks or unticks the task under the given completion key, and closes. */
+  onToggle: (key: string) => void;
+  onDelete: () => void;
 };
 
 /** Read-only view of a saved item; 수정 opens the edit dialog. New entries go straight to editing instead. */
-export function ItemDetail({ item, date, categories, onEdit, onClose, onCommand, onCommandFocus, commandNote }: ItemDetailProps) {
+export function ItemDetail({ item, date, categories, onEdit, onClose, onCommand, onCommandFocus, commandNote, onToggle, onDelete }: ItemDetailProps) {
   const dialog = useRef<HTMLDialogElement>(null);
   const [request, setRequest] = useState("");
+  const recurring = item.when.kind === "recurring";
+  // A repeating task is done per occurrence: without the clicked date there is nothing to tick.
+  const doneAt = item.kind === "task" && !(recurring && date === undefined) ? doneKey(item, date) : undefined;
+  const isDone = doneAt !== undefined && item.done.includes(doneAt);
 
   useEffect(() => {
     dialog.current?.showModal();
@@ -47,11 +54,11 @@ export function ItemDetail({ item, date, categories, onEdit, onClose, onCommand,
   }
 
   if (item.remindMinutes !== undefined) {
-    rows.push(["알림", item.remindMinutes === NO_REMINDER ? "없음" : `${item.remindMinutes}분 전`]);
+    rows.push(["알림", item.remindMinutes === NO_REMINDER ? "없음" : leadText(item.remindMinutes)]);
   }
 
-  if (item.kind === "task") {
-    rows.push(["상태", item.done.includes(doneKey(item, date)) ? "완료" : "미완료"]);
+  if (doneAt !== undefined) {
+    rows.push(["상태", isDone ? "완료" : "미완료"]);
   }
 
   return (
@@ -104,6 +111,18 @@ export function ItemDetail({ item, date, categories, onEdit, onClose, onCommand,
         {commandNote !== undefined && <p className="detail-command-note" role="status">{commandNote}</p>}
       </form>
       <footer className="confirm-foot">
+        {/* One occurrence or the whole series is a choice the edit screen asks; here only plain items are deleted. */}
+        {!recurring && (
+          <button type="button" className="confirm-button confirm-delete" onClick={onDelete}>
+            <Trash2 size={16} strokeWidth={2} />
+            삭제
+          </button>
+        )}
+        {doneAt !== undefined && (
+          <button type="button" className="confirm-button" onClick={() => onToggle(doneAt)}>
+            {isDone ? "완료 취소" : "완료"}
+          </button>
+        )}
         <button type="button" className="confirm-button" onClick={onClose}>
           닫기
         </button>

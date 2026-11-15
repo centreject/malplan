@@ -1,16 +1,17 @@
 import { CornerDownLeft, LayoutGrid, ListChecks, Search, Settings } from "lucide-react";
+import { useState } from "react";
 import type { IsoDate } from "../domain/date";
 import { parseKorean } from "../parse/parseKorean";
 import { parseSummary } from "./format";
 
 type TopBarProps = {
   today: IsoDate;
-  text: string;
-  onText: (text: string) => void;
+  /** Changes when the typed sentence was saved: the input empties. */
+  clearKey: number;
   /** The input got focus: a good moment to start the local AI. */
   onFocus: () => void;
-  /** Opens the confirm screen for the current text. */
-  onSubmit: () => void;
+  /** Opens the confirm screen for the typed text. */
+  onSubmit: (text: string) => void;
   onSettings: () => void;
   onSearch: () => void;
   /** The list page is showing; the button then leads back to the board. */
@@ -18,7 +19,16 @@ type TopBarProps = {
   onList: () => void;
 };
 
-export function TopBar({ today, text, onText, onFocus, onSubmit, onSettings, onSearch, listOpen, onList }: TopBarProps) {
+export function TopBar({ today, clearKey, onFocus, onSubmit, onSettings, onSearch, listOpen, onList }: TopBarProps) {
+  // The text lives here, not in App: a keystroke re-renders this bar only, not the three panes.
+  const [text, setText] = useState("");
+  const [cleared, setCleared] = useState(clearKey);
+
+  if (cleared !== clearKey) {
+    setCleared(clearKey);
+    setText("");
+  }
+
   const summary = text.trim() === "" ? "" : parseSummary(parseKorean(text, today));
 
   return (
@@ -29,7 +39,7 @@ export function TopBar({ today, text, onText, onFocus, onSubmit, onSettings, onS
         className="quick-add"
         onSubmit={(event) => {
           event.preventDefault();
-          onSubmit();
+          onSubmit(text);
         }}
       >
         <label className="visually-hidden" htmlFor="quick-add-input">
@@ -39,7 +49,7 @@ export function TopBar({ today, text, onText, onFocus, onSubmit, onSettings, onS
           id="quick-add-input"
           className="quick-add-input"
           value={text}
-          onChange={(event) => onText(event.target.value)}
+          onChange={(event) => setText(event.target.value)}
           onFocus={onFocus}
           placeholder="예: 12월 28일까지 매주 수요일 오후 4시 회사 우편물 발송"
           autoComplete="off"

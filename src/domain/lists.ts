@@ -2,7 +2,7 @@
 import type { IsoDate, Weekday } from "./date";
 import { WEEKDAY_NAMES, recurrenceLabel } from "./format";
 import type { Item } from "./item";
-import type { Recurrence } from "./recurrence";
+import { expand, type Recurrence } from "./recurrence";
 import { firstOccurrence, missedDates } from "./schedule";
 
 export type RecurringEntry = { item: Item; rule: string; next: IsoDate | undefined };
@@ -137,8 +137,13 @@ function lastDate(item: Item): IsoDate | undefined {
       return item.when.date;
     case "range":
       return item.when.end;
-    case "recurring":
-      return item.when.rule.until;
+    case "recurring": {
+      // The end date need not be an occurrence ("10/12까지 매주 수요일" ends on 10/7), and a check lives on one.
+      const { start, until } = item.when.rule;
+
+      return until === undefined ? undefined : expand(item.when.rule, { from: start, to: until }).at(-1);
+    }
+
     case "none":
       return undefined;
   }

@@ -43,6 +43,18 @@ export function monthDay(date: IsoDate): string {
   return `${month}월 ${day}일`;
 }
 
+/** Reminder leads offered as the default; an item can also pick a day before. */
+export const REMINDER_LEADS = [5, 10, 15, 30, 60];
+
+/** A reminder lead in minutes: "10분 전", "1시간 전", "하루 전". */
+export function leadText(minutes: number): string {
+  if (minutes % 1440 === 0) {
+    return minutes === 1440 ? "하루 전" : `${minutes / 1440}일 전`;
+  }
+
+  return minutes % 60 === 0 ? `${minutes / 60}시간 전` : `${minutes}분 전`;
+}
+
 export function untilLabel(minutes: number): string {
   if (minutes < 1) {
     return "지금";

@@ -1,10 +1,11 @@
-import { useEffect, useRef, useState } from "react";
+import { useContext, useEffect, useRef, useState } from "react";
+import { ItemMenu } from "./ContextMenu";
 import type { IsoDate } from "../domain/date";
 import type { Category, Item } from "../domain/item";
 import { quickTargets } from "../domain/reschedule";
 import type { OverdueTask } from "../domain/schedule";
 import { shortDate, weekdayName } from "./format";
-import { CategoryTag } from "./parts";
+import { CategoryTag, CheckButton } from "./parts";
 
 /** Newest missed dates listed in the popup; older ones are only counted. */
 const MISSED_SHOWN = 20;
@@ -14,14 +15,16 @@ type OverdueListProps = {
   today: IsoDate;
   categoryOf: (item: Item) => Category | undefined;
   onEdit: (item: Item, date?: IsoDate) => void;
+  onToggle: (item: Item, date: string) => void;
   onReschedule: (ids: string[], target: IsoDate) => void;
 };
 
 /** 밀린 할 일: tick one or more, then move them with one click. */
-export function OverdueList({ overdue, today, categoryOf, onEdit, onReschedule }: OverdueListProps) {
+export function OverdueList({ overdue, today, categoryOf, onEdit, onToggle, onReschedule }: OverdueListProps) {
   const [selected, setSelected] = useState<string[]>([]);
   const live = selected.filter((id) => overdue.some((o) => o.item.id === id));
   const targets = quickTargets(today);
+  const openMenu = useContext(ItemMenu);
 
   /** Typing a date fires change on partial values ("2" = year 0002), so a typed or picked date waits for a click. */
   const [picked, setPicked] = useState<IsoDate>();
@@ -134,7 +137,7 @@ export function OverdueList({ overdue, today, categoryOf, onEdit, onReschedule }
                   checked={live.includes(item.id)}
                   onChange={() => toggle(item.id)}
                 />
-                <button type="button" className="side-title item-open" onClick={() => onEdit(item, latest)}>
+                <button type="button" className="side-title item-open" onClick={() => onEdit(item, latest)} onContextMenu={(event) => openMenu(event, item, latest)}>
                   {item.title}
                 </button>
                 {missed.length > 1 ? (
@@ -159,6 +162,8 @@ export function OverdueList({ overdue, today, categoryOf, onEdit, onReschedule }
                   <span className="side-meta num">{shortDate(latest)}</span>
                 )}
                 <CategoryTag category={categoryOf(item)} />
+                {/* Ticks the latest missed day; a repeating task with older misses stays, one fewer. */}
+                <CheckButton title={item.title} done={false} onToggle={() => onToggle(item, latest)} />
               </li>
             ))}
           </ul>

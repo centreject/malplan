@@ -1,10 +1,11 @@
-import { CalendarOff, Check, Pencil, Plus, Trash2 } from "lucide-react";
-import { useState } from "react";
+import { CalendarOff, Pencil, Plus, Trash2 } from "lucide-react";
+import { useContext, useState } from "react";
+import { ItemMenu } from "./ContextMenu";
 import type { IsoDate, Weekday } from "../domain/date";
 import type { Category, Item } from "../domain/item";
 import { groupRecurring, taskSections, type RecurringGroup, type TaskEntry } from "../domain/lists";
 import { shortDate, timeLabel, weekdayName } from "./format";
-import { CategoryTag } from "./parts";
+import { CategoryTag, CheckButton } from "./parts";
 
 type ListPageProps = {
   items: Item[];
@@ -44,23 +45,16 @@ export function ListPage(props: ListPageProps) {
 
 function TaskList({ items, categories, today, onEdit, onToggle }: ListPageProps) {
   const sections = taskSections(items, today);
+  const openMenu = useContext(ItemMenu);
   const categoryOf = (item: Item) => categories.find((c) => c.id === item.categoryId);
 
   const rows = (entries: TaskEntry[], tone: string, done: boolean) => (
     <ul className="list-rows">
       {entries.map(({ item, date }) => (
         <li key={`${item.id}@${date ?? ""}`} className={`list-row ${tone}`}>
-          <button
-            type="button"
-            className="check"
-            aria-pressed={done}
-            aria-label={done ? `${item.title} 완료 취소` : `${item.title} 완료`}
-            onClick={() => onToggle(item, date ?? "done")}
-          >
-            {done && <Check size={14} strokeWidth={3} />}
-          </button>
+          <CheckButton title={item.title} done={done} onToggle={() => onToggle(item, date ?? "done")} />
           <span className="list-date num">{date === undefined ? "—" : `${shortDate(date)} ${weekdayName(date)}`}</span>
-          <button type="button" className="list-title item-open" onClick={() => onEdit(item, date)}>
+          <button type="button" className="list-title item-open" onClick={() => onEdit(item, date)} onContextMenu={(event) => openMenu(event, item, date)}>
             {item.title}
             <span className="list-sub">{timeLabel(item.time)}</span>
           </button>
@@ -112,6 +106,7 @@ function TaskList({ items, categories, today, onEdit, onToggle }: ListPageProps)
 function RecurringList({ items, categories, today, weekStart, onEdit, onEndSeries, onDelete, onAddRecurring }: ListPageProps) {
   const active = groupRecurring(items, today, weekStart);
   const ended = groupRecurring(items, today, weekStart, true);
+  const openMenu = useContext(ItemMenu);
   const categoryOf = (item: Item) => categories.find((c) => c.id === item.categoryId);
 
   const groupList = (groups: RecurringGroup[], finished: boolean) =>
@@ -122,7 +117,7 @@ function RecurringList({ items, categories, today, weekStart, onEdit, onEndSerie
           {group.entries.map(({ item, rule, next }) => (
             <li key={item.id} className={`list-row recurring-row ${finished ? "is-past" : ""}`}>
               <span className="list-date">{rule}</span>
-              <button type="button" className="list-title item-open" onClick={() => onEdit(item, next)}>
+              <button type="button" className="list-title item-open" onClick={() => onEdit(item, next)} onContextMenu={(event) => openMenu(event, item, next)}>
                 {item.title}
                 <span className="list-sub">
                   {timeLabel(item.time)}

@@ -1,5 +1,6 @@
 import { ChevronDown, Plus } from "lucide-react";
-import { Fragment, useEffect, useRef, useState, type MouseEvent, type RefObject } from "react";
+import { Fragment, useContext, useEffect, useRef, useState, type MouseEvent, type RefObject } from "react";
+import { ItemMenu } from "./ContextMenu";
 import { partsOf, weekdayOf, type IsoDate, type Weekday } from "../domain/date";
 import { categoryClass } from "../domain/categories";
 import type { Category, Item } from "../domain/item";
@@ -19,13 +20,15 @@ type MonthPaneProps = {
   items: Item[];
   categories: Category[];
   holidays: Map<IsoDate, string>;
-  /** Items listed per cell before "+n"; the desk theme shows fewer so numerals dominate. */
+  /** Items listed per cell before "+n". */
   cellCapacity: number;
   tabs: CalendarTab[];
   activeTab: string;
   onTab: (id: string) => void;
   onAddTab: () => void;
   onEditTab: (id: string) => void;
+  /** Right-click on a tab other than 전체. */
+  onTabMenu: (event: MouseEvent, id: string) => void;
   onMoveTab: (id: string, index: number) => void;
   /** Temporary category filter on 전체; undefined = every category. */
   allFilter: string[] | undefined;
@@ -48,6 +51,7 @@ export function MonthPane(props: MonthPaneProps) {
   const tabColor = tabClass(tab, props.categories);
   const categoryOf = (item: Item) => props.categories.find((c) => c.id === item.categoryId);
   const [dragged, setDragged] = useState<string>();
+  const openMenu = useContext(ItemMenu);
   const grid = useRef<HTMLDivElement>(null);
   const rows = useRowsThatFit(grid);
   const limit = Math.min(props.cellCapacity, rows ?? props.cellCapacity);
@@ -71,10 +75,23 @@ export function MonthPane(props: MonthPaneProps) {
                 aria-selected={t.id === props.activeTab}
                 className={`tab ${tabClass(t, props.categories)} ${t.id === ALL_TAB_ID ? "tab-filter" : ""} ${t.id === ALL_TAB_ID && props.allFilter !== undefined ? "is-filtering" : ""}`}
                 draggable={t.id !== ALL_TAB_ID}
-                // 전체 already selected: a second click opens the category filter. Other tabs: double-click to edit.
-                popoverTarget={t.id === ALL_TAB_ID && t.id === props.activeTab ? "all-filter" : undefined}
-                title={t.id === ALL_TAB_ID ? "한 번 더 누르면 분류 필터" : "더블클릭하여 편집"}
-                onClick={() => props.onTab(t.id)}
+                // 전체 already selected: a second click opens the category filter. Other tabs: double-click or right-click to edit.
+                popoverTarget={t.id === ALL_TAB_ID ? "all-filter" : undefined}
+                title={t.id === ALL_TAB_ID ? "한 번 더 누르면 분류 필터" : "더블클릭하거나 우클릭하여 편집"}
+                onClick={(event) => {
+                  // Coming back to 전체 from another tab only selects it. Setting popoverTarget once selected was
+                  // too late: the same click re-rendered first and then opened the filter.
+                  if (t.id === ALL_TAB_ID && t.id !== props.activeTab) {
+                    event.preventDefault();
+                  }
+
+                  props.onTab(t.id);
+                }}
+                onContextMenu={(event) => {
+                  if (t.id !== ALL_TAB_ID) {
+                    props.onTabMenu(event, t.id);
+                  }
+                }}
                 onDoubleClick={() => {
                   if (t.id !== ALL_TAB_ID) {
                     props.onEditTab(t.id);
@@ -160,7 +177,12 @@ export function MonthPane(props: MonthPaneProps) {
               <ul className="month-items">
                 {occurrences.slice(0, limit).map(({ item, done }, index) => (
                   <li key={item.id} className="month-row">
-                    <button type="button" className={`month-item item-open ${done ? "is-done" : ""}`} onClick={() => props.onEdit(item, date)}>
+                    <button
+                      type="button"
+                      className={`month-item item-open ${done ? "is-done" : ""}`}
+                      onClick={() => props.onEdit(item, date)}
+                      onContextMenu={(event) => openMenu(event, item, date)}
+                    >
                       <ItemMark category={categoryOf(item)} task={item.kind === "task"} done={done} />
                       <span className="month-item-title">{item.title}</span>
                     </button>
@@ -175,7 +197,12 @@ export function MonthPane(props: MonthPaneProps) {
                 <ul className="month-full" aria-label={`${month}월 ${day}일 전체`} onMouseLeave={closeFullList}>
                   {occurrences.map(({ item, done }) => (
                     <li key={item.id}>
-                      <button type="button" className={`month-item item-open ${done ? "is-done" : ""}`} onClick={() => props.onEdit(item, date)}>
+                      <button
+                        type="button"
+                        className={`month-item item-open ${done ? "is-done" : ""}`}
+                        onClick={() => props.onEdit(item, date)}
+                        onContextMenu={(event) => openMenu(event, item, date)}
+                      >
                         <ItemMark category={categoryOf(item)} task={item.kind === "task"} done={done} />
                         <span className="month-item-time num">{startLabel(item.time)}</span>
                         <span className="month-item-title">{item.title}</span>

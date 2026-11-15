@@ -2,6 +2,7 @@ import { describe, expect, test } from "vitest";
 import { parseKorean } from "../parse/parseKorean";
 import {
   NEW_CATEGORY,
+  applyEdit,
   cardFromItem,
   cardFromParse,
   cardErrors,
@@ -301,5 +302,25 @@ describe("splitTitle", () => {
     const card = cardFromParse(parseKorean("10월 31일에 김철수와 저녁약속 있음. 메뉴는 안 정함", "2026-10-05"), "2026-10-05", []);
 
     expect([card.title, card.note]).toEqual(["김철수와 저녁약속", "메뉴는 안 정함"]);
+  });
+});
+
+describe("applyEdit", () => {
+  const opened = item({ kind: "task", when: { kind: "single", date: today }, note: "옛 메모", remindMinutes: 30 });
+  const formOf = (change: Partial<Card>) => itemFromCard({ ...cardFromItem(opened, today), ...change }, opened.id);
+
+  test("only the fields changed in the form reach the current item", () => {
+    // Another device renamed it and ticked it while the editor was open.
+    const current: Item = { ...opened, title: "다른 기기 제목", done: [today] };
+    const saved = applyEdit(current, opened, formOf({ place: "강남역" }));
+
+    expect(saved).toEqual({ ...current, place: "강남역" });
+  });
+
+  test("a field cleared in the form is removed; an untouched form changes nothing", () => {
+    expect(applyEdit(opened, opened, formOf({ note: "", remindMinutes: undefined }))).toEqual(
+      item({ kind: "task", when: { kind: "single", date: today } }),
+    );
+    expect(applyEdit(opened, opened, formOf({}))).toEqual(opened);
   });
 });

@@ -1,10 +1,11 @@
-import { Check } from "lucide-react";
+import { useContext } from "react";
+import { ItemMenu } from "./ContextMenu";
 import { addDays, partsOf, weekdayOf, type IsoDate } from "../domain/date";
 import type { Category, Item } from "../domain/item";
 import { nextUp, occurrencesOn, sortKey, type Occurrence, type OverdueTask } from "../domain/schedule";
 import { monthDay, shortDate, timeLabel, untilLabel, weekdayName } from "./format";
 import { OverdueList } from "./OverdueList";
-import { CategoryTag, PaneHeader } from "./parts";
+import { CategoryTag, CheckButton, PaneHeader } from "./parts";
 
 type TodayPaneProps = {
   date: IsoDate;
@@ -34,6 +35,7 @@ export function TodayPane(props: TodayPaneProps) {
   const next = isToday ? nextUp(items, date, nowMinutes) : undefined;
   const nowIndex = isToday ? timed.findIndex((o) => sortKey(o.item.time) >= nowMinutes) : -1;
   const categoryOf = (item: Item) => categories.find((c) => c.id === item.categoryId);
+  const openMenu = useContext(ItemMenu);
 
   const row = (occurrence: Occurrence) => {
     const { item } = occurrence;
@@ -44,21 +46,11 @@ export function TodayPane(props: TodayPaneProps) {
       <li key={item.id} className={`agenda-row ${state}`}>
         <span className="agenda-time num">{timeLabel(item.time)}</span>
         <span className="agenda-main">
-          <button type="button" className="agenda-title item-open" onClick={() => props.onEdit(item, date)}>{item.title}</button>
+          <button type="button" className="agenda-title item-open" onClick={() => props.onEdit(item, date)} onContextMenu={(event) => openMenu(event, item, date)}>{item.title}</button>
           {item.place !== undefined && <span className="agenda-sub">{item.place}</span>}
         </span>
         <CategoryTag category={categoryOf(item)} />
-        {item.kind === "task" && (
-          <button
-            type="button"
-            className="check"
-            aria-pressed={occurrence.done}
-            aria-label={occurrence.done ? `${item.title} 완료 취소` : `${item.title} 완료`}
-            onClick={() => props.onToggle(item, date)}
-          >
-            {occurrence.done && <Check size={14} strokeWidth={3} />}
-          </button>
-        )}
+        {item.kind === "task" && <CheckButton title={item.title} done={occurrence.done} onToggle={() => props.onToggle(item, date)} />}
       </li>
     );
   };
@@ -120,6 +112,7 @@ export function TodayPane(props: TodayPaneProps) {
           today={props.today}
           categoryOf={categoryOf}
           onEdit={props.onEdit}
+          onToggle={props.onToggle}
           onReschedule={props.onReschedule}
         />
 
@@ -130,8 +123,9 @@ export function TodayPane(props: TodayPaneProps) {
           <ul>
             {props.undated.map((item) => (
               <li key={item.id} className="side-row">
-                <button type="button" className="side-title item-open" onClick={() => props.onEdit(item)}>{item.title}</button>
+                <button type="button" className="side-title item-open" onClick={() => props.onEdit(item)} onContextMenu={(event) => openMenu(event, item)}>{item.title}</button>
                 <CategoryTag category={categoryOf(item)} />
+                <CheckButton title={item.title} done={false} onToggle={() => props.onToggle(item, "done")} />
               </li>
             ))}
           </ul>

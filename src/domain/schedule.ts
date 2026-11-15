@@ -50,7 +50,8 @@ export function doneKey(item: Item, date: string | undefined): string {
 /** Items on `date`, untimed first, then by start time. */
 export function occurrencesOn(items: Item[], date: IsoDate): Occurrence[] {
   return items
-    .flatMap((item) => (occursOn(item, date) ? [{ item, date, done: item.done.includes(doneKey(item, date)) }] : []))
+    // Only tasks can be done: an event keeps no check, even one left from when it was a task.
+    .flatMap((item) => (occursOn(item, date) ? [{ item, date, done: item.kind === "task" && item.done.includes(doneKey(item, date)) }] : []))
     .toSorted((a, b) => sortKey(a.item.time) - sortKey(b.item.time));
 }
 
@@ -101,8 +102,24 @@ export function missedDates(item: Item, today: IsoDate): IsoDate[] {
     return [];
   }
 
-  return datesBefore(item, addDays(today, -1)).filter((date) => !item.done.includes(date));
+  const known = missedCache.get(item);
+
+  if (known?.today === today) {
+    return known.missed;
+  }
+
+  const missed = datesBefore(item, addDays(today, -1)).filter((date) => !item.done.includes(date));
+
+  missedCache.set(item, { today, missed });
+
+  return missed;
 }
+
+/**
+ * Items are never mutated (an edit makes a new object), so the answer for an item object holds until the day
+ * changes. Without this every check-off or edit walked every repeating task's whole series again.
+ */
+const missedCache = new WeakMap<Item, { today: IsoDate; missed: IsoDate[] }>();
 
 function datesBefore(item: Item, last: IsoDate): IsoDate[] {
   switch (item.when.kind) {
@@ -112,7 +129,7 @@ function datesBefore(item: Item, last: IsoDate): IsoDate[] {
       // A range task is overdue once its last day has passed.
       return item.when.end <= last ? [item.when.end] : [];
     case "recurring":
-      // ponytail: walks the whole series day by day; fine for years of history, cap or index if it ever shows.
+      // ponytail: walks the whole series day by day, once per item object (missedCache); index if the first walk ever shows.
       return expand(item.when.rule, { from: item.when.rule.start, to: last });
     case "none":
       return [];

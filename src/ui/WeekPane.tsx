@@ -1,4 +1,5 @@
-import type { ReactNode } from "react";
+import { useContext, type ReactNode } from "react";
+import { ItemMenu } from "./ContextMenu";
 import { partsOf, weekdayOf, type IsoDate } from "../domain/date";
 import type { Category, Item } from "../domain/item";
 import { occurrencesOn } from "../domain/schedule";
@@ -29,6 +30,7 @@ type WeekPaneProps = {
 export function WeekPane(props: WeekPaneProps) {
   const first = props.dates[0] ?? props.today;
   const last = props.dates.at(-1) ?? props.today;
+  const openMenu = useContext(ItemMenu);
 
   return (
     <section className="pane pane-week" aria-label={`${props.title} 할 일`}>
@@ -63,7 +65,7 @@ export function WeekPane(props: WeekPaneProps) {
               <ul className="week-items">
                 {occurrences.slice(0, VISIBLE_PER_DAY).map(({ item, done }) => (
                   <li key={item.id}>
-                    <button type="button" className={`week-item item-open ${done ? "is-done" : ""}`} onClick={() => props.onEdit(item, date)}>
+                    <button type="button" className={`week-item item-open ${done ? "is-done" : ""}`} onClick={() => props.onEdit(item, date)} onContextMenu={(event) => openMenu(event, item, date)}>
                       <ItemMark
                         category={props.categories.find((c) => c.id === item.categoryId)}
                         task={item.kind === "task"}

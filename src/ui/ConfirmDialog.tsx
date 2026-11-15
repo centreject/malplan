@@ -8,7 +8,7 @@ import { NO_REMINDER } from "../domain/reminders";
 import type { SeriesScope } from "../domain/series";
 import type { Slot } from "../parse/parseKorean";
 import { applyExtraction, type EditedField, type Extraction } from "../llm/extract";
-import { SLOT_NAMES, WEEKDAY_NAMES, shortDate } from "./format";
+import { REMINDER_LEADS, SLOT_NAMES, WEEKDAY_NAMES, leadText, shortDate } from "./format";
 
 type ConfirmDialogProps = {
   /** Cards to start from: parsed input (new) or one existing item (edit). */
@@ -51,13 +51,17 @@ const NTHS: [number, string][] = [[1, "첫째"], [2, "둘째"], [3, "셋째"], [
 
 const SLOTS: Slot[] = ["morning", "lunch", "dinner", "night"];
 
-const REMINDERS: [string, string][] = [["", "기본 (알림 설정)"], [String(NO_REMINDER), "없음"], ["10", "10분 전"], ["30", "30분 전"], ["60", "1시간 전"], ["1440", "하루 전"]];
+const REMINDERS: [string, string][] = [
+  ["", "기본 (알림 설정)"],
+  [String(NO_REMINDER), "없음"],
+  ...[...REMINDER_LEADS, 1440].map((lead): [string, string] => [String(lead), leadText(lead)]),
+];
 
 /** A lead set elsewhere (MCP, an older version) stays a visible choice instead of the select showing another one. */
 function reminderChoices(current: number | undefined): [string, string][] {
   return current === undefined || REMINDERS.some(([value]) => value === String(current))
     ? REMINDERS
-    : [...REMINDERS, [String(current), `${current}분 전`]];
+    : [...REMINDERS, [String(current), leadText(current)]];
 }
 
 const WEEKDAYS: Weekday[] = [0, 1, 2, 3, 4, 5, 6];

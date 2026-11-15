@@ -1,7 +1,7 @@
 import { describe, expect, test } from "vitest";
 import type { Category, Item } from "../domain/item";
 import type { CalendarTab } from "../domain/tabs";
-import { boardChanges, boardFromEntities, boardWrites, type Board } from "./board";
+import { backupJson, boardChanges, boardFromEntities, boardWrites, parseBackup, restoreBackup, type Board } from "./board";
 import { MemoryBackend, SyncStore } from "./store";
 
 const category: Category = { id: "work", name: "회사", colorSlot: 1 };
@@ -205,5 +205,25 @@ describe("saving from a board that is out of date", () => {
     await save(a, board, { ...board, categories: [gym, category] });
 
     expect((await merged()).categories.map((c) => c.id).toSorted()).toEqual(["gym", "school", "work"]);
+  });
+});
+
+describe("backup", () => {
+  test("an exported backup reads back as the same board", () => {
+    expect(parseBackup(backupJson(board, "2026-11-15T00:00:00.000Z"))).toEqual(board);
+  });
+
+  test("other files are refused: not JSON, another app's JSON, a damaged item", () => {
+    const damaged = JSON.stringify({ app: "malplan", items: [{ ...mailing, kind: "meeting" }], categories: [], tabs: [] });
+
+    expect([parseBackup("BEGIN:VCALENDAR"), parseBackup('{"items":[]}'), parseBackup(damaged)]).toEqual([undefined, undefined, undefined]);
+  });
+
+  test("restoring puts backup records back by id and keeps what the backup does not have", () => {
+    const later: Item = { ...mailing, id: "later", title: "백업 뒤에 추가" };
+    const school: Category = { id: "school", name: "학교", colorSlot: 2 };
+    const current: Board = { items: [{ ...mailing, title: "바뀐 제목" }, later], categories: [school], tabs: [allTab] };
+
+    expect(restoreBackup(current, board)).toEqual({ items: [mailing, later], categories: [school, category], tabs: [allTab, workTab] });
   });
 });

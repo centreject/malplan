@@ -1,5 +1,9 @@
 import { expect, test } from "vitest";
-import { recurrenceLabel } from "./format";
+import { leadText, recurrenceLabel } from "./format";
+
+test("reminder leads read the same everywhere", () => {
+  expect([5, 60, 90, 120, 1440, 2880].map(leadText)).toEqual(["5분 전", "1시간 전", "90분 전", "2시간 전", "하루 전", "2일 전"]);
+});
 
 test("recurrence labels name the interval", () => {
   expect(recurrenceLabel({ freq: "daily", start: "2026-10-01" })).toBe("매일");

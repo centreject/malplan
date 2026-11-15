@@ -101,4 +101,14 @@ describe("taskSections", () => {
     expect(sections.overdue.map((e) => e.item.id)).toEqual(["ancient"]);
     expect(sections.done).toEqual([]);
   });
+
+  test("a finished repeating task is listed under its last occurrence, not the end date", () => {
+    // Wednesdays until Monday 10/5: the last one is 9/30.
+    const ended = item("ended", {
+      when: rec({ start: S, freq: "weekly", weekdays: [3], until: "2026-10-05" }),
+      done: ["2026-09-02", "2026-09-09", "2026-09-16", "2026-09-23", "2026-09-30"],
+    });
+
+    expect(taskSections([ended], today).done).toEqual([{ item: ended, date: "2026-09-30" }]);
+  });
 });

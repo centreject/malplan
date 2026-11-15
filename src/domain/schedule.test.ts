@@ -182,3 +182,17 @@ describe("a range task is one task, done once", () => {
     expect(doneKey(item("n", { kind: "task", when: { kind: "none" } }), undefined)).toBe("done");
   });
 });
+
+test("an event is never done, even with a completion left from when it was a task", () => {
+  const was = item("was", { kind: "event", done: ["2026-10-05"] });
+
+  expect(occurrencesOn([was], "2026-10-05").map((o) => o.done)).toEqual([false]);
+});
+
+test("missed dates are remembered per item and recomputed for another day", () => {
+  const daily = item("daily", { kind: "task", when: { kind: "recurring", rule: { freq: "daily", start: "2026-10-01" } } });
+
+  expect(missedDates(daily, "2026-10-03")).toEqual(["2026-10-01", "2026-10-02"]);
+  expect(missedDates(daily, "2026-10-03")).toBe(missedDates(daily, "2026-10-03"));
+  expect(missedDates(daily, "2026-10-04")).toHaveLength(3);
+});

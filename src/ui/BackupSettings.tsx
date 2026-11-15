@@ -1,12 +1,17 @@
 import { invoke, isTauri } from "@tauri-apps/api/core";
 import { save } from "@tauri-apps/plugin-dialog";
-import { Download } from "lucide-react";
-import { useState } from "react";
+import { Download, Upload } from "lucide-react";
+import { useRef, useState } from "react";
 import type { IsoDate } from "../domain/date";
 import { toIcs } from "../domain/ics";
-import type { Board } from "../storage/board";
+import { backupJson, parseBackup, type Board } from "../storage/board";
 
-type BackupSettingsProps = { board: Board; today: IsoDate };
+type BackupSettingsProps = {
+  board: Board;
+  today: IsoDate;
+  /** Puts a chosen backup's records back into the board. */
+  onRestore: (backup: Board) => void;
+};
 
 /** Write text to a user-chosen file: save dialog on desktop, a download in the browser. */
 async function saveText(fileName: string, content: string, mime: string): Promise<boolean> {
@@ -32,24 +37,34 @@ async function saveText(fileName: string, content: string, mime: string): Promis
   return true;
 }
 
-/** "백업": export everything as JSON, or the items as an .ics calendar file. */
-export function BackupSettings({ board, today }: BackupSettingsProps) {
+/** "백업": export everything as JSON or the items as an .ics calendar file, and restore from a JSON backup. */
+export function BackupSettings({ board, today, onRestore }: BackupSettingsProps) {
   const [message, setMessage] = useState("");
+  const picker = useRef<HTMLInputElement>(null);
+  /** A backup that was read and waits for the 복원 click: nothing changes on picking a file. */
+  const [picked, setPicked] = useState<{ name: string; backup: Board }>();
 
   const run = async (kind: "json" | "ics") => {
     try {
       const saved = kind === "json"
-        ? await saveText(
-            `malplan-backup-${today}.json`,
-            JSON.stringify({ app: "malplan", version: 1, exportedAt: new Date().toISOString(), ...board }, null, 2),
-            "application/json",
-          )
+        ? await saveText(`malplan-backup-${today}.json`, backupJson(board, new Date().toISOString()), "application/json")
         : await saveText(`malplan-${today}.ics`, toIcs(board.items, utcStamp()), "text/calendar");
 
       setMessage(saved ? "저장했습니다." : "");
     } catch (error) {
       setMessage(`저장하지 못했습니다: ${error instanceof Error ? error.message : String(error)}`);
     }
+  };
+
+  const pick = async (file: File | undefined) => {
+    if (file === undefined) {
+      return;
+    }
+
+    const backup = parseBackup(await file.text());
+
+    setPicked(backup === undefined ? undefined : { name: file.name, backup });
+    setMessage(backup === undefined ? `${file.name}: malplan 백업 파일이 아니거나 손상되었습니다. 바뀐 것은 없습니다.` : "");
   };
 
   return (
@@ -62,8 +77,46 @@ export function BackupSettings({ board, today }: BackupSettingsProps) {
         <button type="button" className="text-button bordered" onClick={() => void run("ics")}>
           <Download size={16} strokeWidth={2} /> 캘린더 파일 (ICS)
         </button>
+        <button type="button" className="text-button bordered" onClick={() => picker.current?.click()}>
+          <Upload size={16} strokeWidth={2} /> 백업에서 복원 (JSON)
+        </button>
+        <input
+          ref={picker}
+          type="file"
+          accept=".json,application/json"
+          hidden
+          onChange={(event) => {
+            void pick(event.target.files?.[0]);
+            // The same file can be picked again after a refusal.
+            event.target.value = "";
+          }}
+        />
       </div>
       <p className="window-note">ICS 파일은 구글·네이버·아웃룩 캘린더에서 가져오기로 열 수 있습니다.</p>
+      {picked !== undefined && (
+        <>
+          <p className="window-note" role="status">
+            {picked.name}: 항목 {picked.backup.items.length}개, 분류 {picked.backup.categories.length}개. 같은 항목은 백업 내용으로 되돌리고,
+            백업 뒤에 추가한 항목은 그대로 둡니다. 지워지는 것은 없습니다.
+          </p>
+          <div className="storage-actions">
+            <button
+              type="button"
+              className="text-button bordered"
+              onClick={() => {
+                onRestore(picked.backup);
+                setPicked(undefined);
+                setMessage("복원했습니다.");
+              }}
+            >
+              복원
+            </button>
+            <button type="button" className="text-button" onClick={() => setPicked(undefined)}>
+              취소
+            </button>
+          </div>
+        </>
+      )}
       {message !== "" && <p className="window-note" role="status">{message}</p>}
     </fieldset>
   );

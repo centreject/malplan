@@ -1,4 +1,4 @@
-import { ChevronLeft, ChevronRight, Square, SquareCheck } from "lucide-react";
+import { Check, ChevronLeft, ChevronRight, Square, SquareCheck } from "lucide-react";
 import type { ReactNode } from "react";
 import { categoryClass } from "../domain/categories";
 import type { Category } from "../domain/item";
@@ -33,6 +33,15 @@ export function ItemMark({ category, task, done }: { category: Category | undefi
   );
 }
 
+/** The round-cornered tick box that completes a task. */
+export function CheckButton({ title, done, onToggle }: { title: string; done: boolean; onToggle: () => void }) {
+  return (
+    <button type="button" className="check" aria-pressed={done} aria-label={done ? `${title} 완료 취소` : `${title} 완료`} onClick={onToggle}>
+      {done && <Check size={14} strokeWidth={3} />}
+    </button>
+  );
+}
+
 type PaneHeaderProps = {
   title: ReactNode;
   /** "날", "주", "달" — used in the prev/next labels. */
@@ -50,20 +59,21 @@ export function PaneHeader({ title, unit, resetLabel, onPrev, onNext, onReset, c
   return (
     <header className="pane-head">
       <h2 className="pane-title">{title}</h2>
-      {children}
+      {/* Right beside the title, arrows first: they stay put when "오늘로" appears after them. */}
       <nav className="pane-nav" aria-label={`${resetLabel} 이동`}>
-        {onReset !== undefined && (
-          <button type="button" className="text-button" onClick={onReset}>
-            {resetLabel}로
-          </button>
-        )}
         <button type="button" className="icon-button" onClick={onPrev} aria-label={`이전 ${unit}`}>
           <ChevronLeft size={18} strokeWidth={2} />
         </button>
         <button type="button" className="icon-button" onClick={onNext} aria-label={`다음 ${unit}`}>
           <ChevronRight size={18} strokeWidth={2} />
         </button>
+        {onReset !== undefined && (
+          <button type="button" className="text-button" onClick={onReset}>
+            {resetLabel}로
+          </button>
+        )}
       </nav>
+      {children}
     </header>
   );
 }

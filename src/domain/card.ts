@@ -205,6 +205,46 @@ export function itemFromCard(card: Card, id: string): Item {
   return item;
 }
 
+/**
+ * Saving an edit: `opened` is the item the form started from (as the form itself would save it untouched),
+ * `edited` what the form holds now. Only fields that differ between them are applied to `current`, so a title
+ * or a check-off another device made while the form was open stays.
+ */
+export function applyEdit(current: Item, opened: Item, edited: Item): Item {
+  // "today" only fills the form's date for an undated item, which itemFromCard drops again.
+  const base = itemFromCard(cardFromItem(opened, ""), opened.id);
+  const same = (field: keyof Item) => JSON.stringify(base[field]) === JSON.stringify(edited[field]);
+  const pick = <K extends keyof Item>(field: K): Item[K] => (same(field) ? current[field] : edited[field]);
+
+  const item: Item = {
+    id: current.id,
+    title: pick("title"),
+    kind: pick("kind"),
+    categoryId: pick("categoryId"),
+    when: pick("when"),
+    time: pick("time"),
+    done: pick("done"),
+  };
+
+  const place = pick("place");
+  const note = pick("note");
+  const remindMinutes = pick("remindMinutes");
+
+  if (place !== undefined) {
+    item.place = place;
+  }
+
+  if (note !== undefined) {
+    item.note = note;
+  }
+
+  if (remindMinutes !== undefined) {
+    item.remindMinutes = remindMinutes;
+  }
+
+  return item;
+}
+
 function whenFromCard(card: Card): ItemWhen {
   if (card.kind === "undated") {
     return { kind: "none" };

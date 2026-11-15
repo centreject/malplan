@@ -12,6 +12,9 @@ const DAY = 24 * 60;
 /** Morning summary of today's undecided items. */
 const UNDECIDED_SUMMARY_AT = 8 * 60;
 
+/** The summary is a morning nudge: an undecided item added in the afternoon does not set it off. */
+const UNDECIDED_SUMMARY_UNTIL = 12 * 60;
+
 /**
  * Reminders whose fire time falls in (fromMinutes, toMinutes] of `today`.
  * Exact times fire `remindMinutes` (or the default) before the start, possibly on the day before;
@@ -65,7 +68,8 @@ export function dueReminders(
 
   const undecided = occurrencesOn(items, today).filter((o) => !o.done && o.item.time.kind === "undecided");
 
-  if (undecided.length > 0 && inWindow(UNDECIDED_SUMMARY_AT)) {
+  // Any minute of the morning, not only 08:00: a PC turned on at 9 still gets it. The key keeps it to once a day.
+  if (undecided.length > 0 && toMinutes >= UNDECIDED_SUMMARY_AT && toMinutes < UNDECIDED_SUMMARY_UNTIL) {
     reminders.push({
       key: `undecided@${today}`,
       title: `오늘 시간 미정 ${undecided.length}건`,

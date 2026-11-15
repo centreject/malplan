@@ -55,6 +55,14 @@ test("undecided items: one morning summary", () => {
   expect(due).toEqual([{ key: "undecided@2026-10-08", title: "오늘 시간 미정 2건", body: "a, b" }]);
 });
 
+test("undecided summary: a PC turned on after 8 still gets it that morning, not in the afternoon", () => {
+  const items = [item("a", { time: { kind: "undecided" } })];
+
+  expect(dueReminders(items, today, at(9, 29), at(9, 30), 10).map((r) => r.key)).toEqual(["undecided@2026-10-08"]);
+  expect(dueReminders(items, today, at(7, 30), at(7, 31), 10)).toEqual([]);
+  expect(dueReminders(items, today, at(12, 59), at(13, 0), 10)).toEqual([]);
+});
+
 test("done occurrences and anytime items never fire", () => {
   const done = item("done", { kind: "task", time: { kind: "exact", start: { hour: 14, minute: 0 } }, done: [today] });
   const any = item("any", { time: { kind: "anytime" } });
