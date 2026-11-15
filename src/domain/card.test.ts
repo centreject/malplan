@@ -234,8 +234,15 @@ describe("cardErrors", () => {
     expect(cardErrors({ ...base, repeat: true, until: "2026-10-01" }).until).toBeDefined();
     expect(cardErrors({ ...base, repeat: true, freq: "weekly", weekdays: [] }).weekdays).toBeDefined();
     expect(cardErrors({ ...base, timeMode: "exact", start: "" }).start).toBeDefined();
-    expect(cardErrors({ ...base, timeMode: "exact", start: "10:00", end: "09:00" }).end).toBeDefined();
     expect(cardErrors({ ...base, categoryId: NEW_CATEGORY, newCategory: "" }).newCategory).toBeDefined();
+  });
+
+  test("an end before the start ends the next day: 밤 10시~새벽 1시 can be saved", () => {
+    const night = cardFromParse(parseKorean("내일 밤 10시~새벽 1시 야간 작업", today), today, categories);
+
+    expect([night.start, night.end]).toEqual(["22:00", "01:00"]);
+    expect(cardErrors(night)).toEqual({});
+    expect(itemFromCard(night, "n").time).toEqual({ kind: "exact", start: { hour: 22, minute: 0 }, end: { hour: 1, minute: 0 } });
   });
 
   test("hidden fields do not block", () => {

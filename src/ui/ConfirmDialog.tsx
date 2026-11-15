@@ -341,8 +341,8 @@ function CardEditor({ card, errors, categories, occurrence, heading, onChange, o
                   value={card.end}
                   onChange={(event) => set({ end: event.target.value })}
                   aria-label="끝 시각 (선택)"
-                  {...invalid("end")}
                 />
+                {card.end !== "" && card.start !== "" && card.end <= card.start && <span className="cf-hint">다음 날 끝남</span>}
               </span>
             )}
             {card.timeMode === "slot" && (
@@ -358,7 +358,6 @@ function CardEditor({ card, errors, categories, occurrence, heading, onChange, o
               </select>
             )}
             {error("start")}
-            {error("end")}
           </Field>
         </>
       )}

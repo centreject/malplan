@@ -97,8 +97,15 @@ describe("applyEditCommand", () => {
     expect(end("3시로 바꿔")).toBe("16:30");
     expect(end("11시로 바꿔")).toBe("12:30");
     expect(end("3시부터 5시로")).toBe("17:00");
-    // Past midnight the range would wrap; the end is left for the user.
-    expect(end("밤 11시로 바꿔")).toBe("");
+    // Past midnight the end is on the next day.
+    expect(end("밤 11시로 바꿔")).toBe("00:30");
+  });
+
+  test("a new start keeps the length of a range that already ends the next day", () => {
+    const night = cardFromItem({ ...item, time: { kind: "exact", start: { hour: 22, minute: 0 }, end: { hour: 1, minute: 0 } } }, today);
+    const result = applyEditCommand(night, "밤 9시로 바꿔", today, categories);
+
+    expect(result === undefined || result === REPEAT_DATE_REFUSAL ? result : [result.card.start, result.card.end]).toEqual(["21:00", "00:00"]);
   });
 
   test("a new date, as the parser reads it", () => {

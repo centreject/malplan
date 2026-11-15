@@ -150,15 +150,21 @@ function minutesOf(clock: string): number {
   return hour * 60 + minute;
 }
 
-/** "3시로" on a 14:00–15:30 item keeps its length (15:00–16:30); nothing kept if it had no end or would pass midnight. */
+const DAY_MINUTES = 24 * 60;
+
+/**
+ * "3시로" on a 14:00–15:30 item keeps its length (15:00–16:30). An end at or before the start is on the next
+ * day, both in the item it had and in the one it gets. Nothing kept if it had no end.
+ */
 function keptEnd(card: Card, start: string): string {
   if (card.timeMode !== "exact" || card.end === "") {
     return "";
   }
 
-  const end = minutesOf(start) + minutesOf(card.end) - minutesOf(card.start);
+  const length = (minutesOf(card.end) - minutesOf(card.start) + DAY_MINUTES) % DAY_MINUTES;
+  const end = (minutesOf(start) + length) % DAY_MINUTES;
 
-  return end > minutesOf(start) && end < 24 * 60 ? clockText({ hour: Math.floor(end / 60), minute: end % 60 }) : "";
+  return clockText({ hour: Math.floor(end / 60), minute: end % 60 });
 }
 
 function timeText(card: Card): string {

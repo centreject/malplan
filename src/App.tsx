@@ -193,7 +193,8 @@ export default function App() {
       return;
     }
 
-    void Promise.all(
+    // Each sentence on its own: one that fails leaves the others' answers in place.
+    void Promise.allSettled(
       parts.map(async ({ part, id }, index) => {
         const reply = await complete(llm, buildPrompt(part, categories, loadCorrections(), now.today));
         const extraction = parseExtraction(reply);
@@ -205,23 +206,31 @@ export default function App() {
           setAi((current) => ({ ...current, extractions: new Map(current.extractions).set(id, guarded) }));
         }
       }),
-    )
-      .then(() => {
-        if (aiSession.current === session) {
-          setAi((current) => ({ ...current, note: undefined }));
-        }
-      })
-      .catch((error: Error | string) => {
-        if (aiSession.current === session) {
-          const note = llm.provider !== "local"
-            ? `AI 정리 실패: ${connectionErrorText(error)} 규칙 기반 결과를 확인하세요.`
-            : localServer?.status() === "no-model"
-              ? "로컬 AI 모델이 없어 규칙 기반으로만 정리했습니다. 마이페이지 → AI 변환에서 받을 수 있습니다."
-              : "로컬 AI 모델이 아직 준비되지 않아 규칙 기반으로만 정리했습니다.";
+    ).then((results) => {
+      if (aiSession.current !== session) {
+        return;
+      }
 
-          setAi((current) => ({ ...current, note }));
-        }
-      });
+      const failures = results.flatMap((result) => (result.status === "rejected" ? [result.reason instanceof Error ? result.reason : String(result.reason)] : []));
+      const first = failures[0];
+
+      if (first === undefined) {
+        setAi((current) => ({ ...current, note: undefined }));
+
+        return;
+      }
+
+      const why = llm.provider !== "local"
+        ? `AI 정리 실패: ${connectionErrorText(first)} 규칙 기반 결과를 확인하세요.`
+        : localServer?.status() === "no-model"
+          ? "로컬 AI 모델이 없어 규칙 기반으로만 정리했습니다. 마이페이지 → AI 변환에서 받을 수 있습니다."
+          : "로컬 AI 모델이 아직 준비되지 않아 규칙 기반으로만 정리했습니다.";
+
+      // Some sentences came through: say how many did not, instead of calling the whole request a failure.
+      const note = failures.length < results.length ? `${results.length}개 중 ${failures.length}개만 해당 · ${why}` : why;
+
+      setAi((current) => ({ ...current, note }));
+    });
   };
 
   const [detail, setDetail] = useState<{ item: Item; date: IsoDate | undefined }>();

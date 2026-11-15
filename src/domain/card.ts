@@ -58,7 +58,7 @@ export type Draft = { id: string; card: Card };
 export type Committed = { items: Item[]; categories: Category[] };
 
 export type CardErrors = Partial<
-  Record<"title" | "date" | "endDate" | "until" | "weekdays" | "start" | "end" | "newCategory", string>
+  Record<"title" | "date" | "endDate" | "until" | "weekdays" | "start" | "newCategory", string>
 >;
 
 const TASK_ENDINGS = ["하기", "제출", "발송", "보내기", "마감", "신청", "반납", "사기"];
@@ -355,9 +355,8 @@ export function cardErrors(card: Card): CardErrors {
     errors.start = "시작 시각을 입력하세요.";
   }
 
-  if (card.timeMode === "exact" && card.end !== "" && card.end < card.start) {
-    errors.end = "끝 시각이 시작 시각보다 빠릅니다.";
-  }
+  // An end at or before the start is not an error: it is on the next day ("밤 10시~새벽 1시"), as the parser
+  // reads it and the .ics export writes it.
 
   return errors;
 }
