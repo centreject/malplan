@@ -30,7 +30,8 @@ export class MemoryBackend implements Backend {
   }
 }
 
-export type FieldWrite = Pick<Change, "entity" | "id" | "field" | "value">;
+/** `at`: when the edit was made, if it is written later (a save retried after a failure, or after a restart). */
+export type FieldWrite = Pick<Change, "entity" | "id" | "field" | "value"> & { at?: number };
 
 const SNAPSHOT = "snapshot.json";
 
@@ -49,6 +50,13 @@ const isReal = (change: Change) => change.ts >= DEFAULTS_BEFORE;
 
 /** How long a device keeps its own folded log entries before pruning them. */
 export const PRUNE_AFTER_MS = 7 * 24 * 60 * 60 * 1000;
+
+/**
+ * With no snapshot in sight, a device compacts only once its own entries are this old. A device that just joined
+ * a cloud folder may have received the logs but not yet snapshot.json; a snapshot built from logs alone would
+ * replace the real one and drop everything only that one held.
+ */
+const FIRST_COMPACT_AFTER_MS = 24 * 60 * 60 * 1000;
 
 const logName = (device: string) => `log-${device}.jsonl`;
 
@@ -71,7 +79,8 @@ export class SyncStore {
   readonly #deviceId: string;
   readonly #now: () => number;
   #snapshot: Snapshot = emptySnapshot();
-  #snapshotCorrupt = false;
+  /** The last read found snapshot.json corrupt, or gone after an earlier read had it: no compaction, no pruning. */
+  #snapshotUnreadable = false;
   #logs = new Map<string, Change[]>();
   #state: State = emptyState;
   #lastTs = -Infinity;
@@ -86,9 +95,18 @@ export class SyncStore {
   async load(): Promise<void> {
     const errors: string[] = [];
     const snapshotText = await this.#backend.read(SNAPSHOT);
-    const parsed = snapshotText === undefined ? { snapshot: emptySnapshot() } : parseSnapshot(snapshotText);
+    const parsed: ParsedSnapshot = snapshotText === undefined ? { snapshot: emptySnapshot() } : parseSnapshot(snapshotText);
+    const hadSnapshot = this.#snapshot.compactedAt > 0;
+    const vanished = snapshotText === undefined && hadSnapshot;
 
     if (parsed.error !== undefined) errors.push(`${SNAPSHOT}: ${parsed.error}`);
+
+    if (vanished) errors.push(`${SNAPSHOT}: 파일이 보이지 않습니다. 마지막으로 읽은 내용을 유지합니다.`);
+
+    const unreadable = parsed.error !== undefined || vanished;
+    // A cloud client replacing the file leaves it missing or half-written for a moment. The snapshot read before
+    // still holds everything it folded; showing the board without it would make items vanish until the next read.
+    const snapshot = unreadable && hadSnapshot ? this.#snapshot : parsed.snapshot;
 
     const logs = new Map<string, Change[]>();
 
@@ -104,17 +122,17 @@ export class SyncStore {
     }
 
     this.errors = errors;
-    this.#snapshot = parsed.snapshot;
-    this.#snapshotCorrupt = parsed.error !== undefined;
+    this.#snapshot = snapshot;
+    this.#snapshotUnreadable = unreadable;
     this.#logs = logs;
-    this.#state = loadState(parsed.snapshot, [...logs.values()].flat());
+    this.#state = loadState(snapshot, [...logs.values()].flat());
 
-    const seenSelf = new Map(Object.entries(parsed.snapshot.seen)).get(this.#deviceId) ?? -Infinity;
+    const seenSelf = new Map(Object.entries(snapshot.seen)).get(this.#deviceId) ?? -Infinity;
     const own = logs.get(this.#deviceId) ?? [];
     // Folded entries stay until the snapshot that folded them is PRUNE_AFTER_MS old: if another device compacted at
     // the same time and its snapshot wins (a cloud folder syncing late), entries only ours held are still in our log.
     // Measured from the compaction, not the entry: the first compaction folds mostly old entries.
-    const settled = this.#now() - parsed.snapshot.compactedAt > PRUNE_AFTER_MS;
+    const settled = !unreadable && this.#now() - snapshot.compactedAt > PRUNE_AFTER_MS;
     const live = own.filter((c) => c.ts > seenSelf || !settled);
 
     for (const c of own) this.#lastTs = Math.max(this.#lastTs, c.ts);
@@ -152,8 +170,9 @@ export class SyncStore {
     let ts = this.#lastTs;
 
     // Strictly increasing per device, even if the clock steps back: compaction relies on it.
-    const changes = writes.map(({ entity, id, field, value }): Change => {
-      ts = Math.max(now, ts + 1);
+    // A write that waited (`at`) is dated when it was made, not when it got through: merging goes by edit time.
+    const changes = writes.map(({ entity, id, field, value, at }): Change => {
+      ts = Math.max(at ?? now, ts + 1);
 
       return { ts, device: this.#deviceId, entity, id, field, value };
     });
@@ -172,7 +191,7 @@ export class SyncStore {
   async compact(): Promise<void> {
     await this.load();
 
-    if (this.#snapshotCorrupt) throw new Error(`${SNAPSHOT} is corrupt; refusing to overwrite it`);
+    if (this.#snapshotUnreadable) throw new Error(`${SNAPSHOT} is corrupt or missing; refusing to overwrite it`);
 
     const known = [...new Set([...this.#logs.keys(), this.#deviceId])];
     const result = compact(this.#snapshot, this.#logs, this.#now(), known);
@@ -193,7 +212,14 @@ export class SyncStore {
     // Entries already folded but kept for a while (PRUNE_AFTER_MS) are not pending.
     const pending = [...this.#logs.values()].flat().filter((c) => c.ts > (seen.get(c.device) ?? -Infinity)).length;
 
-    if (devices[0] !== this.#deviceId || pending <= threshold || this.#snapshotCorrupt) {
+    if (devices[0] !== this.#deviceId || pending <= threshold || this.#snapshotUnreadable) {
+      return false;
+    }
+
+    // No snapshot in sight: only a device that has been writing here for a while may make the first one.
+    const firstOwn = (this.#logs.get(this.#deviceId) ?? []).find(isReal);
+
+    if (this.#snapshot.compactedAt === 0 && (firstOwn === undefined || this.#now() - firstOwn.ts < FIRST_COMPACT_AFTER_MS)) {
       return false;
     }
 
@@ -268,16 +294,32 @@ function mergeSnapshots(a: Snapshot, b: Snapshot): Snapshot {
   };
 }
 
-/** Field writes not yet on disk. A failed save, or a store still loading, keeps them for the next try. */
+const keepNothing = (): void => undefined;
+
+/**
+ * Field writes not yet on disk. A failed save, or a store still loading, keeps them for the next try.
+ * `keep` is handed what waits after every change, to put somewhere that outlives the app (the folder itself is
+ * what cannot be written); the next run starts from it, so quitting with unsaved changes loses nothing.
+ */
 export class Outbox {
-  #writes: FieldWrite[] = [];
+  #writes: FieldWrite[];
+  readonly #keep: (waiting: readonly FieldWrite[]) => void;
+
+  constructor(kept: readonly FieldWrite[] = [], keep: (waiting: readonly FieldWrite[]) => void = keepNothing) {
+    this.#writes = [...kept];
+    this.#keep = keep;
+  }
 
   get size(): number {
     return this.#writes.length;
   }
 
-  add(writes: readonly FieldWrite[]): void {
-    this.#writes = [...this.#writes, ...writes];
+  /** `at`: the time of the edit, which the writes keep however late they are saved. */
+  add(writes: readonly FieldWrite[], at: number): void {
+    if (writes.length === 0) return;
+
+    this.#writes = [...this.#writes, ...writes.map((write) => ({ ...write, at }))];
+    this.#keep(this.#writes);
   }
 
   /** Sends everything waiting, in order. Run one at a time. On failure all of it stays and the error is rethrown. */
@@ -288,5 +330,6 @@ export class Outbox {
 
     await store.setMany(sending);
     this.#writes = this.#writes.slice(sending.length);
+    this.#keep(this.#writes);
   }
 }

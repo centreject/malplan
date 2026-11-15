@@ -246,12 +246,60 @@ test("compactIfDue: only the designated device (smallest id) compacts, and only 
     await a.set("item", `i${i}`, "title", `t${i}`);
   }
 
+  // No snapshot yet: a device compacts only once its own entries are a day old (see the joining-device test).
+  tick("a", DAY);
   await b.load();
   expect(await b.compactIfDue(3)).toBe(false);
   expect(await a.compactIfDue(100)).toBe(false);
   expect(await a.compactIfDue(3)).toBe(true);
   expect(await backend.read("snapshot.json")).toBeDefined();
   expect(a.entities().item).toHaveLength(5);
+});
+
+test("a device that just joined and sees logs but no snapshot yet does not compact", async () => {
+  // The cloud has delivered B's log to the new device A, but not snapshot.json, which alone holds B's older items.
+  const { backend, device, tick } = setup();
+  const b = await device("b", 1_000_000);
+
+  for (let i = 0; i < 5; i++) {
+    tick("b", 10);
+    await b.set("item", `i${i}`, "title", `t${i}`);
+  }
+
+  const a = await device("a", 1_000_100);
+
+  await a.set("item", "mine", "title", "방금 추가");
+  expect(await a.compactIfDue(3)).toBe(false);
+  expect(await backend.read("snapshot.json")).toBeUndefined();
+
+  // A day on with still no snapshot, there never was one: A may write the first.
+  tick("a", DAY);
+  expect(await a.compactIfDue(3)).toBe(true);
+});
+
+test("a snapshot that disappears or breaks between reads keeps the last good one, and nothing is compacted", async () => {
+  const { backend, device, tick } = setup();
+  const a = await device("a", 1_000_000);
+
+  await a.set("item", "old", "title", "스냅샷에만 남은 항목");
+  await a.compact();
+  // Past the grace, A prunes its folded entry: the item now lives only in snapshot.json.
+  tick("a", PRUNE_AFTER_MS + DAY);
+  await a.refresh();
+  expect(await backend.read("log-a.jsonl")).toBe("");
+
+  for (const broken of [undefined, "{half writ"]) {
+    if (broken === undefined) {
+      backend.files.delete("snapshot.json");
+    } else {
+      await backend.write("snapshot.json", broken);
+    }
+
+    await a.refresh();
+    expect(a.entities().item.map((entity) => entity.id)).toEqual(["old"]);
+    expect(a.errors.join()).toContain("snapshot.json");
+    expect(await a.compactIfDue(0)).toBe(false);
+  }
 });
 
 test("setMany writes all fields with one append, in strictly increasing ts, and they reload", async () => {
@@ -415,7 +463,7 @@ test("writes that fail stay in the outbox and go out on the next flush", async (
   await store.load();
   const outbox = new Outbox();
 
-  outbox.add([{ entity: "item", id: "i1", field: "title", value: "x" }]);
+  outbox.add([{ entity: "item", id: "i1", field: "title", value: "x" }], 1000);
   await expect(outbox.flush(store)).rejects.toThrow("locked");
   expect(outbox.size).toBe(1);
 
@@ -430,10 +478,43 @@ test("writes that fail stay in the outbox and go out on the next flush", async (
 test("with no store yet (still loading or switching folders), writes wait in the outbox", async () => {
   const outbox = new Outbox();
 
-  outbox.add([{ entity: "item", id: "i1", field: "title", value: "x" }]);
+  outbox.add([{ entity: "item", id: "i1", field: "title", value: "x" }], 1000);
   await outbox.flush(undefined);
 
   expect(outbox.size).toBe(1);
+});
+
+test("a write saved on a retry keeps its edit time, so a later edit elsewhere still wins", async () => {
+  const { device, tick } = setup();
+  const a = await device("A", 1000);
+  const b = await device("B", 2000);
+  const outbox = new Outbox();
+
+  // A edits at 1000 but the save fails; B edits the same field at 2000; A's retry succeeds at 3000.
+  outbox.add([{ entity: "item", id: "i1", field: "title", value: "A at 1000" }], 1000);
+  await b.set("item", "i1", "title", "B at 2000");
+  tick("A", 2000);
+  await outbox.flush(a);
+
+  expect((await item(a))?.title).toBe("B at 2000");
+});
+
+test("waiting writes are handed over for safekeeping and a restart picks them up with their edit time", async () => {
+  const kept: unknown[] = [];
+  const outbox = new Outbox([], (pending) => kept.push(pending));
+
+  outbox.add([{ entity: "item", id: "i1", field: "title", value: "x" }], 1000);
+  expect(kept.at(-1)).toEqual([{ entity: "item", id: "i1", field: "title", value: "x", at: 1000 }]);
+
+  // The app quits with the write unsaved; the next run starts from what was kept.
+  const { device } = setup();
+  const store = await device("A", 5000);
+  const restarted = new Outbox([{ entity: "item", id: "i1", field: "title", value: "x", at: 1000 }], (pending) => kept.push(pending));
+
+  expect(restarted.size).toBe(1);
+  await restarted.flush(store);
+  expect(kept.at(-1)).toEqual([]);
+  expect((await item(store))?.title).toBe("x");
 });
 
 test("entries folded long after they were written still wait out the grace before pruning", async () => {

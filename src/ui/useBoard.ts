@@ -2,6 +2,9 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { ALL_TAB_ID } from "../domain/tabs";
 import { deviceId, loadSyncDir, openBackend, saveSyncDir } from "../storage/backends";
 import { boardChanges, boardFromEntities, boardWrites, type Board } from "../storage/board";
+import * as v from "valibot";
+import { loadStored, saveStored } from "../storage/localStore";
+import { EntityKindSchema, JsonSchema } from "../storage/schema";
 import { copyInto, Outbox, SyncStore } from "../storage/store";
 import { report } from "./report";
 
@@ -9,6 +12,12 @@ const EMPTY: Board = { items: [], categories: [], tabs: [{ id: ALL_TAB_ID, name:
 
 /** How often other devices' changes are picked up while the window is open. */
 const REFRESH_MS = 60_000;
+
+const PENDING_KEY = "malplan.pendingWrites";
+
+const PendingSchema = v.array(
+  v.object({ entity: EntityKindSchema, id: v.string(), field: v.string(), value: JsonSchema, at: v.exactOptional(v.number()) }),
+);
 
 /** Pending log entries (all devices) before the designated device compacts on startup. */
 const COMPACT_THRESHOLD = 2000;
@@ -33,8 +42,10 @@ export function useBoard(seed: () => Board) {
   /** Counts local edits, so a reload that overlapped one does not overwrite the screen. */
   const edits = useRef(0);
   const reloading = useRef<Promise<void>>(undefined);
-  const outbox = useRef(new Outbox());
-  const [unsaved, setUnsaved] = useState(0);
+  // What waits is also kept in this device's own storage: a change that could not be saved before the app quit
+  // (a locked or offline folder) is saved by the next run.
+  const [outbox] = useState(() => new Outbox(loadStored(PENDING_KEY, PendingSchema, []), (waiting) => saveStored(PENDING_KEY, waiting)));
+  const [unsaved, setUnsaved] = useState(outbox.size);
   /** Bumped to retry a failed load (an offline NAS, a locked file). */
   const [attempt, setAttempt] = useState(0);
   const [loadFailed, setLoadFailed] = useState(false);
@@ -48,21 +59,21 @@ export function useBoard(seed: () => Board) {
   const flush = useCallback(async (target: SyncStore | undefined) => {
     try {
       // One append (one disk sync) per flush, not one per field.
-      await outbox.current.flush(target);
+      await outbox.flush(target);
     } catch (error) {
       report(`save failed: ${error instanceof Error ? error.message : String(error)}`);
     }
 
-    setUnsaved(outbox.current.size);
-  }, []);
+    setUnsaved(outbox.size);
+  }, [outbox]);
 
   /** Queues the change; it is written once the store is ready (still loading, a failed load, or a folder switch). */
   const write = useCallback(
     (prev: Board, next: Board) => {
-      outbox.current.add(boardWrites(prev, next));
+      outbox.add(boardWrites(prev, next), Date.now());
       queue.current = queue.current.then(() => flush(store.current));
     },
-    [flush],
+    [flush, outbox],
   );
 
   const update = useCallback(
@@ -94,7 +105,7 @@ export function useBoard(seed: () => Board) {
 
       // An edit made meanwhile, or one still waiting to be saved, is not in what was read; showing it
       // would revert the screen. The next reload shows both.
-      if (edits.current === editsBefore && outbox.current.size === 0 && boardChanges(current.current, loaded.board).length > 0) {
+      if (edits.current === editsBefore && outbox.size === 0 && boardChanges(current.current, loaded.board).length > 0) {
         show(loaded.board);
       }
     };
@@ -118,7 +129,7 @@ export function useBoard(seed: () => Board) {
     });
 
     return reloading.current;
-  }, [show, flush]);
+  }, [show, flush, outbox]);
 
   useEffect(() => {
     let cancelled = false;
