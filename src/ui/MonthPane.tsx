@@ -77,7 +77,8 @@ export function MonthPane(props: MonthPaneProps) {
                 draggable={t.id !== ALL_TAB_ID}
                 // 전체 already selected: a second click opens the category filter. Other tabs: double-click or right-click to edit.
                 popoverTarget={t.id === ALL_TAB_ID ? "all-filter" : undefined}
-                title={t.id === ALL_TAB_ID ? "한 번 더 누르면 분류 필터" : "더블클릭하거나 우클릭하여 편집"}
+                // The full name too: the tab cuts a long one.
+                title={t.id === ALL_TAB_ID ? "한 번 더 누르면 분류 필터" : `${t.name} · 더블클릭하거나 우클릭하여 편집`}
                 onClick={(event) => {
                   // Coming back to 전체 from another tab only selects it. Setting popoverTarget once selected was
                   // too late: the same click re-rendered first and then opened the filter.

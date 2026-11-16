@@ -1,7 +1,7 @@
 import { ChevronLeft, ChevronRight, Plus, Trash2, X } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import type { Category } from "../domain/item";
-import { nextTabName, type CalendarTab } from "../domain/tabs";
+import { TAB_NAME_MAX, nextTabName, type CalendarTab } from "../domain/tabs";
 import { CategoryDot } from "./parts";
 
 type CategoryChecklistProps = {
@@ -130,6 +130,7 @@ export function TabEditor({ tab, tabs, categories, onSave, onDelete, onMove, onA
               value={name}
               onChange={(event) => setName(event.target.value)}
               placeholder={tab?.name ?? nextTabName(tabs)}
+              maxLength={TAB_NAME_MAX}
               autoComplete="off"
             />
           </label>

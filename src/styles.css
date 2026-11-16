@@ -1121,6 +1121,11 @@ ul {
   background: var(--surface);
   color: var(--ink-2);
   font-size: 13px;
+  /* A long name (typed before the length limit, or on another device) ends in "…" instead of widening the tab. */
+  max-width: 10em;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .tab[aria-selected="true"] {

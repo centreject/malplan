@@ -5,6 +5,9 @@ export type CalendarTab = {
   categoryIds: string[] | undefined;
 };
 
+/** Longest tab name the editor accepts; the tab strip also cuts longer ones (styles.css `.tab`). */
+export const TAB_NAME_MAX = 12;
+
 /** The default tab: always first, shows everything, cannot be renamed or deleted. */
 export const ALL_TAB_ID = "all";
 
