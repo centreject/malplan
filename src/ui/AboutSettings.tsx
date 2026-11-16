@@ -1,11 +1,11 @@
 import { getVersion } from "@tauri-apps/api/app";
 import { isTauri } from "@tauri-apps/api/core";
 import { useEffect, useState } from "react";
+import { modelStatus, type ModelStatus } from "../llm/localModel";
 import { useUpdate } from "./update";
 
 /** What ships inside the app, with its license. The AI model is downloaded separately but runs here. */
 const NOTICES: [name: string, license: string, use: string][] = [
-  ["Qwen3-4B (Alibaba Cloud)", "Apache-2.0", "AI 변환 모델 (받은 경우)"],
   ["llama.cpp", "MIT", "AI 모델 실행"],
   ["Tauri", "MIT / Apache-2.0", "데스크톱 앱 틀"],
   ["React", "MIT", "화면"],
@@ -18,12 +18,16 @@ const NOTICES: [name: string, license: string, use: string][] = [
 export function AboutSettings() {
   const [version, setVersion] = useState<string>();
   const { state, find, install } = useUpdate();
+  const [model, setModel] = useState<ModelStatus>();
 
   useEffect(() => {
     if (isTauri()) {
       getVersion().then(setVersion, () => setVersion(undefined));
+      modelStatus().then(setModel, () => setModel(undefined));
     }
   }, []);
+
+  const notices: typeof NOTICES = model === undefined ? NOTICES : [[`${model.name} (${model.vendor})`, model.license, "AI 변환 모델 (받은 경우)"], ...NOTICES];
 
   return (
     <fieldset className="settings-section window-settings">
@@ -55,7 +59,7 @@ export function AboutSettings() {
           </tr>
         </thead>
         <tbody>
-          {NOTICES.map(([name, license, use]) => (
+          {notices.map(([name, license, use]) => (
             <tr key={name}>
               <td>{name}</td>
               <td>{license}</td>

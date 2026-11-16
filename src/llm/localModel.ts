@@ -4,9 +4,11 @@ import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
 import * as v from "valibot";
 
-export const MODEL_NAME = "Qwen3 4B (Q4_K_M)";
-
+/** The model's facts come from Rust (llm_server.rs MODEL), the one place they are written. */
 const StatusSchema = v.object({
+  name: v.string(),
+  vendor: v.string(),
+  license: v.string(),
   dir: v.string(),
   size: v.nullable(v.number()),
   partial: v.number(),
@@ -44,6 +46,10 @@ export function subscribeDownload(listener: () => void): () => void {
 
 export function downloadState(): DownloadState {
   return state;
+}
+
+export function gigabytes(bytes: number): string {
+  return `${(bytes / 1e9).toFixed(1)}GB`;
 }
 
 export async function modelStatus(): Promise<ModelStatus> {

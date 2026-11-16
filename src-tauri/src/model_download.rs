@@ -13,11 +13,7 @@ use sha2::{Digest, Sha256};
 use tauri::{AppHandle, Emitter, State};
 use tauri_plugin_http::reqwest::{header::RANGE, Client, StatusCode};
 
-use crate::llm_server::{models_dir, MODEL_FILE};
-
-const MODEL_URL: &str = "https://huggingface.co/Qwen/Qwen3-4B-GGUF/resolve/main/Qwen3-4B-Q4_K_M.gguf";
-const MODEL_SIZE: u64 = 2_497_280_256;
-const MODEL_SHA256: &str = "7485fe6f11af29433bc51cab58009521f205840f5b4ae3a32fa7f92e8534fdf5";
+use crate::llm_server::{models_dir, MODEL};
 
 /// Automatic resumes after a dropped connection, 3s, 6s, … apart.
 const RETRIES: u32 = 5;
@@ -41,6 +37,9 @@ pub struct ModelStatus {
     partial: u64,
     total: u64,
     downloading: bool,
+    name: &'static str,
+    vendor: &'static str,
+    license: &'static str,
 }
 
 #[derive(Clone, Serialize)]
@@ -50,7 +49,7 @@ struct Progress {
 }
 
 fn part_name() -> String {
-    format!("{MODEL_FILE}.part")
+    format!("{}.part", MODEL.file)
 }
 
 #[tauri::command(async)]
@@ -58,10 +57,13 @@ pub fn model_status(app: AppHandle, state: State<Download>) -> Result<ModelStatu
     let dir = models_dir(&app)?;
 
     Ok(ModelStatus {
-        size: fs::metadata(dir.join(MODEL_FILE)).ok().map(|m| m.len()),
+        size: fs::metadata(dir.join(MODEL.file)).ok().map(|m| m.len()),
         partial: fs::metadata(dir.join(part_name())).map_or(0, |m| m.len()),
-        total: MODEL_SIZE,
+        total: MODEL.size,
         downloading: state.active.load(Ordering::Relaxed),
+        name: MODEL.name,
+        vendor: MODEL.vendor,
+        license: MODEL.license,
         dir: dir.to_string_lossy().into_owned(),
     })
 }
@@ -103,8 +105,8 @@ async fn download_model(app: &AppHandle, cancel: &AtomicBool) -> Result<(), Stri
     let mut retries = 0;
 
     loop {
-        let result = fetch_resumable(&client, MODEL_URL, &part, MODEL_SIZE, cancel, |received| {
-            let _ = app.emit("model-download", Progress { received, total: MODEL_SIZE });
+        let result = fetch_resumable(&client, MODEL.url, &part, MODEL.size, cancel, |received| {
+            let _ = app.emit("model-download", Progress { received, total: MODEL.size });
         })
         .await;
 
@@ -126,7 +128,7 @@ async fn download_model(app: &AppHandle, cancel: &AtomicBool) -> Result<(), Stri
         .await
         .map_err(|e| e.to_string())??;
 
-    finish(&part, &dir.join(MODEL_FILE), &actual, MODEL_SHA256)
+    finish(&part, &dir.join(MODEL.file), &actual, MODEL.sha256)
 }
 
 /// Fill `part` up to `total` bytes from `url`, continuing from what is already there.
@@ -362,7 +364,7 @@ mod tests {
 
         fs::write(&part, b"not the model").unwrap();
 
-        assert_eq!(finish(&part, &target, &sha256_file(&part).unwrap(), MODEL_SHA256), Err("hash-mismatch".to_string()));
+        assert_eq!(finish(&part, &target, &sha256_file(&part).unwrap(), MODEL.sha256), Err("hash-mismatch".to_string()));
         assert!(!part.exists());
         assert!(!target.exists());
     }

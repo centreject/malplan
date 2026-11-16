@@ -4,7 +4,7 @@ import { clearCorrections } from "../llm/corrections";
 import {
   deleteModel,
   downloadState,
-  MODEL_NAME,
+  gigabytes,
   modelStatus,
   pauseDownload,
   startDownload,
@@ -45,10 +45,6 @@ const SERVER_TEXT: Record<LocalStatus, string> = {
   "no-model": "모델 없음",
 };
 
-function gigabytes(bytes: number): string {
-  return `${(bytes / 1e9).toFixed(1)}GB`;
-}
-
 const noSubscribe = () => () => {};
 
 /** Local model: consent and download when missing, size, server status and delete when present. */
@@ -79,13 +75,13 @@ function LocalModel() {
     return (
       <>
         <p className="window-note">
-          모델: {MODEL_NAME}, {gigabytes(model.size)} · 저장 위치 {model.dir}
+          모델: {model.name}, {gigabytes(model.size)} · 저장 위치 {model.dir}
         </p>
         <p className="window-note" role="status">로컬 AI: {SERVER_TEXT[server]}</p>
         <div className="storage-actions">
           {confirmDelete ? (
             <>
-              <span className="window-note">모델을 지울까요? 다시 쓰려면 2.5GB를 새로 받아야 합니다.</span>
+              <span className="window-note">모델을 지울까요? 다시 쓰려면 {gigabytes(model.total)}를 새로 받아야 합니다.</span>
               <button
                 type="button"
                 className="text-button bordered"
@@ -127,7 +123,7 @@ function LocalModel() {
         AI 변환에 쓸 모델을 이 PC에 받습니다. 한 번 받으면 인터넷 없이 동작합니다.
       </p>
       <ul className="window-note">
-        <li>모델: {MODEL_NAME} (Alibaba Qwen, Apache 2.0)</li>
+        <li>모델: {model.name} ({model.vendor}, {model.license})</li>
         <li>실행기: llama.cpp (MIT), 앱에 포함</li>
         <li>크기: {gigabytes(model.total)}</li>
         <li>저장 위치: {model.dir}</li>

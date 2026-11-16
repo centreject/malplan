@@ -10,8 +10,27 @@ use std::sync::Mutex;
 use serde::Serialize;
 use tauri::{AppHandle, Manager, State};
 
-/// The one model the app runs (Qwen3 4B, Apache 2.0).
-pub const MODEL_FILE: &str = "Qwen3-4B-Q4_K_M.gguf";
+/// The one model the app runs. Everything about it is here; the settings screens read it through
+/// `model_status`, so changing models means changing this and nothing else.
+pub struct Model {
+    pub file: &'static str,
+    pub url: &'static str,
+    pub size: u64,
+    pub sha256: &'static str,
+    pub name: &'static str,
+    pub vendor: &'static str,
+    pub license: &'static str,
+}
+
+pub const MODEL: Model = Model {
+    file: "Qwen3-4B-Q4_K_M.gguf",
+    url: "https://huggingface.co/Qwen/Qwen3-4B-GGUF/resolve/main/Qwen3-4B-Q4_K_M.gguf",
+    size: 2_497_280_256,
+    sha256: "7485fe6f11af29433bc51cab58009521f205840f5b4ae3a32fa7f92e8534fdf5",
+    name: "Qwen3 4B (Q4_K_M)",
+    vendor: "Alibaba Qwen",
+    license: "Apache-2.0",
+};
 
 /// Where the running server listens and the key it takes. The app is its only client.
 #[derive(Clone, Serialize)]
@@ -66,7 +85,7 @@ pub fn llm_start(app: AppHandle, state: State<LlmServer>) -> Result<Connection, 
     }
 
     let dir = models_dir(&app)?;
-    let model = dir.join(MODEL_FILE);
+    let model = dir.join(MODEL.file);
 
     if !model.is_file() {
         return Err("no-model".into());
@@ -188,7 +207,7 @@ pub fn model_delete(app: AppHandle) -> Result<(), String> {
 
     let dir = models_dir(&app)?;
 
-    for name in [MODEL_FILE.to_string(), format!("{MODEL_FILE}.part")] {
+    for name in [MODEL.file.to_string(), format!("{}.part", MODEL.file)] {
         match fs::remove_file(dir.join(name)) {
             Err(e) if e.kind() != std::io::ErrorKind::NotFound => return Err(e.to_string()),
             _ => {}
