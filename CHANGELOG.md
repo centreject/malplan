@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.2.9 (2026-11-16)
+
+- Merging a folder into one with data keeps both folders' items: nothing from either side is hidden, and items deleted long ago no longer come back.
+- A cloud client's copy of a log ("log-a (1).jsonl", "log-a - 복사본.jsonl") is read as part of that device's log. It used to be dropped, or unreadable with a space or parenthesis in its name.
+- A PC that no longer writes to the folder (replaced or reinstalled) no longer stops compaction.
+- Internal: one rule decides what a completion is stored under, and the local model is described in one place.
+
 ## 0.2.8 (2026-11-16)
 
 - Saving an edit applies only the fields you changed, so a title or a check made on another device meanwhile is kept.
