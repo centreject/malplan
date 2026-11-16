@@ -1,6 +1,10 @@
 // Random mixes of edits, deletions, reloads (which prune), compactions and a folder merge across devices with
-// skewed clocks. Whatever the order, once every device has reloaded, each one must show exactly what plain
-// last-writer-wins over every change ever written gives: nothing lost, nothing brought back.
+// skewed clocks. Whatever the order, once every device has reloaded, each one must show what plain last-writer-wins
+// over every change ever written gives: nothing lost, nothing brought back.
+//
+// One allowed difference: an edit that beats a deletion (a skewed clock dates it later) brings the item back, but
+// the fields older than the deletion may be gone, or hold an older value, if a compaction dropped them first (see
+// compact.ts). Every field written after the deletion must be there as written.
 import { expect, test } from "vitest";
 import { applyChanges, emptyState, materialize, type Entities } from "./merge";
 import { DELETED, type Change } from "./schema";
@@ -41,7 +45,33 @@ class RecordingBackend extends MemoryBackend {
   }
 }
 
-async function run(seed: number): Promise<{ shown: Entities[]; expected: Entities }> {
+/** What `shown` gets wrong against last-writer-wins over `written`, as readable lines. */
+function differences(shown: Entities, written: readonly Change[]): string[] {
+  const state = applyChanges(emptyState, written);
+  const tsOf = (id: string, field: string) => state.get(JSON.stringify(["item", id, field]))?.ts ?? -Infinity;
+  const alive = new Map(materialize(state).item.map((record) => [record.id, record.fields]));
+  const got = new Map(shown.item.map((record) => [record.id, record.fields]));
+  const problems = [...got.keys()].flatMap((id) => (alive.has(id) ? [] : [`${id} is shown but deleted`]));
+
+  for (const [id, fields] of alive) {
+    const shownFields = got.get(id);
+
+    if (shownFields === undefined) {
+      problems.push(`${id} is missing`);
+      continue;
+    }
+
+    for (const [field, value] of Object.entries(fields)) {
+      if (tsOf(id, field) > tsOf(id, DELETED) && shownFields[field] !== value) {
+        problems.push(`${id}.${field} is ${String(shownFields[field])}, not ${String(value)}`);
+      }
+    }
+  }
+
+  return problems;
+}
+
+async function run(seed: number): Promise<{ shown: Entities[]; written: Change[] }> {
   const rand = random(seed);
 
   const pick = <T>(list: readonly T[]): T => {
@@ -69,13 +99,11 @@ async function run(seed: number): Promise<{ shown: Entities[]; expected: Entitie
   const yStartsEmpty = rand() < 0.3;
   let devices: Device[] = [open("a", x), open("b", x), ...(yStartsEmpty ? [] : [open("c", y), open("d", y)])];
   let merged = false;
-  // Before the merge each folder has its own items, as two folders that never shared data do. Two folders that once
-  // did (one copied from the other) lose a deletion in a merge once the deleting folder has purged the tombstone.
-  const inX = ["x1", "x2", "x3"];
-  const inY = ["y1", "y2", "y3"];
-  const idsFor = (device: Device) => (merged ? [...inX, ...inY] : device.id === "a" || device.id === "b" ? inX : inY);
-  // Ids are never reused after a deletion: an edit landing on an entity whose tombstone was purged brings back a
-  // partial record (accepted, see compact.ts), which plain last-writer-wins would show whole.
+  // Both folders edit the same items, as when one was copied from the other: a deletion on one side must still
+  // delete the item on the other when they are merged, even after the deleting side compacted it away.
+  const ids = ["i1", "i2", "i3", "i4", "i5", "i6"];
+  // Ids are never reused after a deletion: an edit newer than the tombstone, landing after its fields were dropped,
+  // brings back a partial record (accepted, see compact.ts), which plain last-writer-wins would show whole.
   const retired = new Set<string>();
 
   for (const device of devices) await device.store.load();
@@ -96,7 +124,7 @@ async function run(seed: number): Promise<{ shown: Entities[]; expected: Entitie
     }
 
     const device = pick(devices);
-    const live = idsFor(device).filter((id) => !retired.has(id));
+    const live = ids.filter((id) => !retired.has(id));
     const roll = rand();
 
     if (roll < 0.5 && live.length > 0) {
@@ -122,11 +150,11 @@ async function run(seed: number): Promise<{ shown: Entities[]; expected: Entitie
     shown.push(device.store.entities());
   }
 
-  return { shown, expected: materialize(applyChanges(emptyState, written)) };
+  return { shown, written };
 }
 
 test.each(Array.from({ length: 60 }, (_, i) => i + 1))("seed %i: every device ends with what last-writer-wins gives", async (seed) => {
-  const { shown, expected } = await run(seed);
+  const { shown, written } = await run(seed);
 
-  for (const entities of shown) expect(entities).toEqual(expected);
+  for (const entities of shown) expect(differences(entities, written)).toEqual([]);
 });

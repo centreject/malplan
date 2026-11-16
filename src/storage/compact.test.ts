@@ -1,5 +1,5 @@
 import { expect, test } from "vitest";
-import { compact, loadState, TOMBSTONE_TTL_MS } from "./compact";
+import { compact, loadState, TOMBSTONE_KEEP_MS, TOMBSTONE_TTL_MS } from "./compact";
 import { materialize } from "./merge";
 import { emptySnapshot, type Change, type Json } from "./schema";
 
@@ -58,18 +58,19 @@ test("a tombstone is kept while some known device has not passed it", () => {
   expect(snapshot.entities.filter((c) => c.id === "i1")).toHaveLength(2);
 });
 
-test("a tombstone is purged once every known device has passed it", () => {
+test("once every known device has passed a tombstone, only the tombstone is kept", () => {
   const logs = new Map([["A", deleted], ["B", [ch(11, "B", "title", "other", "i2")]]]);
   const { snapshot } = compact(emptySnapshot(), logs, 100, ["A", "B"]);
 
-  expect(snapshot.entities.map((c) => c.id)).toEqual(["i2"]);
+  expect(snapshot.entities.map((c) => `${c.id}.${c.field}`).toSorted()).toEqual(["i1._deleted", "i2.title"]);
 });
 
-test("a tombstone is purged after 90 days even if a device never caught up", () => {
+test("a deleted entity's fields go after 90 days even if a device never caught up; the tombstone after a year", () => {
   const logs = new Map([["A", deleted], ["B", [ch(5, "B", "title", "other", "i2")]]]);
 
   expect(compact(emptySnapshot(), logs, 10 + TOMBSTONE_TTL_MS - 1, ["A", "B"]).snapshot.entities).toHaveLength(3);
-  expect(compact(emptySnapshot(), logs, 10 + TOMBSTONE_TTL_MS, ["A", "B"]).snapshot.entities).toHaveLength(1);
+  expect(compact(emptySnapshot(), logs, 10 + TOMBSTONE_TTL_MS, ["A", "B"]).snapshot.entities).toHaveLength(2);
+  expect(compact(emptySnapshot(), logs, 10 + TOMBSTONE_KEEP_MS, ["A", "B"]).snapshot.entities).toHaveLength(1);
 });
 
 test("a resurrected entity (edit newer than tombstone) is not purged", () => {

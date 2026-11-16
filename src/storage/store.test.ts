@@ -1,5 +1,5 @@
 import { expect, test } from "vitest";
-import { TOMBSTONE_TTL_MS } from "./compact";
+import { TOMBSTONE_KEEP_MS, TOMBSTONE_TTL_MS } from "./compact";
 import { copyInto, MemoryBackend, Outbox, PRUNE_AFTER_MS, SyncStore } from "./store";
 
 const DAY = 24 * 60 * 60 * 1000;
@@ -142,11 +142,11 @@ test("compaction race: entries folded by another device are ignored, newer ones 
   tick("B", 20);
   await b.set("item", "i2", "title", "b"); // B has now passed the tombstone
   tick("A", 20);
-  await a.compact(); // folds B's entries and purges "gone"
+  await a.compact(); // folds B's entries and drops "gone"'s fields
 
   // A never writes B's log, so it still holds entries that are now in the snapshot...
   expect(await backend.read("log-B.jsonl")).toContain("b-old");
-  expect(await backend.read("snapshot.json")).not.toContain("gone");
+  expect(await backend.read("snapshot.json")).not.toContain("b-old");
   // ...but they are skipped on load; replaying them would resurrect "gone".
   expect(await item(a, "gone")).toBeUndefined();
 
@@ -191,7 +191,7 @@ test("a device offline for a long time merges by edit time, not sync time", asyn
   expect(await item(c, "gone")).toBeUndefined();
 });
 
-test("tombstones survive compaction while a known device lags, and are purged after 90 days", async () => {
+test("tombstones survive compaction while a known device lags; fields go after 90 days, the mark after a year", async () => {
   const { backend, device, tick } = setup();
   const a = await device("A", 1000);
   const c = await device("C", 1000);
@@ -205,6 +205,12 @@ test("tombstones survive compaction while a known device lags, and are purged af
   expect(await backend.read("snapshot.json")).toContain("_deleted");
 
   tick("A", TOMBSTONE_TTL_MS);
+  await a.compact();
+
+  expect(await backend.read("snapshot.json")).toContain("_deleted");
+  expect(await backend.read("snapshot.json")).not.toContain('"value":"x"');
+
+  tick("A", TOMBSTONE_KEEP_MS);
   await a.compact();
 
   expect(await backend.read("snapshot.json")).not.toContain("_deleted");
@@ -773,4 +779,38 @@ test("refresh skips reading when nothing in the folder changed", async () => {
   await a.refresh();
   expect(folder.reads).toBeGreaterThan(before);
   expect(ids(a)).toEqual(["a1", "b1", "b2"]);
+});
+
+test("merge: a deletion compacted away in one copy of a folder still deletes the item in the other copy", async () => {
+  let now = 1_000_000;
+  const original = new MemoryBackend();
+  const a = new SyncStore(original, "A", () => now);
+
+  await a.load();
+  await a.set("item", "x", "title", "in both copies");
+  await a.set("item", "keep", "title", "k");
+
+  // The folder is copied; A keeps working in the original, deletes x and compacts it away.
+  const copy = new MemoryBackend();
+
+  await copyInto(original, copy);
+  now += 10;
+  await a.remove("item", "x");
+  now += DAY;
+  await a.compact();
+  now += PRUNE_AFTER_MS + 1;
+  await a.load();
+  expect(await original.read("snapshot.json")).not.toContain("in both copies");
+
+  for (const [from, to] of [[original, copy], [copy, original]] as const) {
+    const target = new MemoryBackend();
+
+    await copyInto(to, target);
+    await copyInto(from, target);
+
+    const merged = new SyncStore(target, "B", () => now);
+
+    await merged.load();
+    expect(ids(merged)).toEqual(["keep"]);
+  }
 });
