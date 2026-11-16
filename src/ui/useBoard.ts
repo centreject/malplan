@@ -124,7 +124,20 @@ export function useBoard(seed: () => Board) {
     });
 
     queue.current = run.catch(() => undefined);
-    reloading.current = run.then(apply).finally(() => {
+
+    // A failed read (an offline NAS, a locked file) shows on the main screen until a later reload succeeds.
+    const settle = run.then(
+      () => {
+        setLoadFailed(false);
+        apply();
+      },
+      (error: Error) => {
+        report(`reload failed: ${error.message}`);
+        setLoadFailed(true);
+      },
+    );
+
+    reloading.current = settle.finally(() => {
       reloading.current = undefined;
     });
 
