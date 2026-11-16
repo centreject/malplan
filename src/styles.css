@@ -570,6 +570,8 @@ ul {
 
 .board-side {
   display: grid;
+  /* Wide content (a long row of tabs) scrolls inside its pane instead of widening the column. */
+  grid-template-columns: minmax(0, 1fr);
   grid-template-rows: minmax(0, 0.8fr) minmax(0, 1.2fr);
   gap: 14px;
   min-height: 0;
@@ -1111,6 +1113,22 @@ ul {
 .tabs {
   display: flex;
   gap: 4px;
+  /* Many tabs scroll sideways inside the header instead of pushing it wider than the pane. */
+  min-width: 0;
+  max-width: 100%;
+  overflow-x: auto;
+  scrollbar-width: thin;
+}
+
+.tabs > .tab {
+  flex: none;
+}
+
+/* "탭 추가" stays in reach at the right end while the tabs scroll under it. */
+.tabs > .tab-icon {
+  position: sticky;
+  right: 0;
+  box-shadow: -10px 0 8px var(--surface);
 }
 
 .tab {
