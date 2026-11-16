@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.2.10 (2026-11-16)
+
+- Merging folders no longer brings back an item the source folder deleted (it came back with a few fields when the deletion had been tidied away there).
+- An item whose category was deleted on another device, or left out by a folder merge, shows under 미분류 instead of without a color and outside every tab.
+- The 저장 데이터 경고 left by an edit to an item deleted long ago no longer stays forever.
+- Editing a 기간 end date or an end time: a half-cleared field no longer saves as "no end". Clear it with the × next to it.
+- Faster with many repeating tasks: 밀린 할 일 and the list page compute about ten times faster, and the panes reuse their results between redraws.
+- The minute refresh reads the sync folder only when a file in it changed.
+
 ## 0.2.9 (2026-11-16)
 
 - Merging a folder into one with data keeps both folders' items: nothing from either side is hidden, and items deleted long ago no longer come back.
