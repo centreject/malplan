@@ -89,6 +89,10 @@ describe("boardFromEntities", () => {
   test("invalid records are skipped and reported", async () => {
     const store = new SyncStore(new MemoryBackend(), "dev-a", () => 1_000);
 
+    for (const change of boardChanges(empty, { ...empty, items: [{ ...mailing, id: "bad" }] })) {
+      await store.set(change.entity, change.id, change.field, change.value);
+    }
+
     await store.set("item", "bad", "title", 42);
     await store.set("category", "work", "name", "회사");
     await store.set("category", "work", "colorSlot", 1);
@@ -99,6 +103,27 @@ describe("boardFromEntities", () => {
     expect(result.board.items).toEqual([]);
     expect(result.board.categories).toEqual([category]);
     expect(result.errors).toHaveLength(1);
+  });
+
+  test("an edit to an entity that no longer exists is skipped without a warning", async () => {
+    const store = new SyncStore(new MemoryBackend(), "dev-a", () => 1_000);
+
+    await store.set("item", "pruned", "done:2026-11-05", true);
+    await store.set("category", "gone", "name", "옛 분류");
+
+    const result = boardFromEntities(store.entities());
+
+    expect(result.board.items).toEqual([]);
+    expect(result.board.categories).toEqual([]);
+    expect(result.errors).toEqual([]);
+  });
+
+  test("an item whose category is gone shows under 미분류", async () => {
+    const orphan: Item = { ...mailing, id: "orphan", categoryId: "deleted-elsewhere" };
+    const loaded = await roundTrip({ ...board, items: [mailing, orphan] });
+
+    expect(loaded.items.map((item) => item.categoryId)).toEqual(["work", "uncategorized"]);
+    expect(loaded.categories).toEqual([category, { id: "uncategorized", name: "미분류", colorSlot: 0 }]);
   });
 
   test("the 전체 tab always exists and stays first", () => {

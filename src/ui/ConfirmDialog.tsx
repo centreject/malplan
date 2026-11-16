@@ -309,10 +309,15 @@ function CardEditor({ card, errors, categories, occurrence, heading, onChange, o
                   className="cf-input cf-date num"
                   value={card.endDate}
                   min={card.date}
-                  onChange={(event) => set({ endDate: event.target.value })}
+                  // A half-cleared date reads as "" here; keep the old end date rather than saving a one-day item.
+                  onChange={(event) => event.target.value !== "" && set({ endDate: event.target.value })}
                   {...invalid("endDate")}
                 />
-                {card.endDate === "" && <span className="cf-hint">하루 일정이면 비워 두세요</span>}
+                {card.endDate === "" ? (
+                  <span className="cf-hint">하루 일정이면 비워 두세요</span>
+                ) : (
+                  <ClearButton label="기간 끝 날짜 지우기" onClick={() => set({ endDate: "" })} />
+                )}
               </span>
               {error("endDate")}
             </Field>
@@ -339,9 +344,11 @@ function CardEditor({ card, errors, categories, occurrence, heading, onChange, o
                   type="time"
                   className="cf-input cf-time num"
                   value={card.end}
-                  onChange={(event) => set({ end: event.target.value })}
+                  // Same as the end date: a half-cleared time is not "no end time".
+                  onChange={(event) => event.target.value !== "" && set({ end: event.target.value })}
                   aria-label="끝 시각 (선택)"
                 />
+                {card.end !== "" && <ClearButton label="끝 시각 지우기" onClick={() => set({ end: "" })} />}
                 {card.end !== "" && card.start !== "" && card.end <= card.start && <span className="cf-hint">다음 날 끝남</span>}
               </span>
             )}
@@ -544,6 +551,14 @@ function RepeatFields({ card, set, id, invalid, error }: RepeatFieldsProps) {
         {error("until")}
       </Field>
     </>
+  );
+}
+
+function ClearButton({ label, onClick }: { label: string; onClick: () => void }) {
+  return (
+    <button type="button" className="icon-button" onClick={onClick} aria-label={label} title={label}>
+      <X size={16} strokeWidth={2} aria-hidden="true" />
+    </button>
   );
 }
 

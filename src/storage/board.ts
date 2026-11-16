@@ -3,6 +3,7 @@
 // different fields of the same item both win. An item's completions are one field per date
 // ("done:2026-11-05"), so two devices ticking different days of a repeating task both count.
 import * as v from "valibot";
+import { UNCATEGORIZED_ID } from "../domain/categories";
 import type { Category, Item } from "../domain/item";
 import { ALL_TAB_ID, type CalendarTab } from "../domain/tabs";
 import type { Entities, EntityRecord } from "./merge";
@@ -244,13 +245,26 @@ export function boardWrites(prev: Board, next: Board): FieldWrite[] {
 
 export type LoadedBoard = { board: Board; errors: string[] };
 
-/** Rebuilds the board from merged entities. Records that fail validation are skipped and reported. */
+/**
+ * Rebuilds the board from merged entities. Records that fail validation are skipped and reported. A record missing
+ * a required field is skipped quietly: creation writes every field at once, so such a record is an edit that arrived
+ * after its entity was deleted and pruned (or was cut off by "그 폴더 데이터만 사용"); the user cannot fix it.
+ *
+ * An item whose category is gone (deleted on another device, or left out by a folder merge) shows under 미분류, as
+ * if its category had been deleted here. Nothing is written until the user changes it.
+ */
 export function boardFromEntities(entities: Entities): LoadedBoard {
   const errors: string[] = [];
 
-  const parse = <T>(kind: string, schema: v.GenericSchema<unknown, T>, records: EntityRecord[]): T[] =>
+  const parse = <T>(kind: string, schema: v.GenericSchema<unknown, T> & { entries: v.ObjectEntries }, records: EntityRecord[]): T[] =>
     records.flatMap((record) => {
       const fields = Object.fromEntries(Object.entries(record.fields).filter(([, value]) => value !== null));
+      const required = Object.entries(schema.entries).filter(([field, entry]) => field !== "id" && entry.type !== "exact_optional");
+
+      if (required.some(([field]) => !(field in fields))) {
+        return [];
+      }
+
       const parsed = v.safeParse(schema, { ...fields, id: record.id });
 
       if (!parsed.success) {
@@ -271,8 +285,20 @@ export function boardFromEntities(entities: Entities): LoadedBoard {
     .toSorted((a, b) => a.order - b.order)
     .map(({ order: _order, ...category }): Category => category);
 
+  const known = new Set(categories.map((c) => c.id));
+
+  const items = parse("item", ItemSchema, entities.item.map(withDone)).map((item) =>
+    known.has(item.categoryId) ? item : { ...item, categoryId: UNCATEGORIZED_ID },
+  );
+
+  const orphaned = items.some((item) => item.categoryId === UNCATEGORIZED_ID) && !known.has(UNCATEGORIZED_ID);
+
   return {
-    board: { items: parse("item", ItemSchema, entities.item.map(withDone)), categories, tabs: [ALL_TAB, ...tabs] },
+    board: {
+      items,
+      categories: orphaned ? [...categories, { id: UNCATEGORIZED_ID, name: "미분류", colorSlot: 0 }] : categories,
+      tabs: [ALL_TAB, ...tabs],
+    },
     errors,
   };
 }
