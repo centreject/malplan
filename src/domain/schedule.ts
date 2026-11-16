@@ -91,6 +91,16 @@ function computeOccurrences(items: Item[], date: IsoDate): Occurrence[] {
     .toSorted((a, b) => sortKey(a.item.time) - sortKey(b.item.time));
 }
 
+/** An exact time that ends at or before its start ends the next day ("밤 10시~새벽 1시"). */
+export function endsNextDay(time: ItemTime): boolean {
+  return time.kind === "exact" && time.end !== undefined && minutesOf(time.end) <= minutesOf(time.start);
+}
+
+/** The day before's items that run past midnight into `date`; `date` in each is the day they started. */
+export function carriedInto(items: Item[], date: IsoDate): Occurrence[] {
+  return occurrencesOn(items, addDays(date, -1)).filter((occurrence) => endsNextDay(occurrence.item.time));
+}
+
 /** Minutes after midnight used for ordering; untimed items sort first. */
 export function sortKey(time: ItemTime): number {
   switch (time.kind) {

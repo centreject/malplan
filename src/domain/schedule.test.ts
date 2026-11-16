@@ -2,6 +2,7 @@ import { describe, expect, test } from "vitest";
 import type { Item } from "./item";
 import type { Recurrence } from "./recurrence";
 import {
+  carriedInto,
   daysAround,
   doneKey,
   isDone,
@@ -32,6 +33,28 @@ const mailing = item("mailing", {
   kind: "task",
   when: { kind: "recurring", rule: { freq: "weekly", weekdays: [3], start: "2026-09-01" } },
   time: { kind: "exact", start: { hour: 16, minute: 0 } },
+});
+
+describe("carriedInto", () => {
+  const night = item("night", { time: { kind: "exact", start: { hour: 22, minute: 0 }, end: { hour: 1, minute: 0 } } });
+  const evening = item("evening", { time: { kind: "exact", start: { hour: 18, minute: 0 }, end: { hour: 20, minute: 0 } } });
+  const nightly = item("nightly", {
+    kind: "task",
+    when: { kind: "recurring", rule: { freq: "daily", start: "2026-10-01" } },
+    time: { kind: "exact", start: { hour: 23, minute: 30 }, end: { hour: 0, minute: 30 } },
+    done: ["2026-10-05"],
+  });
+
+  test("an item past midnight shows on the next day, dated the day it started", () => {
+    expect(carriedInto([night, evening, nightly], "2026-10-06")).toEqual([
+      { item: night, date: "2026-10-05", done: false },
+      { item: nightly, date: "2026-10-05", done: true },
+    ]);
+  });
+
+  test("nothing carries into the day it starts", () => {
+    expect(carriedInto([night], "2026-10-05")).toEqual([]);
+  });
 });
 
 describe("occurrencesOn", () => {

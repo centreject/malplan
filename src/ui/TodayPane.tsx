@@ -2,7 +2,7 @@ import { useContext } from "react";
 import { ItemMenu } from "./ContextMenu";
 import { addDays, partsOf, weekdayOf, type IsoDate } from "../domain/date";
 import type { Category, Item } from "../domain/item";
-import { nextUp, occurrencesOn, sortKey, type Occurrence, type OverdueTask } from "../domain/schedule";
+import { carriedInto, endsNextDay, formatClock, minutesOf, nextUp, occurrencesOn, sortKey, type Occurrence, type OverdueTask } from "../domain/schedule";
 import { monthDay, shortDate, timeLabel, untilLabel, weekdayName } from "./format";
 import { OverdueList } from "./OverdueList";
 import { CategoryTag, CheckButton, PaneHeader } from "./parts";
@@ -30,6 +30,8 @@ type TodayPaneProps = {
 export function TodayPane(props: TodayPaneProps) {
   const { date, isToday, nowMinutes, items, categories } = props;
   const occurrences = occurrencesOn(items, date);
+  // Started the day before and still running after midnight: listed first, until they end.
+  const carried = carriedInto(items, date);
   const untimed = occurrences.filter((o) => sortKey(o.item.time) < 0);
   const timed = occurrences.filter((o) => sortKey(o.item.time) >= 0);
   const next = isToday ? nextUp(items, date, nowMinutes) : undefined;
@@ -37,20 +39,41 @@ export function TodayPane(props: TodayPaneProps) {
   const categoryOf = (item: Item) => categories.find((c) => c.id === item.categoryId);
   const openMenu = useContext(ItemMenu);
 
-  const row = (occurrence: Occurrence) => {
+  /** `continued`: the part after midnight of an item that started the day before. */
+  const row = (occurrence: Occurrence, continued = false) => {
     const { item } = occurrence;
-    const started = isToday && sortKey(item.time) >= 0 && sortKey(item.time) < nowMinutes;
+    const { time } = item;
+    const end = time.kind === "exact" ? time.end : undefined;
+
+    const started = continued
+      ? isToday && end !== undefined && minutesOf(end) <= nowMinutes
+      : isToday && sortKey(time) >= 0 && sortKey(time) < nowMinutes;
+
     const state = occurrence.done ? "is-done" : started ? (item.kind === "task" ? "is-late" : "is-past") : "";
+    // The occurrence's own date, which for a continued item is the day before: that is what ticking and editing mean.
+    const at = occurrence.date;
 
     return (
-      <li key={item.id} className={`agenda-row ${state}`}>
-        <span className="agenda-time num">{timeLabel(item.time)}</span>
+      <li key={`${continued ? "carried-" : ""}${item.id}`} className={`agenda-row ${state}`}>
+        <span className="agenda-time num">
+          {continued && end !== undefined ? (
+            `~${formatClock(end)}`
+          ) : endsNextDay(time) && end !== undefined ? (
+            <>
+              {time.kind === "exact" && formatClock(time.start)}–
+              <br />
+              다음 날 {formatClock(end)}
+            </>
+          ) : (
+            timeLabel(time)
+          )}
+        </span>
         <span className="agenda-main">
-          <button type="button" className="agenda-title item-open" onClick={() => props.onEdit(item, date)} onContextMenu={(event) => openMenu(event, item, date)}>{item.title}</button>
-          {item.place !== undefined && <span className="agenda-sub">{item.place}</span>}
+          <button type="button" className="agenda-title item-open" onClick={() => props.onEdit(item, at)} onContextMenu={(event) => openMenu(event, item, at)}>{item.title}</button>
+          {continued ? <span className="agenda-sub">전날부터{item.place !== undefined && ` · ${item.place}`}</span> : item.place !== undefined && <span className="agenda-sub">{item.place}</span>}
         </span>
         <CategoryTag category={categoryOf(item)} />
-        {item.kind === "task" && <CheckButton title={item.title} done={occurrence.done} onToggle={() => props.onToggle(item, date)} />}
+        {item.kind === "task" && <CheckButton title={item.title} done={occurrence.done} onToggle={() => props.onToggle(item, at)} />}
       </li>
     );
   };
@@ -92,12 +115,13 @@ export function TodayPane(props: TodayPaneProps) {
       )}
 
       <div className="pane-body">
-        {occurrences.length === 0 ? (
+        {occurrences.length === 0 && carried.length === 0 ? (
           <p className="empty">이 날은 일정이 없습니다. 위 입력창에 문장으로 적어 추가하세요.</p>
         ) : (
           <ol className="agenda">
-            {untimed.map(row)}
-            {untimed.length > 0 && timed.length > 0 && <li className="agenda-gap" aria-hidden="true" />}
+            {carried.map((occurrence) => row(occurrence, true))}
+            {untimed.map((occurrence) => row(occurrence))}
+            {carried.length + untimed.length > 0 && timed.length > 0 && <li className="agenda-gap" aria-hidden="true" />}
             {timed.map((occurrence, index) => (
               <FragmentWithNow key={occurrence.item.id} showNow={index === nowIndex}>
                 {row(occurrence)}

@@ -1,8 +1,13 @@
 import { expect, test } from "vitest";
-import { leadText, recurrenceLabel } from "./format";
+import { leadText, recurrenceLabel, timeLabel } from "./format";
 
 test("reminder leads read the same everywhere", () => {
   expect([5, 60, 90, 120, 1440, 2880].map(leadText)).toEqual(["5분 전", "1시간 전", "90분 전", "2시간 전", "하루 전", "2일 전"]);
+});
+
+test("a time that ends after midnight says so", () => {
+  expect(timeLabel({ kind: "exact", start: { hour: 22, minute: 0 }, end: { hour: 1, minute: 0 } })).toBe("22시–다음 날 1시");
+  expect(timeLabel({ kind: "exact", start: { hour: 9, minute: 30 }, end: { hour: 10, minute: 0 } })).toBe("9:30–10시");
 });
 
 test("recurrence labels name the interval", () => {

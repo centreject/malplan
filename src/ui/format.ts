@@ -1,7 +1,7 @@
 import { partsOf, weekdayOf, type IsoDate } from "../domain/date";
 import { WEEKDAY_NAMES, recurrenceLabel, shortDate } from "../domain/format";
 import type { ItemTime } from "../domain/item";
-import { formatClock } from "../domain/schedule";
+import { endsNextDay, formatClock } from "../domain/schedule";
 import type { ParseResult, Slot } from "../parse/parseKorean";
 
 export { WEEKDAY_NAMES, recurrenceLabel, shortDate } from "../domain/format";
@@ -22,9 +22,9 @@ export function timeLabel(time: ItemTime): string {
     case "slot":
       return SLOT_NAMES[time.slot];
     case "exact":
-      return time.end === undefined
-        ? formatClock(time.start)
-        : `${formatClock(time.start)}–${formatClock(time.end)}`;
+      if (time.end === undefined) return formatClock(time.start);
+
+      return `${formatClock(time.start)}–${endsNextDay(time) ? "다음 날 " : ""}${formatClock(time.end)}`;
   }
 }
 
