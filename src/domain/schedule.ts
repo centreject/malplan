@@ -56,8 +56,35 @@ export function isDone(item: Item, date: IsoDate | undefined): boolean {
   return item.kind === "task" && key !== undefined && item.done.includes(key);
 }
 
-/** Items on `date`, untimed first, then by start time. */
+/**
+ * Items on `date`, untimed first, then by start time. Remembered per items array and date: the board passes the
+ * same array until something changes, and the three panes ask for some fifty days on every render. The result is
+ * shared, so callers must not mutate it.
+ */
 export function occurrencesOn(items: Item[], date: IsoDate): Occurrence[] {
+  let byDate = dayCache.get(items);
+
+  if (byDate === undefined) {
+    byDate = new Map();
+    dayCache.set(items, byDate);
+  }
+
+  const known = byDate.get(date);
+
+  if (known !== undefined) {
+    return known;
+  }
+
+  const found = computeOccurrences(items, date);
+
+  byDate.set(date, found);
+
+  return found;
+}
+
+const dayCache = new WeakMap<Item[], Map<IsoDate, Occurrence[]>>();
+
+function computeOccurrences(items: Item[], date: IsoDate): Occurrence[] {
   return items
     // Only tasks can be done: an event keeps no check, even one left from when it was a task.
     .flatMap((item) => (occursOn(item, date) ? [{ item, date, done: isDone(item, date) }] : []))

@@ -1,7 +1,7 @@
 import { describe, expect, test } from "vitest";
 import type { Category, Item } from "../domain/item";
 import type { CalendarTab } from "../domain/tabs";
-import { backupJson, boardChanges, boardFromEntities, boardWrites, parseBackup, restoreBackup, type Board } from "./board";
+import { backupJson, boardChanges, boardFromEntities, boardWrites, parseBackup, restoreBackup, reuseUnchanged, type Board } from "./board";
 import { MemoryBackend, SyncStore } from "./store";
 
 const category: Category = { id: "work", name: "회사", colorSlot: 1 };
@@ -226,4 +226,18 @@ describe("backup", () => {
 
     expect(restoreBackup(current, board)).toEqual({ items: [mailing, later], categories: [school, category], tabs: [allTab, workTab] });
   });
+});
+
+test("a reload keeps the objects of items that did not change, and takes the changed ones", async () => {
+  const store = new SyncStore(new MemoryBackend(), "dev-a", () => 1_000);
+  const other: Item = { ...mailing, id: "other", title: "다른 항목", done: [] };
+  const shown: Board = { ...board, items: [mailing, other] };
+
+  await store.setMany(boardWrites(empty, shown));
+  await store.set("item", "other", "title", "바뀐 제목");
+
+  const loaded = reuseUnchanged(shown, boardFromEntities(store.entities()).board);
+
+  expect(loaded.items.find((item) => item.id === "mail")).toBe(mailing);
+  expect(loaded.items.find((item) => item.id === "other")?.title).toBe("바뀐 제목");
 });

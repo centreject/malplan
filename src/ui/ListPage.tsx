@@ -1,5 +1,5 @@
 import { CalendarOff, Pencil, Plus, Trash2 } from "lucide-react";
-import { useContext, useState } from "react";
+import { useContext, useMemo, useState } from "react";
 import { ItemMenu } from "./ContextMenu";
 import type { IsoDate, Weekday } from "../domain/date";
 import type { Category, Item } from "../domain/item";
@@ -44,7 +44,8 @@ export function ListPage(props: ListPageProps) {
 }
 
 function TaskList({ items, categories, today, onEdit, onToggle }: ListPageProps) {
-  const sections = taskSections(items, today);
+  // The list page re-renders with every board change and keystroke elsewhere; the sections only change with these.
+  const sections = useMemo(() => taskSections(items, today), [items, today]);
   const openMenu = useContext(ItemMenu);
   const categoryOf = (item: Item) => categories.find((c) => c.id === item.categoryId);
 

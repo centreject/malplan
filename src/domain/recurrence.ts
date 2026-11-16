@@ -1,12 +1,4 @@
-import {
-  addDays,
-  dayNumber,
-  daysInMonth,
-  partsOf,
-  weekdayOf,
-  type IsoDate,
-  type Weekday,
-} from "./date";
+import { dayNumber, daysInMonth, fromDayNumber, partsOf, type DateParts, type IsoDate, type Weekday } from "./date";
 
 type RuleBase = {
   start: IsoDate;
@@ -35,31 +27,51 @@ export type DateRange = { from: IsoDate; to: IsoDate };
 export function expand(rule: Recurrence, range: DateRange): IsoDate[] {
   const first = rule.start > range.from ? rule.start : range.from;
   const last = rule.until !== undefined && rule.until < range.to ? rule.until : range.to;
+  const except = new Set(rule.except ?? []);
+  const day0 = dayNumber(rule.start);
+  const start: Start = { ...partsOf(rule.start), day0, week: weekStart(day0) };
   const dates: IsoDate[] = [];
 
-  for (let date = first; date <= last; date = addDays(date, 1)) {
-    if (matches(rule, date) && !(rule.except ?? []).includes(date)) {
-      dates.push(date);
+  // Walks day numbers, not date strings: a string per day (parsed and formatted again) made a long series slow.
+  for (let n = dayNumber(first), end = dayNumber(last); n <= end; n++) {
+    if (matches(rule, start, n)) {
+      const date = fromDayNumber(n);
+
+      if (!except.has(date)) dates.push(date);
     }
   }
 
   return dates;
 }
 
-function matches(rule: Recurrence, date: IsoDate): boolean {
+const MS_PER_DAY = 86_400_000;
+
+/** 0 = Sunday … 6 = Saturday, of day number `n` (1970-01-01 was a Thursday). */
+const weekdayOfDay = (n: number) => (((n + 4) % 7) + 7) % 7;
+
+/** Day number of the Sunday starting the week containing day `n`. */
+const weekStart = (n: number) => n - weekdayOfDay(n);
+
+/** The rule's start, worked out once per expand. */
+type Start = DateParts & { day0: number; week: number };
+
+function matches(rule: Recurrence, start: Start, n: number): boolean {
   const interval = rule.interval ?? 1;
-  const start = partsOf(rule.start);
-  const { year, month, day } = partsOf(date);
+  const date = new Date(n * MS_PER_DAY);
+  const year = date.getUTCFullYear();
+  const month = date.getUTCMonth() + 1;
+  const day = date.getUTCDate();
+  const weekday = weekdayOfDay(n);
   const monthsApart = (year - start.year) * 12 + (month - start.month);
 
   switch (rule.freq) {
     case "daily":
-      return (dayNumber(date) - dayNumber(rule.start)) % interval === 0;
+      return (n - start.day0) % interval === 0;
 
     case "weekly": {
-      const weeksApart = (weekStart(date) - weekStart(rule.start)) / 7;
+      const weeksApart = (weekStart(n) - start.week) / 7;
 
-      return rule.weekdays.includes(weekdayOf(date)) && weeksApart % interval === 0;
+      return rule.weekdays.some((w) => w === weekday) && weeksApart % interval === 0;
     }
 
     case "monthly": {
@@ -73,7 +85,7 @@ function matches(rule: Recurrence, date: IsoDate): boolean {
         return day === Math.min(rule.day, lastDay);
       }
 
-      if (weekdayOf(date) !== rule.weekday) {
+      if (weekday !== rule.weekday) {
         return false;
       }
 
@@ -87,9 +99,4 @@ function matches(rule: Recurrence, date: IsoDate): boolean {
         day === Math.min(rule.day, daysInMonth(year, month))
       );
   }
-}
-
-/** Day number of the Sunday starting the week containing `date`. */
-function weekStart(date: IsoDate): number {
-  return dayNumber(date) - weekdayOf(date);
 }

@@ -418,7 +418,16 @@ export default function App() {
   const shownIds = tab?.categoryIds ?? (filterAll ? undefined : liveFilter);
 
   // Memoized: App re-renders every minute and on every dialog change, and overdue walks whole series.
-  const visible = useMemo(() => (shownIds === undefined ? items : items.filter((item) => shownIds.includes(item.categoryId))), [items, shownIds]);
+  // Keyed by the ids' text: the 전체 filter builds a new array each render, and a new `visible` array would make the
+  // panes' per-day results (remembered per array) start over.
+  const shownKey = shownIds?.join(" ");
+
+  const visible = useMemo(() => {
+    const ids = shownKey?.split(" ");
+
+    return ids === undefined ? items : items.filter((item) => ids.includes(item.categoryId));
+  }, [items, shownKey]);
+
   const overdue = useMemo(() => overdueTasks(visible, now.today), [visible, now.today]);
 
   const editedTab = tabs.find((t) => t.id === editing);

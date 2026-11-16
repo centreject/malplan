@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { ALL_TAB_ID } from "../domain/tabs";
 import { deviceId, loadSyncDir, openBackend, saveSyncDir } from "../storage/backends";
-import { boardChanges, boardFromEntities, boardWrites, type Board } from "../storage/board";
+import { boardChanges, boardFromEntities, boardWrites, reuseUnchanged, type Board } from "../storage/board";
 import * as v from "valibot";
 import { loadStored, saveStored } from "../storage/localStore";
 import { EntityKindSchema, JsonSchema } from "../storage/schema";
@@ -106,7 +106,7 @@ export function useBoard(seed: () => Board) {
       // An edit made meanwhile, or one still waiting to be saved, is not in what was read; showing it
       // would revert the screen. The next reload shows both.
       if (edits.current === editsBefore && outbox.size === 0 && boardChanges(current.current, loaded.board).length > 0) {
-        show(loaded.board);
+        show(reuseUnchanged(current.current, loaded.board));
       }
     };
 

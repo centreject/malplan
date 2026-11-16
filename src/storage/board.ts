@@ -184,6 +184,29 @@ function canonical(value: Json): string {
   );
 }
 
+/**
+ * `next` with each item that equals one in `prev` replaced by prev's object. A reload builds every item anew;
+ * keeping the unchanged ones lets per-item caches (missed dates) and memoized panes skip them.
+ */
+export function reuseUnchanged(prev: Board, next: Board): Board {
+  const before = new Map(prev.items.map((item) => [item.id, item]));
+
+  return {
+    ...next,
+    items: next.items.map((item) => {
+      const old = before.get(item.id);
+
+      return old !== undefined && itemText(old) === itemText(item) ? old : item;
+    }),
+  };
+}
+
+/** An item as comparable text: key order and absent optional fields do not count. */
+function itemText(item: Item): string {
+  // SAFETY: items are plain data (strings, numbers, arrays, plain objects); JSON round-trips them.
+  return canonical(JSON.parse(JSON.stringify(item)) as Json);
+}
+
 /** The minimal set of field writes and removals that turns `prev` into `next`. */
 export function boardChanges(prev: Board, next: Board): BoardChange[] {
   const before = boardRecords(prev);
