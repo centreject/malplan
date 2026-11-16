@@ -273,7 +273,7 @@ async function readLogs(backend: Backend, errors: string[]): Promise<Map<string,
  * Copies one sync folder's data into another ("merge" when switching folders). Only sync files are read.
  *
  * Into an empty folder: the snapshot as it is and one log per device (cloud copies of a log folded into it).
- * Into a folder with data: everything the source holds, its snapshot and every log line, is folded into the
+ * Into a folder with data: everything the source holds, its snapshot and the log lines not yet in it, is folded into the
  * target's snapshot; no log is copied. The target keeps its own watermarks, so its logs are read exactly as before
  * (a device's lines there are not skipped, and lines it had folded and pruned are not replayed); a device only the
  * source knew keeps the source's. First-run defaults are left out: their ids are fixed, so they would otherwise undo
@@ -298,7 +298,9 @@ export async function copyInto(from: Backend, to: Backend): Promise<void> {
   const targetDevices = new Set([...(await readLogs(to, errors)).keys(), ...Object.keys(target.seen)]);
   const source = sourceSnapshot ?? emptySnapshot();
   const sourceOnly = Object.entries(source.seen).filter(([device]) => !targetDevices.has(device));
-  const sourceChanges = [...source.entities, ...[...sourceLogs.values()].flat()].filter(isReal);
+  // Log lines the source snapshot already folded are skipped, as load() does: replaying them would bring back an
+  // entity whose tombstone the source has since purged.
+  const sourceChanges = [...loadState(source, [...sourceLogs.values()].flat()).values()].filter(isReal);
   const folded = applyChanges(applyChanges(emptyState, target.entities), sourceChanges);
 
   const merged: Snapshot = {

@@ -667,6 +667,39 @@ test("merge: a deletion the target folded and pruned long ago does not come back
   expect(ids(merged)).toEqual(["b1", "keep"]);
 });
 
+test("merge: a deletion the source folded and purged does not come back from its unpruned log", async () => {
+  const local = new MemoryBackend();
+  let now = 1_000_000;
+  const a = new SyncStore(local, "A", () => now);
+  const c = new SyncStore(local, "C", () => now);
+
+  await c.load();
+  await c.set("item", "x", "title", "deleted");
+  await a.load();
+  now += 10;
+  await a.remove("item", "x");
+  now += 10;
+  await c.set("item", "keep", "title", "k");
+  now += DAY;
+  // Every watermark passes the delete, so the tombstone is purged. A then prunes its log (the delete); C has not
+  // loaded since, so its log still holds x's title.
+  await a.compact();
+  now += PRUNE_AFTER_MS + 1;
+  await a.load();
+
+  const shared = new MemoryBackend();
+  const b = new SyncStore(shared, "B", () => now);
+
+  await b.load();
+  await b.set("item", "b1", "title", "b");
+  await copyInto(local, shared);
+
+  const merged = new SyncStore(shared, "B", () => now);
+
+  await merged.load();
+  expect(ids(merged)).toEqual(["b1", "keep"]);
+});
+
 test("a cloud copy of a log is read as that device's lines, not as a device of its own", async () => {
   const folder = new MemoryBackend();
   const b = new SyncStore(folder, "b", () => 1_000);
