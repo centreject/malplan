@@ -1,5 +1,20 @@
 # Changelog
 
+## 0.2.8 (2026-11-16)
+
+- Saving an edit applies only the fields you changed, so a title or a check made on another device meanwhile is kept.
+- Finish tasks from more places: 밀린 할 일 and 날짜 없는 할 일 rows have a check button; the item details have 완료 / 완료 취소 and 삭제; a check can be undone from the toast.
+- Right-click an item for 열기, 수정, 완료, 삭제, or a tab for 탭 편집.
+- 저장 · 백업 → 백업에서 복원 (JSON): records come back by id, records added since stay, nothing is deleted. The file is applied only after 복원.
+- A time may end the next day ("밤 10시~새벽 1시"); the form marks it "다음 날 끝남".
+- The morning "시간 미정" summary comes on the first check between 8 and noon, not only at 08:00.
+- An event no longer shows a completion left from when it was a task; a finished repeating task can be unticked from the list.
+- Sync: a device that has the logs but not yet the snapshot does not compact; a snapshot that briefly goes missing no longer empties the board; a save retried later keeps its edit time; changes waiting to be saved survive quitting the app.
+- When several sentences go to the AI at once and only some fail, the note says how many.
+- Reminder leads read the same everywhere, and an item can pick 5 or 15 minutes.
+- Faster: missed dates are remembered per item, and typing in the sentence input no longer redraws the board.
+- Layout: arrows beside the pane titles, long tab names end in "…", the desk theme uses the shared numeral sizes, and in a narrow window the sentence input stays at the top.
+
 ## 0.2.7 (2026-11-12)
 
 - Sync: ticking different days of a repeating task on two devices keeps both. Items added on this version still show on devices running 0.2.6 or older.
