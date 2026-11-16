@@ -31,7 +31,7 @@ export function ItemDetail({ item, date, categories, onEdit, onClose, onCommand,
   const [request, setRequest] = useState("");
   const recurring = item.when.kind === "recurring";
   // A repeating task is done per occurrence: without the clicked date there is nothing to tick.
-  const doneAt = item.kind === "task" && !(recurring && date === undefined) ? doneKey(item, date) : undefined;
+  const doneAt = item.kind === "task" ? doneKey(item, date) : undefined;
   const isDone = doneAt !== undefined && item.done.includes(doneAt);
 
   useEffect(() => {

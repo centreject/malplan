@@ -4,7 +4,7 @@ import { cardErrors, cardFromParse, commitCards, type Card } from "../domain/car
 import { addDays, weekdayOf, type IsoDate } from "../domain/date";
 import { WEEKDAY_NAMES, recurrenceLabel, shortDate } from "../domain/format";
 import type { Category, Item } from "../domain/item";
-import { occurrencesOn, occursOn } from "../domain/schedule";
+import { doneKey, occurrencesOn, occursOn } from "../domain/schedule";
 import { searchItems } from "../domain/search";
 import { parseKorean } from "../parse/parseKorean";
 import { boardFromEntities, boardWrites, type Board } from "../storage/board";
@@ -127,7 +127,7 @@ export async function completeTask(store: SyncStore, board: Board, id: string, d
     return { text: "그 id의 할 일이 없습니다. list_schedule이나 find_schedule로 id를 확인하세요.", next: board };
   }
 
-  const key = item.when.kind === "single" ? item.when.date : item.when.kind === "range" ? item.when.end : item.when.kind === "none" ? "done" : date;
+  const key = doneKey(item, date);
 
   if (key === undefined) {
     return { text: "반복 할 일은 완료할 날짜(date)가 필요합니다.", next: board };

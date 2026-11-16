@@ -2,7 +2,7 @@
 import { addDays, type IsoDate } from "./date";
 import type { Item } from "./item";
 import { expand, type Recurrence } from "./recurrence";
-import { SLOT_START } from "./schedule";
+import { isDone, SLOT_START } from "./schedule";
 import type { ClockTime } from "../parse/parseKorean";
 
 const BYDAY = ["SU", "MO", "TU", "WE", "TH", "FR", "SA"];
@@ -32,7 +32,7 @@ function component(item: Item, stamp: string): string[] {
   }
 
   if (item.when.kind === "none") {
-    return ["BEGIN:VTODO", ...common, `STATUS:${item.done.includes("done") ? "COMPLETED" : "NEEDS-ACTION"}`, "END:VTODO"];
+    return ["BEGIN:VTODO", ...common, `STATUS:${isDone(item, undefined) ? "COMPLETED" : "NEEDS-ACTION"}`, "END:VTODO"];
   }
 
   const when = item.when;

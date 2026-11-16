@@ -4,6 +4,7 @@ import type { Recurrence } from "./recurrence";
 import {
   daysAround,
   doneKey,
+  isDone,
   missedDates,
   firstOccurrence,
   formatClock,
@@ -170,7 +171,7 @@ describe("a range task is one task, done once", () => {
   const trip = item("trip", { kind: "task", when: { kind: "range", start: "2026-11-03", end: "2026-11-07" } });
 
   test("checked on any day of the range, it shows done on every day and is never overdue", () => {
-    const checked = { ...trip, done: [doneKey(trip, "2026-11-05")] };
+    const checked = { ...trip, done: [doneKey(trip, "2026-11-05") ?? ""] };
 
     expect(occurrencesOn([checked], "2026-11-03")[0]?.done).toBe(true);
     expect(occurrencesOn([checked], "2026-11-06")[0]?.done).toBe(true);
@@ -178,8 +179,17 @@ describe("a range task is one task, done once", () => {
   });
 
   test("other kinds keep their own keys", () => {
-    expect(doneKey(item("s", { kind: "task" }), "2026-10-05")).toBe("2026-10-05");
+    const single = item("s", { kind: "task", when: { kind: "single", date: "2026-10-05" } });
+    const weekly = item("w", { kind: "task", when: { kind: "recurring", rule: { freq: "weekly", weekdays: [1], start: "2026-10-05" } } });
+
+    // A single task's key is its own date, whatever date the caller has at hand (MCP passes none).
+    expect(doneKey(single, undefined)).toBe("2026-10-05");
+    expect(doneKey(single, "2026-10-09")).toBe("2026-10-05");
     expect(doneKey(item("n", { kind: "task", when: { kind: "none" } }), undefined)).toBe("done");
+    expect(doneKey(weekly, "2026-10-12")).toBe("2026-10-12");
+    // No occurrence, nothing to tick.
+    expect(doneKey(weekly, undefined)).toBeUndefined();
+    expect(isDone({ ...weekly, done: ["2026-10-12"] }, undefined)).toBe(false);
   });
 });
 

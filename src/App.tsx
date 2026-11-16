@@ -15,7 +15,7 @@ import type { Category, Item } from "./domain/item";
 import { holidaysForYears, mergeHolidays } from "./domain/holidays";
 import { reschedule } from "./domain/reschedule";
 import { deleteOccurrence, editOccurrence, type SeriesScope } from "./domain/series";
-import { daysAround, doneKey, overdueTasks } from "./domain/schedule";
+import { daysAround, doneKey, isDone, overdueTasks } from "./domain/schedule";
 import { weekLabel, weekStartOf } from "./domain/weeks";
 import { parseKorean } from "./parse/parseKorean";
 import { ItemDetail } from "./ui/ItemDetail";
@@ -476,7 +476,13 @@ export default function App() {
 
   /** Undoable: a check in 밀린 할 일 or 날짜 없는 할 일 takes the row off the screen. */
   const toggleDone = (target: Item, date: string) => {
-    const wasDone = target.done.includes(doneKey(target, date));
+    const key = doneKey(target, date);
+
+    if (key === undefined) {
+      return;
+    }
+
+    const wasDone = target.done.includes(key);
 
     act(wasDone ? "완료를 취소했습니다" : "완료했습니다", (board) => ({
       ...board,
@@ -484,8 +490,6 @@ export default function App() {
         if (item.id !== target.id) {
           return item;
         }
-
-        const key = doneKey(item, date);
 
         return { ...item, done: wasDone ? item.done.filter((d) => d !== key) : [...new Set([...item.done, key])] };
       }),
@@ -496,9 +500,8 @@ export default function App() {
 
   /** Right-click on an item: the things its detail view can do, without opening it. */
   const itemMenu = (event: MouseEvent, item: Item, date?: IsoDate) => {
-    const recurring = item.when.kind === "recurring";
-    // A repeating task is done per occurrence: without a date there is nothing to tick.
-    const key = item.kind === "task" && !(recurring && date === undefined) ? doneKey(item, date) : undefined;
+    // A repeating task is done per occurrence: without a date there is nothing to tick (no key).
+    const key = item.kind === "task" ? doneKey(item, date) : undefined;
 
     const actions: MenuAction[] = [
       { label: "열기", run: () => openEdit(item, date) },
@@ -510,7 +513,7 @@ export default function App() {
     }
 
     // One occurrence or the whole series is a choice the edit screen asks.
-    if (!recurring) {
+    if (item.when.kind !== "recurring") {
       actions.push({
         label: "삭제",
         run: () => act("삭제했습니다", (board) => ({ ...board, items: board.items.filter((other) => other.id !== item.id) })),
@@ -597,7 +600,7 @@ export default function App() {
           categories={categories}
           holiday={holidays.get(selected)}
           overdue={overdue}
-          undated={visible.filter((item) => item.when.kind === "none" && !item.done.includes("done"))}
+          undated={visible.filter((item) => item.when.kind === "none" && !isDone(item, undefined))}
           onToggle={toggleDone}
           onEdit={openEdit}
           today={now.today}

@@ -3,7 +3,7 @@ import type { IsoDate, Weekday } from "./date";
 import { WEEKDAY_NAMES, recurrenceLabel } from "./format";
 import type { Item } from "./item";
 import { expand, type Recurrence } from "./recurrence";
-import { firstOccurrence, missedDates } from "./schedule";
+import { firstOccurrence, isDone, missedDates } from "./schedule";
 
 export type RecurringEntry = { item: Item; rule: string; next: IsoDate | undefined };
 
@@ -87,7 +87,7 @@ export function taskSections(items: Item[], today: IsoDate): TaskSections {
     }
 
     if (item.when.kind === "none") {
-      (item.done.includes("done") ? sections.done : sections.undated).push({ item, date: undefined });
+      (isDone(item, undefined) ? sections.done : sections.undated).push({ item, date: undefined });
       continue;
     }
 
@@ -121,11 +121,11 @@ export function taskSections(items: Item[], today: IsoDate): TaskSections {
 function upcomingDate(item: Item, today: IsoDate): IsoDate | undefined {
   switch (item.when.kind) {
     case "single":
-      return item.when.date >= today && !item.done.includes(item.when.date) ? item.when.date : undefined;
+      return item.when.date >= today && !isDone(item, undefined) ? item.when.date : undefined;
     case "range":
-      return item.when.end >= today && !item.done.includes(item.when.end) ? (item.when.start > today ? item.when.start : today) : undefined;
+      return item.when.end >= today && !isDone(item, undefined) ? (item.when.start > today ? item.when.start : today) : undefined;
     case "recurring":
-      return firstOccurrence(item.when.rule, today, LOOKAHEAD_DAYS, (d) => !item.done.includes(d));
+      return firstOccurrence(item.when.rule, today, LOOKAHEAD_DAYS, (d) => !isDone(item, d));
     case "none":
       return undefined;
   }

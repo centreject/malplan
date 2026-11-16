@@ -32,26 +32,35 @@ export function occursOn(item: Item, date: IsoDate): boolean {
 }
 
 /**
- * What a completion is stored under in `done`: the date for single and recurring items, the last day for a
- * range task (one task, done once, however many days it shows on), "done" for an undated one.
+ * What a completion is stored under in `done`: the item's date, the last day for a range task (one task, done
+ * once, however many days it shows on), "done" for an undated one, the occurrence for a repeating one. A repeating
+ * task without an occurrence date has no key: there is nothing to tick. The one rule for every screen and MCP.
  */
-export function doneKey(item: Item, date: string | undefined): string {
+export function doneKey(item: Item, date: IsoDate | undefined): string | undefined {
   switch (item.when.kind) {
+    case "single":
+      return item.when.date;
     case "range":
       return item.when.end;
     case "none":
       return "done";
-    case "single":
     case "recurring":
-      return date ?? "done";
+      return date;
   }
+}
+
+/** Whether the task is done on `date` (its occurrence; ignored unless it repeats). Events are never done. */
+export function isDone(item: Item, date: IsoDate | undefined): boolean {
+  const key = doneKey(item, date);
+
+  return item.kind === "task" && key !== undefined && item.done.includes(key);
 }
 
 /** Items on `date`, untimed first, then by start time. */
 export function occurrencesOn(items: Item[], date: IsoDate): Occurrence[] {
   return items
     // Only tasks can be done: an event keeps no check, even one left from when it was a task.
-    .flatMap((item) => (occursOn(item, date) ? [{ item, date, done: item.kind === "task" && item.done.includes(doneKey(item, date)) }] : []))
+    .flatMap((item) => (occursOn(item, date) ? [{ item, date, done: isDone(item, date) }] : []))
     .toSorted((a, b) => sortKey(a.item.time) - sortKey(b.item.time));
 }
 
@@ -108,7 +117,7 @@ export function missedDates(item: Item, today: IsoDate): IsoDate[] {
     return known.missed;
   }
 
-  const missed = datesBefore(item, addDays(today, -1)).filter((date) => !item.done.includes(date));
+  const missed = datesBefore(item, addDays(today, -1)).filter((date) => !isDone(item, date));
 
   missedCache.set(item, { today, missed });
 
