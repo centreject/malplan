@@ -208,7 +208,7 @@ components:
 
 **Creative North Star: "One Board, Three Liveries"**
 
-malplan is a single planning board that the user can repaint. The shell is fixed: a top bar dominated by the sentence input, Today as the wide lead column, the week above the month on the right. Each theme is a livery painted on that same chassis, and a livery may change only these things: type family, palette, corner language, and one signature move. Spacing, text sizes and control sizes are shared by all three (unified 2026-10-18); only the date numerals scale per theme. Bus (버스 안내판, the default) is a Seoul bus arrival board: navy route band, route-family category colours, capsule tags, one reversed arrival plate. Desk (탁상달력) is a bank desk calendar: warm paper ground, huge condensed numerals, red Sundays and holidays, index tabs hanging off the month frame. Standard (기본) is a neutral calendar: cool greys, one blue accent, soft tinted tags.
+malplan is a single planning board that the user can repaint. The shell is fixed: a top bar dominated by the sentence input, Today as the wide lead column, the week above the month on the right. Each theme is a livery painted on that same chassis, and a livery may change only these things: type family, palette, corner language, and one signature move. Spacing, text sizes and control sizes are shared by all three (unified 2026-10-18); only the date numerals scale per theme. Bus (버스 안내판, the default) is a Seoul bus arrival board: navy route band, route-family category colours, capsule tags, one reversed arrival plate. Desk (탁상달력) is a bank desk calendar: warm paper ground, heavy condensed numerals, red Sundays and holidays, index tabs hanging off the month frame. Standard (기본) is a neutral calendar: cool greys, one blue accent, soft tinted tags.
 
 The board is built for a glance from an always-on window. Density is medium: rows sit at 8–10px vertical padding, panes are separated by a 14px gutter, and nothing decorates for its own sake. Information hierarchy comes from the numerals, the plate and row state, not from ornament. Every theme keeps the panes flat on a tinted ground; the only lifted surface is the unfolded crowded-day list.
 
@@ -217,7 +217,7 @@ The board is built for a glance from an always-on window. Density is medium: row
 - Today leads; the next-up plate is the single loudest object on screen.
 - Category colour arrives only through palette slots 0–6, never as ad-hoc hex.
 - Kind is shown by the mark (task = square checkbox, event = dot), state by the row (late, past, done).
-- Dates and times are set in tabular numerals; desk scales them into the dominant visual.
+- Dates and times are set in tabular numerals; desk prints them heavy and condensed at the shared sizes.
 
 ## Colors
 
@@ -260,19 +260,19 @@ Each theme defines the same role vocabulary (ground, two surfaces, three inks, l
 **Character:** A plain Korean UI face carries all the words; a separate numeral face carries every date, time and count, so numbers read like a timetable or a printed calendar. These are installed Windows faces standing in for the intended self-hosted faces (see Open Items); the roles are settled, the families are not.
 
 ### Hierarchy
-- **Display** (the Today date numeral): bus 46px/700, desk 96px/700 condensed at -0.04em, standard 40px/600; line-height 0.9. It is the biggest type on the board in every theme.
+- **Display** (the Today date numeral): bus 46px/700, desk 46px/700 condensed at -0.04em, standard 40px/600; line-height 0.9. It is the biggest type on the board in every theme.
 - **Plate When** (700, 28px; 32px on bus): the countdown or date on the next-up plate, in the plate-when colour.
 - **Headline** (700, 16px): pane titles and the plate title; desk raises the month title to 22px.
 - **Title** (400, 15px): agenda row titles and the sentence input.
 - **Body** (400, 14px, 1.5): base text.
 - **Label** (400, 13px): times, pane ranges, tabs, text buttons, theme options, input preview.
 - **Cell** (400, 12px, 1.35): week and month item lines, category tags (700), weekday headers; 11px for item times, holiday names and "+n" overflow.
-- **Calendar numerals**: week dates 20px/600 (desk 32px/700 condensed), month days 14px/600 (desk 32px/700 condensed; 22px when docked).
+- **Calendar numerals**: week dates 20px/600 (desk 700 condensed), month days 14px/600 (desk 700 condensed). Desk keeps these sizes (2026-11-15): larger numerals crowded the cells and the day header.
 
 ### Named Rules
 **The Tabular Numeral Rule.** Every date, time, count and countdown uses the numeral face with tabular figures, so columns of times line up and countdowns don't jitter.
 
-**The Numeral Leads Rule.** On desk the numerals are the visual: they are scaled and condensed, and month cells show two items instead of three so the numbers keep the room.
+**The Numeral Leads Rule.** On desk the numerals carry the look through weight, condensed width and red Sundays, not size; month cells list three items like the other themes.
 
 ## Layout
 
