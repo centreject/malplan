@@ -7,12 +7,14 @@ use std::path::{Path, PathBuf};
 
 use tauri::{AppHandle, Manager};
 
-/// Only plain file names inside the chosen folder: no separators, no "..".
+/// Only plain file names inside the chosen folder: no separators, no "..", nothing Windows forbids. Cloud
+/// clients name their copies freely ("log-a (1).jsonl", "log-a - 복사본.jsonl"), and those must be readable.
 fn file_path(dir: &str, name: &str) -> Result<PathBuf, String> {
     let valid = !name.is_empty()
-        && name != "."
-        && name != ".."
-        && name.chars().all(|c| c.is_ascii_alphanumeric() || matches!(c, '.' | '-' | '_'));
+        && name.len() <= 255
+        && !name.contains("..")
+        && !name.starts_with('.')
+        && !name.chars().any(|c| c.is_control() || matches!(c, '/' | '\\' | ':' | '*' | '?' | '"' | '<' | '>' | '|'));
 
     if !valid {
         return Err(format!("invalid sync file name: {name}"));
@@ -110,6 +112,17 @@ pub fn save_text_file(path: String, content: String) -> Result<(), String> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn cloud_copies_are_readable_names_but_paths_are_not() {
+        for name in ["log-a.jsonl", "log-a (1).jsonl", "log-a - 복사본.jsonl", "log-a-DESKTOP-1.jsonl"] {
+            assert!(file_path("dir", name).is_ok(), "{name}");
+        }
+
+        for name in ["", ".", "..", "../log-a.jsonl", "a/b", "a\\b", "C:x", ".hidden", "a\nb"] {
+            assert!(file_path("dir", name).is_err(), "{name:?}");
+        }
+    }
 
     #[test]
     fn a_line_cut_inside_a_character_costs_only_that_line() {

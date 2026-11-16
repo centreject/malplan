@@ -362,7 +362,7 @@ test("merging folders refuses to overwrite a corrupt snapshot", async () => {
   expect(await to.read("snapshot.json")).toBe("{ cut short");
 });
 
-/** Like the desktop folder backend: names outside [A-Za-z0-9._-] cannot be read. */
+/** A folder where some files cannot be read (a copy still locked by the cloud client, an odd name): only plain names read. */
 class DesktopNames extends MemoryBackend {
   override async read(name: string) {
     if (!/^[\w.-]+$/.test(name)) {
@@ -373,7 +373,7 @@ class DesktopNames extends MemoryBackend {
   }
 }
 
-test("a cloud conflicted copy of a log is skipped, so loading still works", async () => {
+test("a copy of a log that cannot be read is skipped, so loading still works", async () => {
   const backend = new DesktopNames();
   const a = new SyncStore(backend, "A", () => 1000);
   await a.load();
@@ -575,4 +575,130 @@ test("two devices compacting at once (a cloud folder syncing late) lose nothing,
 
   await c.load();
   expect(c.entities().item.map((entity) => entity.id).toSorted()).toEqual(["a1", "b1"]);
+});
+
+const ids = (store: SyncStore) => store.entities().item.map((record) => record.id).toSorted();
+
+test("merge: lines the source holds are not hidden by the target's watermark for the same device", async () => {
+  // Device D wrote in the shared folder (1000), then in a local one (2000), then back in the shared one (3000),
+  // where a compaction put seen[D] at 3000. Merging the local folder in must still bring its 2000 line.
+  const local = new MemoryBackend();
+  const shared = new MemoryBackend();
+  let now = 1_000;
+  const early = new SyncStore(shared, "D", () => now);
+
+  await early.load();
+  await early.set("item", "t1", "title", "shared, early");
+  now = 2_000;
+
+  const away = new SyncStore(local, "D", () => now);
+
+  await away.load();
+  await away.set("item", "s1", "title", "written in the local folder");
+  now = 3_000;
+
+  const back = new SyncStore(shared, "D", () => now);
+
+  await back.load();
+  await back.set("item", "t2", "title", "shared, late");
+  await back.compact();
+  await copyInto(local, shared);
+
+  const merged = new SyncStore(shared, "D", () => now);
+
+  await merged.load();
+  expect(ids(merged)).toEqual(["s1", "t1", "t2"]);
+});
+
+test("merge: the source's watermark does not hide the target's own lines", async () => {
+  const local = new MemoryBackend();
+  const shared = new MemoryBackend();
+  let now = 1_000;
+  const there = new SyncStore(shared, "D", () => now);
+
+  await there.load();
+  await there.set("item", "t1", "title", "only in the shared folder");
+  now = 2_000;
+
+  const here = new SyncStore(local, "D", () => now);
+
+  await here.load();
+  await here.set("item", "s1", "title", "local");
+  await here.compact();
+  await copyInto(local, shared);
+
+  const merged = new SyncStore(shared, "D", () => now);
+
+  await merged.load();
+  expect(ids(merged)).toEqual(["s1", "t1"]);
+});
+
+test("merge: a deletion the target folded and pruned long ago does not come back", async () => {
+  const shared = new MemoryBackend();
+  let now = 1_000_000;
+  const left = new SyncStore(shared, "left", () => now);
+  const a = new SyncStore(shared, "A", () => now);
+
+  // "left" (a PC no longer used) made x; A deleted it; "left" wrote once more, so every watermark passes the delete.
+  await left.load();
+  await left.set("item", "x", "title", "deleted long ago");
+  await a.load();
+  now += 10;
+  await a.remove("item", "x");
+  now += 10;
+  await left.set("item", "keep", "title", "k");
+  now += 30 * DAY;
+  await a.compact();
+  now += PRUNE_AFTER_MS + 1;
+  await a.load();
+  expect(ids(a)).toEqual(["keep"]);
+
+  const other = new MemoryBackend();
+  const b = new SyncStore(other, "B", () => now);
+
+  await b.load();
+  await b.set("item", "b1", "title", "b");
+  await b.compact();
+  await copyInto(other, shared);
+
+  const merged = new SyncStore(shared, "A", () => now);
+
+  await merged.load();
+  expect(ids(merged)).toEqual(["b1", "keep"]);
+});
+
+test("a cloud copy of a log is read as that device's lines, not as a device of its own", async () => {
+  const folder = new MemoryBackend();
+  const b = new SyncStore(folder, "b", () => 1_000);
+
+  await b.load();
+  await b.set("item", "i1", "title", "x");
+  // OneDrive-style copy holding a line the real log lost, plus an empty copy that sorts first.
+  await folder.write("log-b-DESKTOP.jsonl", `${JSON.stringify({ ts: 900, device: "b", entity: "item", id: "only-in-copy", field: "title", value: "y" })}\n`);
+  await folder.write("log-a (1).jsonl", "");
+
+  const reader = new SyncStore(folder, "c", () => 2_000);
+
+  await reader.load();
+  expect(ids(reader)).toEqual(["i1", "only-in-copy"]);
+  expect(reader.errors).toEqual([]);
+});
+
+test("a device that stopped writing does not stay the compactor", async () => {
+  const folder = new MemoryBackend();
+  let now = 1_000_000;
+  const gone = new SyncStore(folder, "0gone", () => now);
+  const live = new SyncStore(folder, "live", () => now);
+
+  await gone.load();
+  await gone.set("item", "i0", "title", "x");
+  now += 400 * DAY;
+  await live.load();
+
+  for (let i = 0; i < 20; i++) await live.set("item", `i${i + 1}`, "title", "t");
+
+  // The first compaction waits a day after this device's first write (no snapshot yet).
+  now += DAY;
+  expect(await live.compactIfDue(3)).toBe(true);
+  expect(ids(live)).toContain("i0");
 });

@@ -35,10 +35,19 @@ export type FieldWrite = Pick<Change, "entity" | "id" | "field" | "value"> & { a
 
 const SNAPSHOT = "snapshot.json";
 
-/** Same characters the desktop backend can read, so a cloud "conflicted copy" of a log is skipped, not fatal. */
-const LOG_NAME = /^log-([\w.-]+)\.jsonl$/;
+/**
+ * Any log file, including a cloud client's copy of one ("log-a (1).jsonl", "log-a-DESKTOP.jsonl"): its lines are
+ * read by the device each line names, so a copy adds what only it holds and never becomes a device of its own.
+ */
+const isLogFile = (name: string) => name.startsWith("log-") && name.endsWith(".jsonl");
 
-const isSyncFile = (name: string) => name === SNAPSHOT || LOG_NAME.test(name);
+/** A device's own log, as this app names it. */
+const OWN_LOG_NAME = /^log-[\w.-]+\.jsonl$/;
+
+const isSyncFile = (name: string) => name === SNAPSHOT || isLogFile(name);
+
+/** Only devices that wrote within this time may be the compactor: one that left (a replaced PC) would block it. */
+const ACTIVE_WITHIN_MS = 30 * 24 * 60 * 60 * 1000;
 
 /**
  * First-run defaults are dated 1, 2, 3… instead of now (there are far fewer than 1000 of them, and real
@@ -108,18 +117,7 @@ export class SyncStore {
     // still holds everything it folded; showing the board without it would make items vanish until the next read.
     const snapshot = unreadable && hadSnapshot ? this.#snapshot : parsed.snapshot;
 
-    const logs = new Map<string, Change[]>();
-
-    for (const name of await this.#backend.list()) {
-      const device = LOG_NAME.exec(name)?.[1];
-
-      if (device === undefined) continue;
-
-      const log = parseLog((await this.#backend.read(name)) ?? "", device);
-
-      errors.push(...log.errors.map((e) => `${name} ${e}`));
-      logs.set(device, log.changes);
-    }
+    const logs = await readLogs(this.#backend, errors);
 
     this.errors = errors;
     this.#snapshot = snapshot;
@@ -203,12 +201,14 @@ export class SyncStore {
 
   /**
    * Compact when the logs hold more than `threshold` changes, but only on the designated
-   * compactor: the device with the smallest id among those with a log. Returns whether it ran.
+   * compactor: the device with the smallest id among those that wrote here in the last 30 days. Returns whether it ran.
    * Decides from the last load() plus this device's writes since, so it is cheap when not due.
    */
   async compactIfDue(threshold: number): Promise<boolean> {
-    const devices = [...new Set([...this.#logs.keys(), this.#deviceId])].toSorted();
     const seen = new Map(Object.entries(this.#snapshot.seen));
+    const lastWrite = (device: string) => Math.max(seen.get(device) ?? -Infinity, ...(this.#logs.get(device) ?? []).map((c) => c.ts));
+    const active = (device: string) => device === this.#deviceId || lastWrite(device) > this.#now() - ACTIVE_WITHIN_MS;
+    const devices = [...new Set([...this.#logs.keys(), this.#deviceId])].filter(active).toSorted();
     // Entries already folded but kept for a while (PRUNE_AFTER_MS) are not pending.
     const pending = [...this.#logs.values()].flat().filter((c) => c.ts > (seen.get(c.device) ?? -Infinity)).length;
 
@@ -234,31 +234,81 @@ export class SyncStore {
 }
 
 /**
- * Copies one sync folder's files into another ("merge" when switching folders). Logs are appended;
- * when both folders have a snapshot, they are merged so neither folder's compacted data is dropped.
- * Only sync files are copied. Into a folder that already has data, first-run defaults are left out:
- * their ids are fixed, so they would otherwise undo that folder's renames and bring back deleted entries.
+ * Every log file's lines, grouped by the device each line names. A device's lines can come from several files
+ * (its log and a cloud copy of it): each ts is kept once, in order. A copy that cannot be read is reported and
+ * skipped; a device's own log failing to read still fails the load.
+ */
+async function readLogs(backend: Backend, errors: string[]): Promise<Map<string, Change[]>> {
+  const logs = new Map<string, Change[]>();
+
+  for (const name of (await backend.list()).filter(isLogFile)) {
+    let text: string;
+
+    try {
+      text = (await backend.read(name)) ?? "";
+    } catch (error) {
+      if (OWN_LOG_NAME.test(name)) throw error;
+
+      errors.push(`${name}: ${error instanceof Error ? error.message : String(error)}`);
+      continue;
+    }
+
+    const log = parseLog(text);
+
+    errors.push(...log.errors.map((e) => `${name} ${e}`));
+
+    for (const change of log.changes) logs.set(change.device, [...(logs.get(change.device) ?? []), change]);
+  }
+
+  for (const [device, changes] of logs) {
+    const byTs = new Map(changes.map((change) => [change.ts, change]));
+
+    logs.set(device, [...byTs.values()].toSorted((a, b) => a.ts - b.ts));
+  }
+
+  return logs;
+}
+
+/**
+ * Copies one sync folder's data into another ("merge" when switching folders). Only sync files are read.
+ *
+ * Into an empty folder: the snapshot as it is and one log per device (cloud copies of a log folded into it).
+ * Into a folder with data: everything the source holds, its snapshot and every log line, is folded into the
+ * target's snapshot; no log is copied. The target keeps its own watermarks, so its logs are read exactly as before
+ * (a device's lines there are not skipped, and lines it had folded and pruned are not replayed); a device only the
+ * source knew keeps the source's. First-run defaults are left out: their ids are fixed, so they would otherwise undo
+ * the target's renames and bring back what it deleted.
  */
 export async function copyInto(from: Backend, to: Backend): Promise<void> {
-  const existing = new Set((await to.list()).filter(isSyncFile));
-  const names = (await from.list()).filter(isSyncFile);
+  const errors: string[] = [];
+  const sourceNames = (await from.list()).filter(isSyncFile);
+  const targetNames = (await to.list()).filter(isSyncFile);
+  const sourceSnapshot = sourceNames.includes(SNAPSHOT) ? checked(parseSnapshot((await from.read(SNAPSHOT)) ?? "")) : undefined;
+  const sourceLogs = await readLogs(from, errors);
 
-  for (const name of names) {
-    const text = (await from.read(name)) ?? "";
+  if (targetNames.length === 0) {
+    if (sourceSnapshot !== undefined) await to.write(SNAPSHOT, JSON.stringify(sourceSnapshot));
 
-    if (existing.size === 0) {
-      await to.write(name, text);
-    } else if (name === SNAPSHOT) {
-      const ours = withoutDefaults(checked(parseSnapshot(text)));
-      const theirs = existing.has(SNAPSHOT) ? checked(parseSnapshot((await to.read(SNAPSHOT)) ?? "")) : undefined;
+    for (const [device, changes] of sourceLogs) await to.write(logName(device), toLines(changes));
 
-      await to.write(SNAPSHOT, JSON.stringify(theirs === undefined ? ours : mergeSnapshots(ours, theirs)));
-    } else {
-      const lines = toLines(parseLog(text, LOG_NAME.exec(name)?.[1] ?? "").changes.filter(isReal));
-
-      await (existing.has(name) ? to.append(name, lines) : to.write(name, lines));
-    }
+    return;
   }
+
+  const target = targetNames.includes(SNAPSHOT) ? checked(parseSnapshot((await to.read(SNAPSHOT)) ?? "")) : emptySnapshot();
+  const targetDevices = new Set([...(await readLogs(to, errors)).keys(), ...Object.keys(target.seen)]);
+  const source = sourceSnapshot ?? emptySnapshot();
+  const sourceOnly = Object.entries(source.seen).filter(([device]) => !targetDevices.has(device));
+  const sourceChanges = [...source.entities, ...[...sourceLogs.values()].flat()].filter(isReal);
+  const folded = applyChanges(applyChanges(emptyState, target.entities), sourceChanges);
+
+  const merged: Snapshot = {
+    version: 1,
+    compactedAt: target.compactedAt,
+    seen: { ...Object.fromEntries(sourceOnly), ...target.seen },
+    entities: [...folded.values()],
+  };
+
+  await to.write(SNAPSHOT, JSON.stringify(merged));
 }
 
 function checked(parsed: ParsedSnapshot): Snapshot {
@@ -267,31 +317,6 @@ function checked(parsed: ParsedSnapshot): Snapshot {
   }
 
   return parsed.snapshot;
-}
-
-function withoutDefaults(snapshot: Snapshot): Snapshot {
-  return { ...snapshot, entities: snapshot.entities.filter(isReal) };
-}
-
-/**
- * Both snapshots' winning changes. `seen` keeps, per device, only the lower watermark of the two, so no log
- * entry that only one folder had folded is skipped (re-applying an entry the snapshot holds changes nothing).
- */
-function mergeSnapshots(a: Snapshot, b: Snapshot): Snapshot {
-  const seenB = new Map(Object.entries(b.seen));
-
-  const seen = Object.entries(a.seen).flatMap(([device, ts]): [string, number][] => {
-    const other = seenB.get(device);
-
-    return other === undefined ? [] : [[device, Math.min(ts, other)]];
-  });
-
-  return {
-    version: 1,
-    compactedAt: Math.max(a.compactedAt, b.compactedAt),
-    seen: Object.fromEntries(seen),
-    entities: [...applyChanges(applyChanges(emptyState, a.entities), b.entities).values()],
-  };
 }
 
 const keepNothing = (): void => undefined;

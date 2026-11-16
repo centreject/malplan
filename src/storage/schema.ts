@@ -54,8 +54,12 @@ function decode<T extends v.GenericSchema>(schema: T, text: string): Decoded<v.I
 
 export type ParsedLog = { changes: Change[]; errors: string[] };
 
-/** Parses a JSON Lines log owned by `device`. Bad lines are skipped and reported, never thrown. */
-export function parseLog(text: string, device: string): ParsedLog {
+/**
+ * Parses a JSON Lines log. With `device`, lines written by another device are rejected; without it, each line
+ * belongs to the device it names (a cloud copy of a log can sit under any file name). Bad lines are skipped and
+ * reported, never thrown.
+ */
+export function parseLog(text: string, device?: string): ParsedLog {
   const changes: Change[] = [];
   const errors: string[] = [];
 
@@ -65,7 +69,7 @@ export function parseLog(text: string, device: string): ParsedLog {
     const decoded = decode(ChangeSchema, line);
 
     if (!decoded.ok) errors.push(`line ${index + 1}: ${decoded.error}`);
-    else if (decoded.value.device !== device) errors.push(`line ${index + 1}: written by "${decoded.value.device}" in ${device}'s log`);
+    else if (device !== undefined && decoded.value.device !== device) errors.push(`line ${index + 1}: written by "${decoded.value.device}" in ${device}'s log`);
     else changes.push(decoded.value);
   }
 

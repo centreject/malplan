@@ -246,7 +246,7 @@ export function useBoard(seed: () => Board) {
 export async function folderHasData(dir: string | undefined): Promise<boolean> {
   const backend = await openBackend(dir);
 
-  return (await backend.list()).some((name) => name === "snapshot.json" || name.startsWith("log-"));
+  return (await backend.list()).some((name) => name === "snapshot.json" || (name.startsWith("log-") && name.endsWith(".jsonl")));
 }
 
 function sameList(a: readonly string[], b: readonly string[]): boolean {
