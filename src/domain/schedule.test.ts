@@ -38,6 +38,7 @@ const mailing = item("mailing", {
 describe("carriedInto", () => {
   const night = item("night", { time: { kind: "exact", start: { hour: 22, minute: 0 }, end: { hour: 1, minute: 0 } } });
   const evening = item("evening", { time: { kind: "exact", start: { hour: 18, minute: 0 }, end: { hour: 20, minute: 0 } } });
+
   const nightly = item("nightly", {
     kind: "task",
     when: { kind: "recurring", rule: { freq: "daily", start: "2026-10-01" } },
