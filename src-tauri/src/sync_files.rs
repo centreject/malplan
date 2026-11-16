@@ -4,6 +4,7 @@
 use std::fs::{self, OpenOptions};
 use std::io::{Read, Seek, SeekFrom, Write};
 use std::path::{Path, PathBuf};
+use std::time::UNIX_EPOCH;
 
 use tauri::{AppHandle, Manager};
 
@@ -51,6 +52,29 @@ pub fn sync_list(dir: String) -> Result<Vec<String>, String> {
     }
 
     Ok(names)
+}
+
+/// Every file's name, size and modification time: unchanged text means nothing in the folder changed, so the
+/// minute refresh can skip reading and parsing it all.
+#[tauri::command(async)]
+pub fn sync_stamp(dir: String) -> Result<String, String> {
+    let mut parts = Vec::new();
+
+    for entry in fs::read_dir(&dir).map_err(text_error)? {
+        let entry = entry.map_err(text_error)?;
+        let meta = entry.metadata().map_err(text_error)?;
+
+        if meta.is_file() {
+            let modified = meta.modified().map_err(text_error)?.duration_since(UNIX_EPOCH).map_err(|e| e.to_string())?;
+
+            parts.push(format!("{}	{}	{}", entry.file_name().to_string_lossy(), meta.len(), modified.as_nanos()));
+        }
+    }
+
+    parts.sort();
+
+    Ok(parts.join("
+"))
 }
 
 #[tauri::command(async)]

@@ -735,3 +735,42 @@ test("a device that stopped writing does not stay the compactor", async () => {
   expect(await live.compactIfDue(3)).toBe(true);
   expect(ids(live)).toContain("i0");
 });
+
+/** A folder whose stamp is its files' sizes, counting reads. */
+class StampedBackend extends MemoryBackend {
+  reads = 0;
+
+  override async read(name: string) {
+    this.reads++;
+
+    return super.read(name);
+  }
+
+  async stamp() {
+    return [...this.files].map(([name, text]) => `${name}:${text.length}`).join(",");
+  }
+}
+
+test("refresh skips reading when nothing in the folder changed", async () => {
+  const folder = new StampedBackend();
+  const a = new SyncStore(folder, "a", () => 1_000);
+  const b = new SyncStore(folder, "b", () => 2_000);
+
+  await a.load();
+  await b.load();
+  await b.set("item", "b1", "title", "from b");
+  await a.refresh();
+  expect(ids(a)).toEqual(["b1"]);
+
+  const before = folder.reads;
+
+  await a.refresh();
+  expect(folder.reads).toBe(before);
+
+  // Our own write changes the folder too: the next refresh reads, and sees b's newer edit with it.
+  await a.set("item", "a1", "title", "from a");
+  await b.set("item", "b2", "title", "from b again");
+  await a.refresh();
+  expect(folder.reads).toBeGreaterThan(before);
+  expect(ids(a)).toEqual(["a1", "b1", "b2"]);
+});

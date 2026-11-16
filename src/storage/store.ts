@@ -8,6 +8,8 @@ export interface Backend {
   read(name: string): Promise<string | undefined>;
   write(name: string, content: string): Promise<void>;
   append(name: string, line: string): Promise<void>;
+  /** Text that changes whenever any file in the folder does (names, sizes, times). Without it, refresh always reads. */
+  stamp?(): Promise<string>;
 }
 
 export class MemoryBackend implements Backend {
@@ -93,6 +95,8 @@ export class SyncStore {
   #logs = new Map<string, Change[]>();
   #state: State = emptyState;
   #lastTs = -Infinity;
+  /** The folder's stamp when the last refresh read it; undefined after any other load. */
+  #stamp: string | undefined;
 
   constructor(backend: Backend, deviceId: string, now: () => number) {
     this.#backend = backend;
@@ -102,6 +106,8 @@ export class SyncStore {
 
   /** Reads the snapshot and every log, and merges them. */
   async load(): Promise<void> {
+    this.#stamp = undefined;
+
     const errors: string[] = [];
     const snapshotText = await this.#backend.read(SNAPSHOT);
     const parsed: ParsedSnapshot = snapshotText === undefined ? { snapshot: emptySnapshot() } : parseSnapshot(snapshotText);
@@ -143,9 +149,17 @@ export class SyncStore {
     }
   }
 
-  /** Re-reads other devices' files (and a snapshot another device may have written). */
-  refresh(): Promise<void> {
-    return this.load();
+  /**
+   * Re-reads other devices' files (and a snapshot another device may have written), unless nothing in the folder
+   * changed since the last refresh. Our own writes change it too, so the read after them is not skipped.
+   */
+  async refresh(): Promise<void> {
+    const stamp = await this.#backend.stamp?.().catch(() => undefined);
+
+    if (stamp !== undefined && stamp === this.#stamp) return;
+
+    await this.load();
+    this.#stamp = stamp;
   }
 
   set(entity: EntityKind, id: string, field: string, value: Json): Promise<void> {

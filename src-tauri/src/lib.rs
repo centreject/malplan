@@ -81,6 +81,7 @@ pub fn run() {
             set_close_to_tray,
             sync_files::sync_default_dir,
             sync_files::sync_list,
+            sync_files::sync_stamp,
             sync_files::sync_read,
             sync_files::sync_write,
             sync_files::sync_append,

@@ -25,6 +25,10 @@ export class FolderBackend implements Backend {
   append(name: string, line: string) {
     return invoke<void>("sync_append", { dir: this.dir, name, line });
   }
+
+  stamp() {
+    return invoke<string>("sync_stamp", { dir: this.dir });
+  }
 }
 
 /** Browser preview only: files live under one localStorage prefix. */
