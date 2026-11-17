@@ -16,9 +16,8 @@ test("folds all logs into the snapshot and records the last folded ts per device
     ["B", [ch(3, "B", "done", ["done"])]],
   ]);
 
-  const { snapshot, keptChanges } = compact(emptySnapshot(), logs, 100, ["A", "B"]);
+  const { snapshot } = compact(emptySnapshot(), logs, 100, ["A", "B"]);
 
-  expect(keptChanges).toEqual([]);
   expect(snapshot.compactedAt).toBe(100);
   expect(snapshot.seen).toEqual({ A: 4, B: 3 });
   expect(view(snapshot)).toEqual([{ id: "i1", fields: { title: "a4", done: ["done"] } }]);
@@ -41,12 +40,13 @@ test("log entries already folded into the snapshot are ignored", () => {
 });
 
 test("changes dated after `now` (clock skew) stay in the log instead of the snapshot", () => {
-  const future = ch(500, "B", "title", "future");
-  const { snapshot, keptChanges } = compact(emptySnapshot(), new Map([["B", [ch(1, "B", "title", "x"), future]]]), 100, ["B"]);
+  const log = [ch(1, "B", "title", "x"), ch(500, "B", "title", "future")];
+  const { snapshot } = compact(emptySnapshot(), new Map([["B", log]]), 100, ["B"]);
 
-  expect(keptChanges).toEqual([future]);
   expect(snapshot.seen).toEqual({ B: 1 });
-  expect(view(snapshot, keptChanges)[0]?.fields).toEqual({ title: "future" });
+  expect(view(snapshot)[0]?.fields).toEqual({ title: "x" });
+  // Still read from the log, above the watermark.
+  expect(view(snapshot, log)[0]?.fields).toEqual({ title: "future" });
 });
 
 const deleted = [ch(1, "A", "title", "x"), ch(10, "A", "_deleted", true)];

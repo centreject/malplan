@@ -2,6 +2,7 @@
 // functions convert between it, the parser's result and the stored Item.
 import type { ClockTime, Flag, ParseResult, Slot } from "../parse/parseKorean";
 import { partsOf, weekdayOf, type IsoDate, type Weekday } from "./date";
+import { addNamedCategory } from "./categories";
 import { guessCategory } from "./categoryKinds";
 import type { Category, Item, ItemTime, ItemWhen } from "./item";
 import type { Recurrence } from "./recurrence";
@@ -379,15 +380,17 @@ export function commitCards(drafts: Draft[], items: Item[], categories: Category
       return itemFromCard(card, id);
     }
 
-    const name = card.newCategory.trim();
-    let category = next.find((c) => c.name === name);
+    // The same rule as adding a category anywhere else: an existing name is reused, a new one gets the least-used colour.
+    const added = addNamedCategory(next, card.newCategory, makeId());
 
-    if (category === undefined) {
-      category = { id: makeId(), name, colorSlot: (next.length % 6) + 1 };
-      next = [...next, category];
+    // cardErrors does not let a blank new name through.
+    if (added === undefined) {
+      return itemFromCard(card, id);
     }
 
-    return itemFromCard({ ...card, categoryId: category.id }, id);
+    next = added.categories;
+
+    return itemFromCard({ ...card, categoryId: added.id }, id);
   });
 
   const byId = new Map(saved.map((item) => [item.id, item]));

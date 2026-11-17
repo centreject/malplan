@@ -276,6 +276,13 @@ describe("commitCards", () => {
     expect(result.items.map((i) => i.id)).toEqual(["x", "y", "z"]);
   });
 
+  test("a new category takes the least-used colour, as everywhere else", () => {
+    const used: Category[] = [2, 3, 4].map((slot) => ({ id: `c${slot}`, name: `분류${slot}`, colorSlot: slot }));
+    const card: Card = { ...cardFromItem(item({}), today), categoryId: NEW_CATEGORY, newCategory: "운동" };
+
+    expect(commitCards([{ id: "x", card }], [], used, ids()).categories.at(-1)?.colorSlot).toBe(1);
+  });
+
   test("a new name matching an existing category reuses it", () => {
     const fresh: Card = { ...cardFromItem(item({}), today), categoryId: NEW_CATEGORY, newCategory: "학교" };
 

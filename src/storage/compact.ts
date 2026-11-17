@@ -12,7 +12,7 @@ export const TOMBSTONE_TTL_MS = 90 * DAY_MS;
  */
 export const TOMBSTONE_KEEP_MS = 365 * DAY_MS;
 
-export type Compacted = { snapshot: Snapshot; keptChanges: Change[] };
+export type Compacted = { snapshot: Snapshot };
 
 function seenOf(snapshot: Snapshot): Map<string, number> {
   return new Map(Object.entries(snapshot.seen));
@@ -47,13 +47,10 @@ export function compact(
 ): Compacted {
   const seen = seenOf(snapshot);
   const folded: Change[] = [];
-  const keptChanges: Change[] = [];
 
   for (const change of unfolded(snapshot, [...logsByDevice.values()].flat())) {
-    if (change.ts > now) {
-      keptChanges.push(change);
-      continue;
-    }
+    // Left in its log: the watermark below it must not run ahead of real time.
+    if (change.ts > now) continue;
 
     folded.push(change);
     seen.set(change.device, Math.max(seen.get(change.device) ?? -Infinity, change.ts));
@@ -76,6 +73,5 @@ export function compact(
 
   return {
     snapshot: { version: 1, compactedAt: now, seen: Object.fromEntries(seen), entities: [...state.values()] },
-    keptChanges,
   };
 }
