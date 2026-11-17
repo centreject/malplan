@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.2.12 (2026-11-17)
+
+- Keyboard shortcuts: / focuses the sentence input, T goes to today, ←/→ step a day, Ctrl+Z reverts the last change (listed in 설정 → 정보).
+- Month pane: pointing at "+n" shows the day's full list; clicking the day pins it until it is clicked again, somewhere else is clicked, or Escape.
+- Week pane: "+n" under a crowded day opens that day.
+- Search finds category names too; ↓/↑ move between the box and the results; more than 50 hits says so.
+- 백업에서 복원 offers 완전히 되돌리기, which also deletes what the backup does not hold (the button says how many items).
+- A morning notification lists unfinished tasks from earlier days.
+- MCP: new edit_schedule (the app's 말로 고치기, with a preview first), delete_schedule and uncomplete_task; MCP servers started by several Claude apps on one PC take turns, so changes made at the same moment are no longer lost.
+
 ## 0.2.11 (2026-11-17)
 
 - Turning 반복 off on one date of a repeating item keeps the scope choice: 이 일정만 makes that date a one-off and the series goes on. It used to turn the whole series into one item. A done date moved elsewhere stays done.
