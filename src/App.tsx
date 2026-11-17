@@ -71,6 +71,9 @@ function firstBoard(today: IsoDate) {
 /** How long the undo toast stays. */
 const UNDO_MS = 8000;
 
+/** Thrown for a sentence whose AI reply is not the JSON asked for. */
+const UNREADABLE_REPLY = "unreadable reply";
+
 type MonthCursor = { year: number; month: number };
 
 type AiState = { extractions: Map<string, Extraction>; inputs: Map<string, string>; note: string | undefined };
@@ -200,7 +203,12 @@ export default function App() {
         const extraction = parseExtraction(reply);
         const ruleCard = drafts[index]?.card;
 
-        if (extraction !== undefined && ruleCard !== undefined && aiSession.current === session) {
+        // Counted with the failures below: otherwise the "정리 중" note just went away, as if the AI had helped.
+        if (extraction === undefined) {
+          throw new Error(UNREADABLE_REPLY);
+        }
+
+        if (ruleCard !== undefined && aiSession.current === session) {
           const guarded = guardExtraction(extraction, part, ruleCard, categories, now.today);
 
           setAi((current) => ({ ...current, extractions: new Map(current.extractions).set(id, guarded) }));
@@ -220,7 +228,9 @@ export default function App() {
         return;
       }
 
-      const why = llm.provider !== "local"
+      const why = first instanceof Error && first.message === UNREADABLE_REPLY
+        ? "AI 답을 읽지 못해 규칙 기반으로만 정리했습니다."
+        : llm.provider !== "local"
         ? `AI 정리 실패: ${connectionErrorText(first)} 규칙 기반 결과를 확인하세요.`
         : localServer?.status() === "no-model"
           ? "로컬 AI 모델이 없어 규칙 기반으로만 정리했습니다. 마이페이지 → AI 변환에서 받을 수 있습니다."
