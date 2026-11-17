@@ -1,6 +1,6 @@
 import { expect, test } from "vitest";
 import type { Item } from "./item";
-import { dueReminders, NO_REMINDER } from "./reminders";
+import { checkFrom, dueReminders, NO_REMINDER } from "./reminders";
 
 const today = "2026-10-08";
 
@@ -100,4 +100,17 @@ test("after a gap such as sleep, only items not yet started fire, with the time 
   const later = item("later", { time: { kind: "exact", start: { hour: 16, minute: 0 } } });
 
   expect(dueReminders([early, later], today, at(13, 0), at(15, 55), 10).map((r) => r.body)).toEqual(["16시 (5분 후)"]);
+});
+
+test("an item added in the minute its reminder is due still fires", () => {
+  const meeting = item("meeting", { time: { kind: "exact", start: { hour: 14, minute: 10 } } });
+  // The tick at 14:00 ran before the item existed; it is added at 14:00:20 and the check runs again.
+  const from = checkFrom({ today, minutes: at(14) }, today, at(14));
+
+  expect(dueReminders([meeting], today, from, at(14), 10).map((r) => r.key)).toEqual(["meeting@850-10@2026-10-08"]);
+});
+
+test("the check starts from the current minute on start and on a new day", () => {
+  expect(checkFrom(undefined, today, at(9))).toBe(at(8, 59));
+  expect(checkFrom({ today: "2026-10-07", minutes: at(23, 59) }, today, at(0, 1))).toBe(at(0, 0));
 });

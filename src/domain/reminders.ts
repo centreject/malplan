@@ -16,6 +16,15 @@ const UNDECIDED_SUMMARY_AT = 8 * 60;
 const UNDECIDED_SUMMARY_UNTIL = 12 * 60;
 
 /**
+ * Where the next check starts (exclusive), given the last check. The minute last checked is checked again: an item
+ * added or a setting changed within that minute would otherwise miss a reminder due in it. The caller drops what it
+ * already sent. On start or a new day, only the current minute.
+ */
+export function checkFrom(previous: { today: IsoDate; minutes: number } | undefined, today: IsoDate, minutes: number): number {
+  return (previous?.today === today ? previous.minutes : minutes) - 1;
+}
+
+/**
  * Reminders whose fire time falls in (fromMinutes, toMinutes] of `today`.
  * Exact times fire `remindMinutes` (or the default) before the start, possibly on the day before;
  * slots fire when the slot starts; undecided items get one morning summary. The key identifies the

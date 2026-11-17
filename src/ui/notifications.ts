@@ -3,7 +3,7 @@ import { isPermissionGranted, requestPermission, sendNotification } from "@tauri
 import { useEffect, useRef } from "react";
 import * as v from "valibot";
 import type { Item } from "../domain/item";
-import { dueReminders } from "../domain/reminders";
+import { checkFrom, dueReminders } from "../domain/reminders";
 import { loadStored, saveStored } from "../storage/localStore";
 import type { Now } from "./useNow";
 
@@ -72,9 +72,9 @@ export function useReminders(items: Item[], now: Now, settings: NotificationSett
       return;
     }
 
-    // On start or a new day, look back one minute only. After a same-day gap (sleep), dueReminders
-    // skips items that already started, so the gap never replays as a burst of stale reminders.
-    const from = previous?.today === now.today ? previous.minutes : now.minutes - 1;
+    // After a same-day gap (sleep), dueReminders skips items that already started, so the gap never replays as a
+    // burst of stale reminders.
+    const from = checkFrom(previous, now.today, now.minutes);
     const sent = loadSent();
     const due = dueReminders(items, now.today, from, now.minutes, settings.lead).filter((r) => !sent.has(r.key));
 
