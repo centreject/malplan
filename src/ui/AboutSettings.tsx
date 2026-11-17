@@ -33,6 +33,7 @@ export function AboutSettings() {
     <fieldset className="settings-section window-settings">
       <legend>malplan</legend>
       <p className="window-note">버전 {version ?? "개발판"}</p>
+      <p className="window-note">단축키: Ctrl+F 검색 · / 입력창 · T 오늘로 · ←/→ 하루 앞뒤 · Ctrl+Z 방금 한 일 되돌리기</p>
       {version !== undefined && (
         <div className="storage-actions">
           {state.phase === "available" ? (

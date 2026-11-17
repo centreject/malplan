@@ -109,17 +109,11 @@ export default function App() {
   const [searchOpen, setSearchOpen] = useState(false);
   const [view, setView] = useState<"board" | "list">("board");
 
-  useEffect(() => {
-    const onKey = (event: KeyboardEvent) => {
-      if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === "f") {
-        event.preventDefault();
+  /** Set below on every render, so the one listener always sees the current state. */
+  const shortcuts = useRef<(event: KeyboardEvent) => void>(undefined);
 
-        // Not over an open dialog (editor, settings): search would stack on top of unsaved work.
-        if (document.querySelector("dialog[open]") === null) {
-          setSearchOpen(true);
-        }
-      }
-    };
+  useEffect(() => {
+    const onKey = (event: KeyboardEvent) => shortcuts.current?.(event);
 
     window.addEventListener("keydown", onKey);
 
@@ -493,6 +487,57 @@ export default function App() {
     setWeekAnchor(date);
   };
 
+  const revertLast = () => {
+    if (undo === undefined) {
+      return;
+    }
+
+    const { before, after } = undo;
+
+    persisted.update((board) => ({
+      ...board,
+      items: revertChange(board.items, before.items, after.items),
+      categories: revertChange(board.categories, before.categories, after.categories),
+      tabs: revertChange(board.tabs, before.tabs, after.tabs),
+    }));
+    setUndo(undefined);
+  };
+
+  /**
+   * Ctrl+F 검색, / 입력창, T 오늘로, ←/→ 하루 앞뒤, Ctrl+Z 방금 한 일 되돌리기. Never over an open dialog (search would
+   * stack on unsaved work), and the single keys never while typing in a field.
+   */
+  useEffect(() => {
+    shortcuts.current = (event: KeyboardEvent) => {
+      if (document.querySelector("dialog[open]") !== null) {
+        return;
+      }
+
+      const command = event.ctrlKey || event.metaKey;
+      const typing = event.target instanceof Element && event.target.closest("input, textarea, select, [contenteditable='true']") !== null;
+      const key = event.key.toLowerCase();
+
+      if (command && key === "f") {
+        event.preventDefault();
+        setSearchOpen(true);
+      } else if (command && key === "z" && !typing && undo !== undefined) {
+        event.preventDefault();
+        revertLast();
+      } else if (command || event.altKey || typing) {
+        // Only the plain keys below.
+      } else if (key === "/") {
+        event.preventDefault();
+        document.querySelector<HTMLInputElement>("#quick-add-input")?.focus();
+      } else if (key === "t" || key === "ㅅ") {
+        select(now.today);
+        setMonthCursor(partsOf(now.today));
+      } else if ((key === "arrowleft" || key === "arrowright") && event.target === document.body) {
+        // Only from the page itself: a focused calendar cell or tab keeps the arrows for itself.
+        select(addDays(selected, key === "arrowleft" ? -1 : 1));
+      }
+    };
+  });
+
   /** Undoable: a check in 밀린 할 일 or 날짜 없는 할 일 takes the row off the screen. */
   const toggleDone = (target: Item, date: string) => {
     const key = doneKey(target, date);
@@ -826,17 +871,8 @@ export default function App() {
           <button
             type="button"
             className="text-button"
-            onClick={() => {
-              const { before, after } = undo;
-
-              persisted.update((board) => ({
-                ...board,
-                items: revertChange(board.items, before.items, after.items),
-                categories: revertChange(board.categories, before.categories, after.categories),
-                tabs: revertChange(board.tabs, before.tabs, after.tabs),
-              }));
-              setUndo(undefined);
-            }}
+            onClick={revertLast}
+            title="Ctrl+Z"
           >
             되돌리기
           </button>
