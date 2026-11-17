@@ -112,12 +112,14 @@ export function parseKorean(text: string, today: IsoDate): ParseResult {
 
   const time = takeTime(scanner, flags);
 
-  // 밤 12시 / 자정 is 0:00 at the start of the next day.
-  if (time?.kind === "exact" && time.start.hour === 24) {
-    time.start = { hour: 0, minute: time.start.minute };
+  // 밤 12시 / 자정 is 0:00 at the start of the next day; "0시 5분 전" (hour -1) is 23:55 the day before.
+  if (time?.kind === "exact" && (time.start.hour === 24 || time.start.hour < 0)) {
+    const days = time.start.hour === 24 ? 1 : -1;
+
+    time.start = { hour: (time.start.hour + 24) % 24, minute: time.start.minute };
 
     if (date?.kind === "single") {
-      date = { kind: "single", date: addDays(date.date, 1) };
+      date = { kind: "single", date: addDays(date.date, days) };
     }
   }
 
@@ -987,7 +989,8 @@ function takeTime(scanner: Scanner, flags: Flag[]): ParsedTime | undefined {
     const clock = toClock(before[1], before[2], undefined, undefined, flags);
     const minutes = clock.hour * 60 - Number(before[3]);
 
-    return { kind: "exact", start: { hour: Math.floor(minutes / 60), minute: minutes % 60 } };
+    // "0시 5분 전" is 23:55 the day before: hour -1 with a positive minute, moved back a day by parseKorean.
+    return { kind: "exact", start: { hour: Math.floor(minutes / 60), minute: ((minutes % 60) + 60) % 60 } };
   }
 
   // PM 3:30, 3:30 pm, 3pm.

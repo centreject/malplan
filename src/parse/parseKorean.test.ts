@@ -341,6 +341,11 @@ describe("clock words", () => {
     expect(clockOf(text)).toBe(clock);
   });
 
+  test("0시 N분 전 is just before midnight, the day before", () => {
+    expect(parseKorean("내일 0시 5분 전 회의", today)).toMatchObject({ date: single("2026-10-05"), time: { kind: "exact", start: { hour: 23, minute: 55 } } });
+    expect(parseKorean("내일 밤 12시 5분 전 회의", today)).toMatchObject({ date: single("2026-10-06"), time: { kind: "exact", start: { hour: 23, minute: 55 } } });
+  });
+
   test("밤 12시 and 자정 are midnight, the start of the next day", () => {
     expect(parseKorean("오늘 밤 12시 마감", today)).toMatchObject({ date: single("2026-10-06"), time: { kind: "exact", start: { hour: 0, minute: 0 } } });
     expect(clockOf("자정")).toBe("0:00");
