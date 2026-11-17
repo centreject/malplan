@@ -1,5 +1,17 @@
 # Changelog
 
+## 0.2.11 (2026-11-17)
+
+- Turning 반복 off on one date of a repeating item keeps the scope choice: 이 일정만 makes that date a one-off and the series goes on. It used to turn the whole series into one item. A done date moved elsewhere stays done.
+- 이후 전부 refuses an end date before the chosen day instead of quietly ignoring it.
+- An item that runs past midnight ("밤 10시~새벽 1시") also shows at the top of the next day as "~1시 · 전날부터", and its time reads "22시–다음 날 1시".
+- Sync: a deletion survives merging with another copy of the folder (the deletion mark is kept a year); a cloud copy of a log no longer makes every refresh rewrite and re-upload the log; a failed refresh shows on the main screen.
+- A reminder due in the very minute an item is added or reminders are turned on still fires.
+- "0시 5분 전" reads as 23:55 the day before.
+- When the AI answers in a form the app cannot read, the note says so instead of disappearing.
+- A new folder gets the default categories even if an item was saved before it loaded; choosing the folder already in use does nothing; the merge question says how many unsaved changes will go to the new folder.
+- Many tabs scroll sideways instead of widening the month pane; a category made in the edit form gets the least-used colour like everywhere else.
+
 ## 0.2.10 (2026-11-16)
 
 - Merging folders no longer brings back an item the source folder deleted (it came back with a few fields when the deletion had been tidied away there).

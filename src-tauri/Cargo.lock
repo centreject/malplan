@@ -2290,7 +2290,7 @@ dependencies = [
 
 [[package]]
 name = "malplan"
-version = "0.2.10"
+version = "0.2.11"
 dependencies = [
  "getrandom 0.3.4",
  "log",
