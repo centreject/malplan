@@ -105,7 +105,7 @@ export function ConfirmDialog(props: ConfirmDialogProps) {
     }
   }, []);
 
-  const errors = drafts.map((draft) => cardErrors(draft.card));
+  const errors = drafts.map((draft) => cardErrors(draft.card, scope === "future" ? occurrence : undefined));
 
   const update = (id: string, card: Card) => {
     const before = drafts.find((draft) => draft.id === id)?.card;

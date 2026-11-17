@@ -237,6 +237,14 @@ describe("cardErrors", () => {
     expect(cardErrors({ ...base, categoryId: NEW_CATEGORY, newCategory: "" }).newCategory).toBeDefined();
   });
 
+  test("이후 전부: the end date cannot be before the date the edit starts from", () => {
+    const series = { ...base, repeat: true, date: "2026-10-01", until: "2026-10-10" };
+
+    expect(cardErrors(series, "2026-10-20").until).toBeDefined();
+    expect(cardErrors(series, "2026-10-10").until).toBeUndefined();
+    expect(cardErrors(series).until).toBeUndefined();
+  });
+
   test("an end before the start ends the next day: 밤 10시~새벽 1시 can be saved", () => {
     const night = cardFromParse(parseKorean("내일 밤 10시~새벽 1시 야간 작업", today), today, categories);
 

@@ -319,8 +319,11 @@ function clockOf(text: string): ClockTime {
   return { hour, minute };
 }
 
-/** Inline validation; any entry blocks 확인. Fields hidden by the current kind/mode are not checked. */
-export function cardErrors(card: Card): CardErrors {
+/**
+ * Inline validation; any entry blocks 확인. Fields hidden by the current kind/mode are not checked.
+ * `appliesFrom`: editing a series from this date on (이후 전부); the end date cannot be before it.
+ */
+export function cardErrors(card: Card, appliesFrom?: string): CardErrors {
   const errors: CardErrors = {};
 
   if (card.title.trim() === "") {
@@ -345,6 +348,9 @@ export function cardErrors(card: Card): CardErrors {
 
   if (card.repeat && card.until !== "" && card.until < card.date) {
     errors.until = "종료일이 시작일보다 빠릅니다.";
+  } else if (card.repeat && card.until !== "" && appliesFrom !== undefined && card.until < appliesFrom) {
+    // The edit starts on that date: an end before it would leave nothing to apply it to.
+    errors.until = "이후 전부에 적용할 때는 종료일이 고른 날짜보다 빠를 수 없습니다.";
   }
 
   if (card.repeat && card.freq === "weekly" && card.weekdays.length === 0) {
