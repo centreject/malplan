@@ -1,6 +1,6 @@
 import { addDays, type IsoDate } from "./date";
 import type { Item } from "./item";
-import { SLOT_START, formatClock, minutesOf, occurrencesOn } from "./schedule";
+import { SLOT_START, formatClock, minutesOf, occurrencesOn, overdueTasks } from "./schedule";
 
 export type Reminder = { key: string; title: string; body: string };
 
@@ -28,7 +28,8 @@ export function checkFrom(previous: { today: IsoDate; minutes: number } | undefi
  * Reminders whose fire time falls in (fromMinutes, toMinutes] of `today`.
  * Exact times fire `remindMinutes` (or the default) before the start, possibly on the day before;
  * slots fire when the slot starts; undecided items get one morning summary. The key identifies the
- * occurrence and its time, so the caller can avoid firing twice yet a moved item reminds again.
+ * occurrence and its time, so the caller can avoid firing twice yet a moved item reminds again. Unfinished tasks from
+ * earlier days get one morning summary too.
  * After a gap (the PC slept), items that have already started are skipped and the label says the time
  * actually left.
  */
@@ -83,6 +84,18 @@ export function dueReminders(
       key: `undecided@${today}`,
       title: `오늘 시간 미정 ${undecided.length}건`,
       body: undecided.map((o) => o.item.title).join(", "),
+    });
+  }
+
+  // Same morning window and once-a-day key; only looked up in that window, every minute would cost more.
+  const morning = toMinutes >= UNDECIDED_SUMMARY_AT && toMinutes < UNDECIDED_SUMMARY_UNTIL;
+  const overdue = morning ? overdueTasks(items, today) : [];
+
+  if (overdue.length > 0) {
+    reminders.push({
+      key: `overdue@${today}`,
+      title: `밀린 할 일 ${overdue.length}건`,
+      body: overdue.map((o) => o.item.title).join(", "),
     });
   }
 

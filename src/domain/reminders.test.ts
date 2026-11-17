@@ -63,6 +63,17 @@ test("undecided summary: a PC turned on after 8 still gets it that morning, not 
   expect(dueReminders(items, today, at(12, 59), at(13, 0), 10)).toEqual([]);
 });
 
+test("unfinished tasks from earlier days: one morning summary", () => {
+  const late = item("보고서", { kind: "task", when: { kind: "single", date: "2026-10-06" } });
+  const finished = item("끝난 일", { kind: "task", when: { kind: "single", date: "2026-10-06" }, done: ["2026-10-06"] });
+  const event = item("지난 일정", { when: { kind: "single", date: "2026-10-06" } });
+
+  expect(dueReminders([late, finished, event], today, at(8, 59), at(9, 0), 10)).toEqual([
+    { key: "overdue@2026-10-08", title: "밀린 할 일 1건", body: "보고서" },
+  ]);
+  expect(dueReminders([late], today, at(13, 0), at(13, 1), 10)).toEqual([]);
+});
+
 test("done occurrences and anytime items never fire", () => {
   const done = item("done", { kind: "task", time: { kind: "exact", start: { hour: 14, minute: 0 } }, done: [today] });
   const any = item("any", { time: { kind: "anytime" } });
