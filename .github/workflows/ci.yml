@@ -28,3 +28,4 @@ jobs:
       - run: npm run fetch:llama
       - run: npm run build:mcp
       - run: cargo clippy --manifest-path src-tauri/Cargo.toml -- -D warnings
+      - run: cargo test --manifest-path src-tauri/Cargo.toml
