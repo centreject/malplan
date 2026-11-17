@@ -814,3 +814,33 @@ test("merge: a deletion compacted away in one copy of a folder still deletes the
     expect(ids(merged)).toEqual(["keep"]);
   }
 });
+
+test("a cloud copy holding folded lines does not make every load rewrite our log", async () => {
+  const folder = new CountingWrites();
+  let now = 1_000_000;
+  const a = new SyncStore(folder, "a", () => now);
+
+  await a.load();
+  await a.set("item", "i1", "title", "x");
+  folder.files.set("log-a (1).jsonl", folder.files.get("log-a.jsonl") ?? "");
+  now += 2 * DAY;
+  await a.compact();
+  now += PRUNE_AFTER_MS + 1;
+  folder.writes = [];
+
+  for (let i = 0; i < 5; i++) await a.load();
+
+  // Pruned once; the copy is never written, so its folded line is not a reason to write again.
+  expect(folder.writes.filter((name) => name === "log-a.jsonl")).toHaveLength(1);
+  expect(ids(a)).toEqual(["i1"]);
+});
+
+class CountingWrites extends MemoryBackend {
+  writes: string[] = [];
+
+  override async write(name: string, content: string) {
+    this.writes.push(name);
+
+    return super.write(name, content);
+  }
+}

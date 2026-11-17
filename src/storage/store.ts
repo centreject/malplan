@@ -123,7 +123,8 @@ export class SyncStore {
     // still holds everything it folded; showing the board without it would make items vanish until the next read.
     const snapshot = unreadable && hadSnapshot ? this.#snapshot : parsed.snapshot;
 
-    const logs = await readLogs(this.#backend, errors);
+    const files = new Map<string, Change[]>();
+    const logs = await readLogs(this.#backend, errors, files);
 
     this.errors = errors;
     this.#snapshot = snapshot;
@@ -143,7 +144,11 @@ export class SyncStore {
 
     this.#lastTs = Math.max(this.#lastTs, seenSelf);
 
-    if (live.length < own.length) {
+    // Only when our own file holds a line to prune. A cloud copy of it may hold folded lines too, but we never
+    // write the copy, so comparing against everything read would rewrite our log on every load.
+    const kept = new Set(live.map((c) => c.ts));
+
+    if ((files.get(logName(this.#deviceId)) ?? []).some((c) => !kept.has(c.ts))) {
       await this.#backend.write(logName(this.#deviceId), toLines(live));
       logs.set(this.#deviceId, live);
     }
@@ -250,9 +255,9 @@ export class SyncStore {
 /**
  * Every log file's lines, grouped by the device each line names. A device's lines can come from several files
  * (its log and a cloud copy of it): each ts is kept once, in order. A copy that cannot be read is reported and
- * skipped; a device's own log failing to read still fails the load.
+ * skipped; a device's own log failing to read still fails the load. `files` gets each file's own lines.
  */
-async function readLogs(backend: Backend, errors: string[]): Promise<Map<string, Change[]>> {
+async function readLogs(backend: Backend, errors: string[], files = new Map<string, Change[]>()): Promise<Map<string, Change[]>> {
   const logs = new Map<string, Change[]>();
 
   for (const name of (await backend.list()).filter(isLogFile)) {
@@ -270,6 +275,7 @@ async function readLogs(backend: Backend, errors: string[]): Promise<Map<string,
     const log = parseLog(text);
 
     errors.push(...log.errors.map((e) => `${name} ${e}`));
+    files.set(name, log.changes);
 
     for (const change of log.changes) logs.set(change.device, [...(logs.get(change.device) ?? []), change]);
   }
