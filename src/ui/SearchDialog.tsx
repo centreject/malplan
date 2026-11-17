@@ -16,12 +16,13 @@ type SearchDialogProps = {
 
 const MAX_RESULTS = 50;
 
-/** Find items by title, place or note; choosing one opens it in the edit dialog. */
+/** Find items by title, place, note or category; choosing one opens it. ↓/↑ move between the input and the results. */
 export function SearchDialog({ items, categories, today, onOpen, onClose }: SearchDialogProps) {
   const dialog = useRef<HTMLDialogElement>(null);
   const input = useRef<HTMLInputElement>(null);
   const [query, setQuery] = useState("");
-  const results = searchItems(items, query, today).slice(0, MAX_RESULTS);
+  const found = searchItems(items, query, today, { categories });
+  const results = found.slice(0, MAX_RESULTS);
 
   useEffect(() => {
     if (dialog.current?.open === false) {
@@ -50,17 +51,37 @@ export function SearchDialog({ items, categories, today, onOpen, onClose }: Sear
           <X size={18} strokeWidth={2} />
         </button>
       </header>
-      <div className="search-body">
+      <div
+        className="search-body"
+        onKeyDown={(event) => {
+          if (event.key !== "ArrowDown" && event.key !== "ArrowUp") {
+            return;
+          }
+
+          // The input, then each result, in order; Enter on a result opens it (it is a button).
+          const stops = [input.current, ...event.currentTarget.querySelectorAll<HTMLElement>(".search-row")];
+          const at = stops.findIndex((stop) => stop === document.activeElement);
+          const next = stops[Math.min(Math.max(at + (event.key === "ArrowDown" ? 1 : -1), 0), stops.length - 1)];
+
+          event.preventDefault();
+          next?.focus();
+        }}
+      >
         <input
           className="quick-add-input search-input"
           type="search"
           value={query}
           onChange={(event) => setQuery(event.target.value)}
-          placeholder="제목, 장소, 비고에서 찾기"
+          placeholder="제목, 장소, 비고, 분류에서 찾기"
           aria-label="검색어"
           ref={input}
         />
         {query.trim() !== "" && results.length === 0 && <p className="empty">찾는 항목이 없습니다.</p>}
+        {found.length > MAX_RESULTS && (
+          <p className="window-note" role="status">
+            {found.length}개 중 가까운 {MAX_RESULTS}개만 보입니다. 검색어를 더 자세히 적어 보세요.
+          </p>
+        )}
         <ul className="search-results">
           {results.map(({ item, date }) => (
             <li key={item.id}>

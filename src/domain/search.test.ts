@@ -29,6 +29,12 @@ test("matches title, place and note, ignoring case and spaces at the ends", () =
   expect(searchItems(items, "KIM", today).map((r) => r.item.id)).toEqual(["Report"]);
 });
 
+test("a category's name finds its items", () => {
+  const items = [item("팀 회의", { categoryId: "work" }), item("헬스", { categoryId: "gym" })];
+
+  expect(searchItems(items, "회사", today, { categories: [{ id: "work", name: "회사", colorSlot: 1 }] }).map((r) => r.item.id)).toEqual(["팀 회의"]);
+});
+
 test("empty query finds nothing", () => {
   expect(searchItems([item("a", {})], "  ", today)).toEqual([]);
 });
@@ -42,7 +48,7 @@ test("each result carries the nearest upcoming date, else the last one; sorted b
     item("undated", { when: { kind: "none" } }),
   ];
 
-  expect(searchItems(items, "", today, true).map((r) => [r.item.id, r.date])).toEqual([
+  expect(searchItems(items, "", today, { all: true }).map((r) => [r.item.id, r.date])).toEqual([
     ["soon", "2026-10-09"],
     ["weekly", "2026-10-12"],
     ["recent", "2026-10-01"],

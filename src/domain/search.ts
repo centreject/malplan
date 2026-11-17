@@ -1,5 +1,5 @@
 import type { IsoDate } from "./date";
-import type { Item } from "./item";
+import type { Category, Item } from "./item";
 import { firstOccurrence } from "./schedule";
 
 export type SearchResult = { item: Item; date: IsoDate | undefined };
@@ -8,18 +8,20 @@ export type SearchResult = { item: Item; date: IsoDate | undefined };
 const LOOKAHEAD_DAYS = 400;
 
 /**
- * Items whose title, place or note contain the query. Upcoming results come first (soonest
+ * Items whose title, place, note or category name contain the query. Upcoming results come first (soonest
  * first), then past ones (latest first), then undated. `all` returns every item (for tests/lists).
  */
-export function searchItems(items: Item[], query: string, today: IsoDate, all = false): SearchResult[] {
+export function searchItems(items: Item[], query: string, today: IsoDate, options: { categories?: Category[]; all?: boolean } = {}): SearchResult[] {
   const needle = query.trim().toLowerCase();
 
-  if (needle === "" && !all) {
+  if (needle === "" && options.all !== true) {
     return [];
   }
 
+  const categoryName = new Map((options.categories ?? []).map((c) => [c.id, c.name]));
+
   const hits = items.filter((item) =>
-    [item.title, item.place ?? "", item.note ?? ""].some((text) => text.toLowerCase().includes(needle)),
+    [item.title, item.place ?? "", item.note ?? "", categoryName.get(item.categoryId) ?? ""].some((text) => text.toLowerCase().includes(needle)),
   );
 
   return hits

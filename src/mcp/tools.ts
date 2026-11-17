@@ -72,7 +72,7 @@ export function listSchedule(board: Board, from: IsoDate, days: number): string 
 }
 
 export function findSchedule(board: Board, query: string, today: IsoDate): string {
-  const results = searchItems(board.items, query, today);
+  const results = searchItems(board.items, query, today, { categories: board.categories });
 
   return results.length === 0
     ? `"${query}"에 맞는 일정이 없습니다.`
