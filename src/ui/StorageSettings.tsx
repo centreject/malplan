@@ -7,11 +7,13 @@ import { folderHasData, type FolderMode } from "./useBoard";
 type StorageSettingsProps = {
   dir: string | undefined;
   errors: string[];
+  /** Changes not yet written: they go to whichever folder is used next. */
+  unsaved: number;
   onSwitch: (dir: string | undefined, mode: FolderMode) => Promise<void>;
 };
 
 /** "저장 위치": which folder this device syncs through. */
-export function StorageSettings({ dir, errors, onSwitch }: StorageSettingsProps) {
+export function StorageSettings({ dir, errors, unsaved, onSwitch }: StorageSettingsProps) {
   const [pending, setPending] = useState<string | null>();
   const [busy, setBusy] = useState(false);
   const [failure, setFailure] = useState<string>();
@@ -35,6 +37,11 @@ export function StorageSettings({ dir, errors, onSwitch }: StorageSettingsProps)
 
   const choose = (next: string | undefined) =>
     attempt(async () => {
+      // The folder in use already: nothing to merge or replace.
+      if (next === dir) {
+        return;
+      }
+
       if (await folderHasData(next)) {
         // Ask: merge into the existing data, or use only what is there.
         setPending(next ?? null);
@@ -86,6 +93,7 @@ export function StorageSettings({ dir, errors, onSwitch }: StorageSettingsProps)
       {pending !== undefined && (
         <div className="storage-choice" role="alertdialog" aria-label="폴더에 기존 데이터가 있음">
           <p>이 폴더에 이미 malplan 데이터가 있습니다. 어떻게 할까요?</p>
+          {unsaved > 0 && <p>저장하지 못한 변경 {unsaved}건은 어느 쪽을 골라도 이 폴더에 저장됩니다.</p>}
           <div className="storage-actions">
             <button type="button" className="text-button bordered" onClick={() => void confirm("merge")}>
               합치기 (지금 데이터도 옮김)

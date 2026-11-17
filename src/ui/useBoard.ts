@@ -169,21 +169,20 @@ export function useBoard(seed: () => Board) {
       queue.current = queue.current.then(() => flush(target));
       await queue.current;
 
+      // A folder with no categories stored is new, even if an item typed before the load was saved first.
+      if (target.entities().category.length === 0) {
+        await target.seed(boardWrites(EMPTY, seedRef.current()));
+      }
+
+      // Switched to another folder meanwhile: that load shows its own board.
+      if (cancelled) {
+        return;
+      }
+
       const loaded = boardFromEntities(target.entities());
 
       setErrors([...target.errors, ...loaded.errors]);
-
-      const isNew = loaded.board.items.length === 0 && loaded.board.categories.length === 0;
-
-      if (isNew) {
-        const seeded = seedRef.current();
-
-        show(seeded);
-        await target.seed(boardWrites(EMPTY, seeded));
-      } else {
-        show(loaded.board);
-      }
-
+      show(loaded.board);
       setLoadFailed(false);
       setReady(true);
     })().catch((error: Error) => {
@@ -252,7 +251,7 @@ export function useBoard(seed: () => Board) {
   /** Shown on the main screen too: data is not where the user thinks it is. */
   const warning = unsaved > 0 ? unsavedText : loadFailed ? "저장 폴더를 불러오지 못했습니다. 잠시 뒤 다시 시도합니다." : undefined;
 
-  return { board, ready, errors: shownErrors, warning, update, dir, switchFolder, reload };
+  return { board, ready, errors: shownErrors, warning, unsaved, update, dir, switchFolder, reload };
 }
 
 /** Folder holds sync data already? Used to ask merge vs replace. */
