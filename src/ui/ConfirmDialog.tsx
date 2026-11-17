@@ -135,8 +135,8 @@ export function ConfirmDialog(props: ConfirmDialogProps) {
       return;
     }
 
-    // Repeat turned off: the scope choice is hidden and the series becomes the one item shown.
-    onConfirm(drafts, recurring ? scope : "all");
+    // Saving and deleting go by the same scope the dialog shows, repeat turned off or not.
+    onConfirm(drafts, scope);
   };
 
   const recurring = editing && drafts[0]?.card.repeat === true;
@@ -164,7 +164,8 @@ export function ConfirmDialog(props: ConfirmDialogProps) {
         <div className="confirm-body">
           {aiNote !== undefined && <p className="confirm-note ai-note" role="status">{aiNote}</p>}
           {recurring && occurrence === undefined && <p className="confirm-note">반복 일정 전체에 적용됩니다.</p>}
-          {recurring && occurrence !== undefined && (
+          {/* An occurrence was opened, so this is a series even if repeat has just been turned off. */}
+          {editing && occurrence !== undefined && (
             <fieldset className="scope-choice">
               <legend>반복 일정 중 어디에 적용할까요?</legend>
               {SCOPES.map(([value, label]) => (
@@ -183,6 +184,7 @@ export function ConfirmDialog(props: ConfirmDialogProps) {
               errors={errors[index] ?? {}}
               categories={categories}
               occurrence={occurrence}
+              lockStart={occurrence !== undefined && scope === "this" && draft.card.repeat}
               heading={drafts.length > 1 ? `${index + 1} / ${drafts.length}` : undefined}
               onChange={(card) => update(draft.id, card)}
               onExclude={drafts.length > 1 ? () => exclude(draft.id) : undefined}
@@ -215,12 +217,14 @@ type CardEditorProps = {
   categories: Category[];
   /** The series date that was opened: turning repeat off keeps that date, not the series start. */
   occurrence: IsoDate | undefined;
+  /** 이 일정만 on a series: the date shown is the series start, so changing it would mean nothing. */
+  lockStart: boolean;
   heading: string | undefined;
   onChange: (card: Card) => void;
   onExclude: (() => void) | undefined;
 };
 
-function CardEditor({ card, errors, categories, occurrence, heading, onChange, onExclude }: CardEditorProps) {
+function CardEditor({ card, errors, categories, occurrence, lockStart, heading, onChange, onExclude }: CardEditorProps) {
   const base = useId();
   const id = (field: string) => `${base}-${field}`;
   const set = (patch: Partial<Card>) => onChange({ ...card, ...patch });
@@ -282,6 +286,8 @@ function CardEditor({ card, errors, categories, occurrence, heading, onChange, o
                 type="date"
                 className="cf-input cf-date num"
                 value={card.date}
+                disabled={lockStart}
+                title={lockStart ? "이 일정만 옮기려면 반복을 끄고 날짜를 고르세요" : undefined}
                 onChange={(event) => set({ date: event.target.value })}
                 {...invalid("date")}
               />

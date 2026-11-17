@@ -2,6 +2,7 @@
 import { addDays, type IsoDate } from "./date";
 import type { Item } from "./item";
 import type { Recurrence } from "./recurrence";
+import { doneKey } from "./schedule";
 
 export type SeriesScope = "this" | "future" | "all";
 
@@ -21,25 +22,21 @@ export function editOccurrence(
   }
 
   if (scope === "this") {
-    const single: Item = {
+    const single = carryDone({
       ...edited,
       id: newId(),
       // Keep a date the user changed; otherwise the occurrence becomes a one-off on its own date.
       when: edited.when.kind === "recurring" ? { kind: "single", date } : edited.when,
-      done: original.done.filter((d) => d === date),
-    };
+    }, original, date);
 
     return items.flatMap((item) => (item.id === original.id ? [skip(original, rule, date), single] : [item]));
   }
 
   const head = endBefore(original, rule, date);
 
-  const tail: Item = {
-    ...edited,
-    id: newId(),
-    when: edited.when.kind === "recurring" ? { kind: "recurring", rule: { ...edited.when.rule, start: date } } : edited.when,
-    done: original.done.filter((d) => d >= date),
-  };
+  const tail: Item = edited.when.kind === "recurring"
+    ? { ...edited, id: newId(), when: { kind: "recurring", rule: { ...edited.when.rule, start: date } }, done: original.done.filter((d) => d >= date) }
+    : carryDone({ ...edited, id: newId() }, original, date);
 
   return items.flatMap((item) => (item.id === original.id ? [head, tail] : [item]));
 }
@@ -54,6 +51,13 @@ export function deleteOccurrence(items: Item[], original: Item, date: IsoDate, s
   const replacement = scope === "this" ? skip(original, rule, date) : endBefore(original, rule, date);
 
   return items.map((item) => (item.id === original.id ? replacement : item));
+}
+
+/** A one-off made from the occurrence on `date`: done if that occurrence was, under its own key (it may have moved). */
+function carryDone(item: Omit<Item, "done">, original: Item, date: IsoDate): Item {
+  const key = doneKey({ ...item, done: [] }, undefined);
+
+  return { ...item, done: original.done.includes(date) && key !== undefined ? [key] : [] };
 }
 
 function recurrenceOf(item: Item): Recurrence | undefined {

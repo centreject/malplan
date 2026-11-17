@@ -34,6 +34,24 @@ describe("editOccurrence", () => {
     expect(result[1]?.when).toEqual({ kind: "single", date: "2026-10-15" });
   });
 
+  test("a done occurrence moved to another date stays done there", () => {
+    const moved: Item = { ...edited, when: { kind: "single", date: "2026-10-22" } };
+    const result = editOccurrence([weekly], weekly, moved, "2026-10-21", "this", newId);
+
+    expect(result[1]?.done).toEqual(["2026-10-22"]);
+  });
+
+  test("repeat turned off with this and following: the series ends, the one-off keeps the occurrence's check", () => {
+    const single: Item = { ...edited, when: { kind: "single", date: "2026-10-21" } };
+    const result = editOccurrence([weekly], weekly, single, "2026-10-21", "future", newId);
+
+    expect(result.map((item) => item.when)).toEqual([
+      { kind: "recurring", rule: { freq: "weekly", weekdays: [3], start: "2026-10-07", until: "2026-10-20" } },
+      { kind: "single", date: "2026-10-21" },
+    ]);
+    expect(result[1]?.done).toEqual(["2026-10-21"]);
+  });
+
   test("this and following: the series ends the day before, a new series starts on the date", () => {
     const result = editOccurrence([weekly], weekly, edited, "2026-10-14", "future", newId);
 
