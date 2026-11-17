@@ -1,7 +1,7 @@
 import { describe, expect, test } from "vitest";
 import { boardWrites, type Board } from "../storage/board";
 import { MemoryBackend, SyncStore } from "../storage/store";
-import { addSchedule, completeTask, findSchedule, listSchedule, loadBoard, previewSchedule } from "./tools";
+import { addSchedule, completeTask, deleteSchedule, editSchedule, findSchedule, listSchedule, loadBoard, previewSchedule, uncompleteTask } from "./tools";
 
 // 2026-10-05 is a Monday.
 const today = "2026-10-05";
@@ -120,5 +120,67 @@ describe("mcp tools", () => {
     expect(wrong.text).toMatch(/^그 날짜에는 이 할 일이 없습니다/);
     expect(wrong.next).toBe(next);
     expect((await completeTask(store, next, "r1", "2026-10-12")).text).toBe("완료했습니다: 분리수거 하기 (10/12(월))");
+  });
+
+  test("uncomplete takes a done mark off, for that date only", async () => {
+    const { store, board } = await seeded();
+    const { next } = await addSchedule(store, board, "매주 월요일 분리수거 하기", today, () => "r1");
+    const done = await completeTask(store, next, "r1", "2026-10-12");
+
+    expect((await uncompleteTask(store, done.next, "r1", "2026-10-19")).text).toBe("완료된 할 일이 아닙니다: 분리수거 하기 (10/19(월))");
+
+    const undone = await uncompleteTask(store, done.next, "r1", "2026-10-12");
+
+    expect(undone.text).toBe("완료를 취소했습니다: 분리수거 하기 (10/12(월))");
+    expect(undone.next.items[0]?.done).toEqual([]);
+  });
+
+  test("edit previews first and saves only with save", async () => {
+    const { store, board, backend } = await seeded();
+    const { next } = await addSchedule(store, board, "내일 오후 3시 치과", today, () => "e1");
+    const before = backend.files.get("log-mcp.jsonl");
+    const preview = await editSchedule(store, next, { id: "e1", text: "하루 미뤄", date: undefined, save: false }, today, () => "x");
+
+    expect(preview.text).toMatch(/^바꾸면: 치과 — .*10\/7/);
+    expect(backend.files.get("log-mcp.jsonl")).toBe(before);
+
+    const saved = await editSchedule(store, next, { id: "e1", text: "하루 미뤄", date: undefined, save: true }, today, () => "x");
+    const app = await loadBoard(new SyncStore(backend, "app", () => 999_999));
+
+    expect(saved.text).toMatch(/^바꿨습니다: 치과/);
+    expect(app.items[0]?.when).toEqual({ kind: "single", date: "2026-10-07" });
+    expect((await editSchedule(store, next, { id: "e1", text: "음", date: undefined, save: true }, today, () => "x")).text).toMatch(/^바꿀 내용을 찾지 못했습니다/);
+  });
+
+  test("moving one occurrence of a repeating item needs its date and leaves the rest", async () => {
+    const { store, board } = await seeded();
+    const { next } = await addSchedule(store, board, "매주 월요일 오후 3시 회의", today, () => "r1");
+
+    expect((await editSchedule(store, next, { id: "r1", text: "하루 미뤄", date: undefined, save: true }, today, () => "one")).text).toMatch(/date를 주세요/);
+
+    const moved = await editSchedule(store, next, { id: "r1", text: "하루 미뤄", date: "2026-10-12", save: true }, today, () => "one");
+
+    expect(listSchedule(moved.next, today, 15)).toContain("10/13(화)\n  - 15시 회의");
+    expect(listSchedule(moved.next, today, 15)).not.toContain("10/12(월)");
+    expect(listSchedule(moved.next, today, 15)).toContain("10/19(월)\n  - 15시 회의");
+  });
+
+  test("delete: a one-off at once, a repeating item only with a scope", async () => {
+    const { store, board } = await seeded();
+    const { next } = await addSchedule(store, board, "내일 오후 3시 치과", today, () => "e1");
+    const gone = await deleteSchedule(store, next, { id: "e1", date: undefined, scope: undefined });
+
+    expect(gone.text).toBe("삭제했습니다: 치과");
+    expect(gone.next.items).toEqual([]);
+
+    const { next: series } = await addSchedule(store, gone.next, "매주 월요일 오후 3시 회의", today, () => "r1");
+
+    expect((await deleteSchedule(store, series, { id: "r1", date: undefined, scope: undefined })).text).toMatch(/^반복 일정입니다/);
+
+    const one = await deleteSchedule(store, series, { id: "r1", date: "2026-10-12", scope: "this" });
+
+    expect(one.text).toBe("삭제했습니다: 회의 (10/12(월)만)");
+    expect(listSchedule(one.next, today, 15)).not.toContain("10/12(월)");
+    expect(listSchedule(one.next, today, 15)).toContain("10/19(월)");
   });
 });

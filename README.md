@@ -98,7 +98,7 @@ npm run tauri dev
 claude mcp add malplan -- node "<설치 폴더>\mcp\malplan-mcp.mjs" --dir "<동기화 폴더>"
 ```
 
-도구: `list_schedule`, `find_schedule`, `preview_schedule`, `add_schedule`, `complete_task`. 날짜는 항상 malplan의 파서가 계산하고, 추가는 미리보기를 거칩니다.
+도구: `list_schedule`, `find_schedule`, `preview_schedule`, `add_schedule`, `complete_task`, `uncomplete_task`, `edit_schedule`, `delete_schedule`. 날짜는 항상 malplan의 파서가 계산하고, 추가와 수정은 미리보기를 거칩니다.
 
 ## 개발
 

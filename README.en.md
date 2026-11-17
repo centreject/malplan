@@ -98,7 +98,7 @@ malplan ships a small MCP server (`mcp/malplan-mcp.mjs` in the install folder; n
 claude mcp add malplan -- node "<install folder>\mcp\malplan-mcp.mjs" --dir "<sync folder>"
 ```
 
-Tools: `list_schedule`, `find_schedule`, `preview_schedule`, `add_schedule`, `complete_task`. Dates are always computed by malplan's own parser, and adding goes through a preview first.
+Tools: `list_schedule`, `find_schedule`, `preview_schedule`, `add_schedule`, `complete_task`, `uncomplete_task`, `edit_schedule`, `delete_schedule`. Dates are always computed by malplan's own parser, and adding and editing go through a preview first.
 
 ## Development
 
