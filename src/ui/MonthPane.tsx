@@ -55,6 +55,36 @@ export function MonthPane(props: MonthPaneProps) {
   const grid = useRef<HTMLDivElement>(null);
   const rows = useRowsThatFit(grid);
   const limit = Math.min(props.cellCapacity, rows ?? props.cellCapacity);
+  // A crowded day's full list: pointing at "+n" shows it until the pointer leaves the list; clicking the day pins it
+  // until the day is clicked again, somewhere else is clicked, or Escape. The same rules as the missed-dates popup.
+  const [pinned, setPinned] = useState<IsoDate>();
+  const [hovered, setHovered] = useState<IsoDate>();
+
+  useEffect(() => {
+    if (pinned === undefined) {
+      return;
+    }
+
+    const unpin = (event: Event) => {
+      if (!(event.target instanceof Element && event.target.closest(`[data-date="${pinned}"]`))) {
+        setPinned(undefined);
+      }
+    };
+
+    const escape = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        setPinned(undefined);
+      }
+    };
+
+    document.addEventListener("pointerdown", unpin);
+    document.addEventListener("keydown", escape);
+
+    return () => {
+      document.removeEventListener("pointerdown", unpin);
+      document.removeEventListener("keydown", escape);
+    };
+  }, [pinned]);
 
   return (
     <section className={`pane pane-month tab-frame ${tabColor}`} aria-label="이번 달 할 일">
@@ -163,8 +193,18 @@ export function MonthPane(props: MonthPaneProps) {
                 outside ? "is-outside" : "",
                 date === props.today ? "is-today" : "",
                 date === props.selected ? "is-selected" : "",
+                occurrences.length > limit && (date === pinned || date === hovered) ? "is-unfolded" : "",
               ].join(" ")}
-              onClick={() => props.onSelect(date)}
+              data-date={date}
+              // The list is inside the cell, so this fires only once the pointer leaves both (and the list's margin).
+              onMouseLeave={() => setHovered(undefined)}
+              onClick={() => {
+                props.onSelect(date);
+
+                if (occurrences.length > limit) {
+                  setPinned((current) => (current === date ? undefined : date));
+                }
+              }}
               onKeyDown={(event) => {
                 if (event.key === "Enter" || event.key === " ") {
                   props.onSelect(date);
@@ -189,13 +229,13 @@ export function MonthPane(props: MonthPaneProps) {
                     </button>
                     {/* "+n" ends the last row it continues, so it reads as "and n more". */}
                     {index === limit - 1 && occurrences.length > limit && (
-                      <span className="month-more" aria-label={`외 ${occurrences.length - limit}개`}>+{occurrences.length - limit}</span>
+                      <span className="month-more" onMouseEnter={() => setHovered(date)} aria-label={`외 ${occurrences.length - limit}개`}>+{occurrences.length - limit}</span>
                     )}
                   </li>
                 ))}
               </ul>
               {occurrences.length > limit && (
-                <ul className="month-full" aria-label={`${month}월 ${day}일 전체`} onMouseLeave={closeFullList}>
+                <ul className="month-full" aria-label={`${month}월 ${day}일 전체`}>
                   {occurrences.map(({ item, done }) => (
                     <li key={item.id}>
                       <button
@@ -283,10 +323,3 @@ function rowsIn(grid: HTMLElement): number | undefined {
   return Math.max(1, Math.floor((free + ROW_GAP_PX) / (row.offsetHeight + ROW_GAP_PX)));
 }
 
-/** The unfolded list shows while its cell has focus; moving the pointer out of it (plus its margin) closes it. */
-function closeFullList(event: MouseEvent<HTMLUListElement>): void {
-  const cell = event.currentTarget.closest<HTMLElement>(".month-cell");
-
-  cell?.querySelector<HTMLElement>(":focus")?.blur();
-  cell?.blur();
-}

@@ -1273,7 +1273,7 @@ ul {
   font-size: 11px;
 }
 
-/* Focus a crowded day to unfold its full list in place. */
+/* A crowded day's full list, unfolded in place: pointed at or pinned (see MonthPane), or reached by keyboard. */
 .month-full {
   position: absolute;
   inset: -1px -1px auto;
@@ -1288,8 +1288,9 @@ ul {
   box-shadow: 0 8px 24px color-mix(in srgb, var(--shadow) 16%, transparent);
 }
 
-.month-cell:focus-within .month-full,
-.month-cell:focus .month-full {
+.month-cell.is-unfolded .month-full,
+.month-cell:focus-visible .month-full,
+.month-cell:has(:focus-visible) .month-full {
   display: grid;
 }
 
@@ -2727,8 +2728,8 @@ ul {
   font-weight: 700;
 }
 
-/* An invisible margin around the unfolded list: leaving it closes the list (see MonthPane), but a slightly
-   overshooting pointer does not. */
+/* An invisible margin around the unfolded list: leaving it closes a list opened by pointing (see MonthPane), but
+   a slightly overshooting pointer does not. */
 .month-full::before {
   content: "";
   position: absolute;
