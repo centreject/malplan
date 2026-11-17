@@ -139,6 +139,11 @@ export function restoreBackup(current: Board, backup: Board): Board {
   };
 }
 
+/** "완전히 되돌리기": the board becomes the backup; whatever it does not hold is deleted. 전체 stays first. */
+export function restoreExactly(backup: Board): Board {
+  return { ...backup, tabs: [ALL_TAB, ...backup.tabs.filter((tab) => tab.id !== ALL_TAB_ID)] };
+}
+
 function restoreById<T extends { id: string }>(now: T[], saved: T[]): T[] {
   const restored = new Map(saved.map((record) => [record.id, record]));
   const known = new Set(now.map((record) => record.id));

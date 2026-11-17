@@ -77,7 +77,17 @@ export function WeekPane(props: WeekPaneProps) {
                   </li>
                 ))}
                 {occurrences.length > VISIBLE_PER_DAY && (
-                  <li className="week-more">+{occurrences.length - VISIBLE_PER_DAY}</li>
+                  <li>
+                    {/* The day pane lists them all. */}
+                    <button
+                      type="button"
+                      className="week-more"
+                      onClick={() => props.onSelect(date)}
+                      aria-label={`${partsOf(date).day}일 외 ${occurrences.length - VISIBLE_PER_DAY}개 보기`}
+                    >
+                      +{occurrences.length - VISIBLE_PER_DAY}
+                    </button>
+                  </li>
                 )}
               </ul>
             </li>

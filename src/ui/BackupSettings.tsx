@@ -9,8 +9,8 @@ import { backupJson, parseBackup, type Board } from "../storage/board";
 type BackupSettingsProps = {
   board: Board;
   today: IsoDate;
-  /** Puts a chosen backup's records back into the board. */
-  onRestore: (backup: Board) => void;
+  /** Puts a chosen backup's records back into the board; "exact" also deletes what the backup does not hold. */
+  onRestore: (backup: Board, mode: "merge" | "exact") => void;
 };
 
 /** Write text to a user-chosen file: save dialog on desktop, a download in the browser. */
@@ -54,6 +54,15 @@ export function BackupSettings({ board, today, onRestore }: BackupSettingsProps)
     } catch (error) {
       setMessage(`저장하지 못했습니다: ${error instanceof Error ? error.message : String(error)}`);
     }
+  };
+
+  /** Items the board holds and the picked backup does not: what 완전히 되돌리기 deletes. */
+  const dropped = picked === undefined ? 0 : board.items.filter((item) => !picked.backup.items.some((saved) => saved.id === item.id)).length;
+
+  const restore = (backup: Board, mode: "merge" | "exact") => {
+    onRestore(backup, mode);
+    setPicked(undefined);
+    setMessage(mode === "exact" ? "백업 상태로 완전히 되돌렸습니다." : "복원했습니다.");
   };
 
   const pick = async (file: File | undefined) => {
@@ -100,16 +109,17 @@ export function BackupSettings({ board, today, onRestore }: BackupSettingsProps)
             백업 뒤에 추가한 항목은 그대로 둡니다. 지워지는 것은 없습니다.
           </p>
           <div className="storage-actions">
+            <button type="button" className="text-button bordered" onClick={() => restore(picked.backup, "merge")}>
+              복원
+            </button>
+            {/* Deletes: says how much, and only on its own button. */}
             <button
               type="button"
               className="text-button bordered"
-              onClick={() => {
-                onRestore(picked.backup);
-                setPicked(undefined);
-                setMessage("복원했습니다.");
-              }}
+              onClick={() => restore(picked.backup, "exact")}
+              title={`백업에 없는 항목 ${dropped}개와 분류·탭도 지웁니다`}
             >
-              복원
+              완전히 되돌리기{dropped > 0 && ` (항목 ${dropped}개 삭제)`}
             </button>
             <button type="button" className="text-button" onClick={() => setPicked(undefined)}>
               취소

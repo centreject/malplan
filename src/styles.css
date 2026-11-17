@@ -1079,8 +1079,17 @@ ul {
 }
 
 .week-more {
+  padding: 0 4px;
+  border: 0;
+  border-radius: var(--radius-control);
+  background: transparent;
   color: var(--ink-3);
   font-size: 11px;
+}
+
+.week-more:hover {
+  background: var(--surface-2);
+  color: var(--ink);
 }
 
 .month-row {

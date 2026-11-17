@@ -38,7 +38,7 @@ import { SearchDialog } from "./ui/SearchDialog";
 import { StorageSettings } from "./ui/StorageSettings";
 import { TabEditor } from "./ui/TabEditor";
 import { useBoard } from "./ui/useBoard";
-import { restoreBackup, type Board } from "./storage/board";
+import { restoreBackup, restoreExactly, type Board } from "./storage/board";
 import { loadScheme, loadTextSize, loadTheme, resolvedScheme, saveScheme, saveTextSize, saveTheme, type SchemeId, type TextSizeId, type ThemeId } from "./ui/themes";
 import { FirstRunNotice } from "./ui/FirstRunNotice";
 import { UpdateNotice } from "./ui/UpdateNotice";
@@ -767,7 +767,9 @@ export default function App() {
                 <BackupSettings
                   board={persisted.board}
                   today={now.today}
-                  onRestore={(backup) => act("백업에서 복원했습니다", (board) => restoreBackup(board, backup))}
+                  onRestore={(backup, mode) =>
+                    act(mode === "exact" ? "백업 상태로 되돌렸습니다" : "백업에서 복원했습니다", (board) => (mode === "exact" ? restoreExactly(backup) : restoreBackup(board, backup)))
+                  }
                 />
               </>
             ),

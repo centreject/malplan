@@ -1,7 +1,7 @@
 import { describe, expect, test } from "vitest";
 import type { Category, Item } from "../domain/item";
 import type { CalendarTab } from "../domain/tabs";
-import { backupJson, boardChanges, boardFromEntities, boardWrites, parseBackup, restoreBackup, reuseUnchanged, type Board } from "./board";
+import { backupJson, boardChanges, boardFromEntities, boardWrites, parseBackup, restoreBackup, restoreExactly, reuseUnchanged, type Board } from "./board";
 import { MemoryBackend, SyncStore } from "./store";
 
 const category: Category = { id: "work", name: "회사", colorSlot: 1 };
@@ -251,6 +251,15 @@ describe("backup", () => {
 
     expect(restoreBackup(current, board)).toEqual({ items: [mailing, later], categories: [school, category], tabs: [allTab, workTab] });
   });
+});
+
+test("완전히 되돌리기: the board becomes the backup, 전체 first even if the file lost it", () => {
+  const later: Item = { ...mailing, id: "later", title: "백업 뒤에 추가" };
+  const current: Board = { items: [mailing, later], categories: [category], tabs: [allTab, workTab] };
+  const backup: Board = { items: [{ ...mailing, title: "예전 제목" }], categories: [category], tabs: [workTab] };
+
+  expect(restoreExactly(backup)).toEqual({ ...backup, tabs: [allTab, workTab] });
+  expect(boardChanges(current, restoreExactly(backup)).filter((change) => change.remove).map((change) => change.id)).toEqual(["later"]);
 });
 
 test("a reload keeps the objects of items that did not change, and takes the changed ones", async () => {
