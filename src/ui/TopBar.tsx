@@ -6,6 +6,8 @@ import { parseSummary } from "./format";
 
 type TopBarProps = {
   today: IsoDate;
+  /** Minutes after midnight now, for "10분 후" in the preview line. */
+  nowMinutes: number;
   /** Changes when the typed sentence was saved: the input empties. */
   clearKey: number;
   /** The input got focus: a good moment to start the local AI. */
@@ -19,7 +21,7 @@ type TopBarProps = {
   onList: () => void;
 };
 
-export function TopBar({ today, clearKey, onFocus, onSubmit, onSettings, onSearch, listOpen, onList }: TopBarProps) {
+export function TopBar({ today, nowMinutes, clearKey, onFocus, onSubmit, onSettings, onSearch, listOpen, onList }: TopBarProps) {
   // The text lives here, not in App: a keystroke re-renders this bar only, not the three panes.
   const [text, setText] = useState("");
   const [cleared, setCleared] = useState(clearKey);
@@ -29,7 +31,7 @@ export function TopBar({ today, clearKey, onFocus, onSubmit, onSettings, onSearc
     setText("");
   }
 
-  const summary = text.trim() === "" ? "" : parseSummary(parseKorean(text, today));
+  const summary = text.trim() === "" ? "" : parseSummary(parseKorean(text, today, nowMinutes));
 
   return (
     <header className="top-bar">

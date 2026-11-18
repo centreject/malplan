@@ -81,15 +81,16 @@ export function findSchedule(board: Board, query: string, today: IsoDate): strin
 
 type ParsedSentence = { card: Card; problems: string[] };
 
-function cardOf(board: Board, sentence: string, today: IsoDate): ParsedSentence {
-  const card = cardFromParse(parseKorean(sentence, today), today, board.categories);
+/** `nowMinutes`: the current minute, for "10분 후". */
+function cardOf(board: Board, sentence: string, today: IsoDate, nowMinutes?: number): ParsedSentence {
+  const card = cardFromParse(parseKorean(sentence, today, nowMinutes), today, board.categories);
 
   return { card, problems: Object.values(cardErrors(card)) };
 }
 
 /** What add_schedule would save, without saving. */
-export function previewSchedule(board: Board, sentence: string, today: IsoDate): string {
-  const { card, problems } = cardOf(board, sentence, today);
+export function previewSchedule(board: Board, sentence: string, today: IsoDate, nowMinutes?: number): string {
+  const { card, problems } = cardOf(board, sentence, today, nowMinutes);
 
   if (problems.length > 0) {
     return `저장할 수 없습니다: ${problems.join(" ")}`;
@@ -104,8 +105,15 @@ export function previewSchedule(board: Board, sentence: string, today: IsoDate):
 export type Saved = { text: string; next: Board };
 
 /** Saves the sentence as the app's confirm screen would with no edits. */
-export async function addSchedule(store: SyncStore, board: Board, sentence: string, today: IsoDate, makeId: () => string): Promise<Saved> {
-  const { card, problems } = cardOf(board, sentence, today);
+export async function addSchedule(
+  store: SyncStore,
+  board: Board,
+  sentence: string,
+  today: IsoDate,
+  makeId: () => string,
+  nowMinutes?: number,
+): Promise<Saved> {
+  const { card, problems } = cardOf(board, sentence, today, nowMinutes);
 
   if (problems.length > 0) {
     return { text: `저장하지 않았습니다: ${problems.join(" ")}`, next: board };

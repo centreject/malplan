@@ -173,8 +173,8 @@ export default function App() {
       return;
     }
 
-    const parts = splitInput(quickText).map((part) => ({ part, id: crypto.randomUUID() }));
-    const drafts = parts.map(({ part, id }) => ({ id, card: cardFromParse(parseKorean(part, now.today), now.today, categories) }));
+    const parts = splitInput(quickText, now.today, now.minutes).map((part) => ({ part, id: crypto.randomUUID() }));
+    const drafts = parts.map(({ part, id }) => ({ id, card: cardFromParse(parseKorean(part, now.today, now.minutes), now.today, categories) }));
     const session = ++aiSession.current;
 
     setConfirm({ drafts, editing: false });
@@ -588,6 +588,7 @@ export default function App() {
       <style>{customColorCss(categories)}</style>
       <TopBar
         today={now.today}
+        nowMinutes={now.minutes}
         clearKey={inputClear}
         onFocus={() => prestartAi(buildPrompt("", categories, loadCorrections(), now.today).system)}
         onSubmit={openNew}

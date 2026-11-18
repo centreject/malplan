@@ -1,6 +1,6 @@
 // The confirm/edit screen works on a flat, form-shaped Card; these pure
 // functions convert between it, the parser's result and the stored Item.
-import type { ClockTime, Flag, ParseResult, Slot } from "../parse/parseKorean";
+import { parseKorean, type ClockTime, type Flag, type ParseResult, type Slot } from "../parse/parseKorean";
 import { partsOf, weekdayOf, type IsoDate, type Weekday } from "./date";
 import { addNamedCategory } from "./categories";
 import { guessCategory } from "./categoryKinds";
@@ -74,9 +74,29 @@ export function guessKind(title: string): "event" | "task" {
 // The rules' category; the LLM replaces it later when it is on.
 export { guessCategory };
 
-// ponytail: splits only on newlines and ';'; smarter splitting ("내일 치과 그리고 모레 회의") is the LLM's job later.
-export function splitInput(text: string): string[] {
-  return text.split(/[\n;]/).flatMap((part) => (part.trim() === "" ? [] : [part.trim()]));
+/**
+ * One item per line or ';'. Within a line, "," and "그리고" split it too, but only when every piece has its own date or
+ * time and something left to call it: "내일 3시 치과, 금요일 회의" is two, "월, 수, 금 수영" and "내일 치과, 약 챙기기"
+ * stay one.
+ */
+export function splitInput(text: string, today: IsoDate, nowMinutes?: number): string[] {
+  return text.split(/[\n;]/).flatMap((line) => {
+    const part = line.trim();
+
+    if (part === "") {
+      return [];
+    }
+
+    const pieces = part.split(/\s*,\s*|\s+그리고\s+/).map((piece) => piece.trim());
+
+    return pieces.length > 1 && pieces.every((piece) => ownsItem(piece, today, nowMinutes)) ? pieces : [part];
+  });
+}
+
+function ownsItem(piece: string, today: IsoDate, nowMinutes: number | undefined): boolean {
+  const parsed = parseKorean(piece, today, nowMinutes);
+
+  return (parsed.date !== undefined || parsed.time !== undefined) && parsed.rest !== "";
 }
 
 /** Repeat fields pre-filled from a date, so turning repeat on starts from something sensible. */

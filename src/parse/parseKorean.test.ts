@@ -341,6 +341,18 @@ describe("clock words", () => {
     expect(clockOf(text)).toBe(clock);
   });
 
+  test("N분 후 / N시간 뒤 count from now, into tomorrow if need be", () => {
+    const at1430 = 14 * 60 + 30;
+
+    expect(parseKorean("10분 후 회의", today, at1430)).toMatchObject({ date: single("2026-10-05"), time: { kind: "exact", start: { hour: 14, minute: 40 } }, rest: "회의" });
+    expect(parseKorean("1시간 30분 뒤에 전화", today, at1430)).toMatchObject({ time: { kind: "exact", start: { hour: 16, minute: 0 } }, rest: "전화" });
+    expect(parseKorean("2시간 있다가 빨래", today, 23 * 60)).toMatchObject({ date: single("2026-10-06"), time: { kind: "exact", start: { hour: 1, minute: 0 } } });
+    // Without the current minute, or with no 후/뒤, nothing is read as a time from now.
+    expect(parseKorean("10분 후 회의", today).time).toBeUndefined();
+    expect(parseKorean("1시간 회의", today, at1430).time).toBeUndefined();
+    expect(parseKorean("3일 후 회의", today, at1430)).toMatchObject({ date: single("2026-10-08") });
+  });
+
   test("0시 N분 전 is just before midnight, the day before", () => {
     expect(parseKorean("내일 0시 5분 전 회의", today)).toMatchObject({ date: single("2026-10-05"), time: { kind: "exact", start: { hour: 23, minute: 55 } } });
     expect(parseKorean("내일 밤 12시 5분 전 회의", today)).toMatchObject({ date: single("2026-10-06"), time: { kind: "exact", start: { hour: 23, minute: 55 } } });

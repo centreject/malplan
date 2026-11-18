@@ -99,7 +99,8 @@ class Scanner {
   }
 }
 
-export function parseKorean(text: string, today: IsoDate): ParseResult {
+/** `nowMinutes`: minutes after midnight now, for "10분 후"; without it such phrases are left in the title. */
+export function parseKorean(text: string, today: IsoDate, nowMinutes?: number): ParseResult {
   const scanner = new Scanner(normalizeNumbers(spoken(text, today)));
   const flags: Flag[] = [];
   const recurrence = takeRecurrence(scanner, today);
@@ -110,7 +111,13 @@ export function parseKorean(text: string, today: IsoDate): ParseResult {
     flags.push("checkDate");
   }
 
-  const time = takeTime(scanner, flags);
+  const relative = nowMinutes === undefined ? undefined : takeRelativeTime(scanner, nowMinutes);
+  const time = relative?.time ?? takeTime(scanner, flags);
+
+  // "10분 후" late in the evening lands on the next day.
+  if (relative !== undefined && date === undefined) {
+    date = { kind: "single", date: addDays(today, relative.days) };
+  }
 
   // 밤 12시 / 자정 is 0:00 at the start of the next day; "0시 5분 전" (hour -1) is 23:55 the day before.
   if (time?.kind === "exact" && (time.start.hour === 24 || time.start.hour < 0)) {
@@ -974,6 +981,22 @@ const CLOCK = `(?<![A-Za-z\\d])(\\d{1,2})${SI}(?:\\s*(\\d{1,2})분|\\s*(반))?`;
 
 /** The start of a range may drop 시: "3~5시". */
 const RANGE_START = `(?<![A-Za-z\\d])(\\d{1,2})(?:${SI}(?:\\s*(\\d{1,2})분|\\s*(반))?)?`;
+
+/** "10분 후", "2시간 뒤", "1시간 30분 있다가": counted from now. "3일 후" is a date and is read elsewhere. */
+function takeRelativeTime(scanner: Scanner, nowMinutes: number): { time: ParsedTime; days: number } | undefined {
+  const found = scanner.take(
+    /(?<![\d시])(?:(\d{1,2})\s*시간\s*)?(?:(\d{1,3})\s*분\s*)?(?:후|뒤|있다가)(?:에)?(?![가-힣])/,
+    (m) => m[1] !== undefined || m[2] !== undefined,
+  );
+
+  if (found === undefined) {
+    return undefined;
+  }
+
+  const total = nowMinutes + Number(found[1] ?? 0) * 60 + Number(found[2] ?? 0);
+
+  return { time: { kind: "exact", start: { hour: Math.floor(total / 60) % 24, minute: total % 60 } }, days: Math.floor(total / (24 * 60)) };
+}
 
 function takeTime(scanner: Scanner, flags: Flag[]): ParsedTime | undefined {
   const named = scanner.take(/(?<![가-힣])(정오|자정)/);

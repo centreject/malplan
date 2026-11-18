@@ -120,7 +120,15 @@ describe("guessCategory", () => {
 
 describe("splitInput", () => {
   test("splits on newlines and semicolons, dropping blanks", () => {
-    expect(splitInput("내일 치과; 모레 회의\n 글피 장보기 ;")).toEqual(["내일 치과", "모레 회의", "글피 장보기"]);
+    expect(splitInput("내일 치과; 모레 회의\n 글피 장보기 ;", today)).toEqual(["내일 치과", "모레 회의", "글피 장보기"]);
+  });
+
+  test("',' and 그리고 split only when every piece has its own date or time and a name", () => {
+    expect(splitInput("내일 3시 치과, 금요일 회의", today)).toEqual(["내일 3시 치과", "금요일 회의"]);
+    expect(splitInput("내일 치과 그리고 모레 오후 2시 회의", today)).toEqual(["내일 치과", "모레 오후 2시 회의"]);
+    expect(splitInput("매주 월, 수, 금 수영", today)).toEqual(["매주 월, 수, 금 수영"]);
+    expect(splitInput("내일 치과, 약 챙기기", today)).toEqual(["내일 치과, 약 챙기기"]);
+    expect(splitInput("10분 후 회의, 내일 3시 치과", today, 14 * 60)).toEqual(["10분 후 회의", "내일 3시 치과"]);
   });
 });
 

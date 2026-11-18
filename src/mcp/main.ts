@@ -80,6 +80,13 @@ function localToday(): IsoDate {
   return [now.getFullYear(), String(now.getMonth() + 1).padStart(2, "0"), String(now.getDate()).padStart(2, "0")].join("-");
 }
 
+/** Minutes after midnight now, for "10분 후". */
+function localMinutes(): number {
+  const now = new Date();
+
+  return now.getHours() * 60 + now.getMinutes();
+}
+
 const IsoDateSchema = v.pipe(v.string(), v.check(isRealDate, "없는 날짜입니다. YYYY-MM-DD로 실제 있는 날짜를 주세요."));
 
 const Sentence = v.pipe(v.string(), v.trim(), v.minLength(1));
@@ -177,9 +184,9 @@ async function call(request: ToolCall): Promise<string> {
     case "find_schedule":
       return findSchedule(board, request.arguments.query, today);
     case "preview_schedule":
-      return previewSchedule(board, request.arguments.sentence, today);
+      return previewSchedule(board, request.arguments.sentence, today, localMinutes());
     case "add_schedule":
-      return (await addSchedule(store, board, request.arguments.sentence, today, randomUUID)).text;
+      return (await addSchedule(store, board, request.arguments.sentence, today, randomUUID, localMinutes())).text;
     case "complete_task":
       return (await completeTask(store, board, request.arguments.id, request.arguments.date)).text;
     case "uncomplete_task":
