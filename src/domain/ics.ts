@@ -52,7 +52,10 @@ function component(item: Item, stamp: string): string[] {
         ? [`RRULE:FREQ=DAILY;UNTIL=${compact(last)}T235959`]
         : [];
 
-  return ["BEGIN:VEVENT", ...common, ...timing, ...recurrence, "END:VEVENT"];
+  // A dated task is an event to other calendars; this note lets malplan's own import keep it a task.
+  const kind = item.kind === "task" ? ["X-MALPLAN-KIND:task"] : [];
+
+  return ["BEGIN:VEVENT", ...common, ...kind, ...timing, ...recurrence, "END:VEVENT"];
 }
 
 function startClock(item: Item): ClockTime | undefined {

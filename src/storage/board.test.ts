@@ -1,7 +1,7 @@
 import { describe, expect, test } from "vitest";
 import type { Category, Item } from "../domain/item";
 import type { CalendarTab } from "../domain/tabs";
-import { backupJson, boardChanges, boardFromEntities, boardWrites, parseBackup, restoreBackup, restoreExactly, reuseUnchanged, type Board } from "./board";
+import { addImported, backupJson, boardChanges, boardFromEntities, boardWrites, parseBackup, restoreBackup, restoreExactly, reuseUnchanged, type Board } from "./board";
 import { MemoryBackend, SyncStore } from "./store";
 
 const category: Category = { id: "work", name: "회사", colorSlot: 1 };
@@ -274,4 +274,14 @@ test("a reload keeps the objects of items that did not change, and takes the cha
 
   expect(loaded.items.find((item) => item.id === "mail")).toBe(mailing);
   expect(loaded.items.find((item) => item.id === "other")?.title).toBe("바뀐 제목");
+});
+
+test("imported items go to 가져옴, made once; one already here is updated and keeps its category", () => {
+  const fresh: Item = { ...mailing, id: "ics-1", title: "새 일정", categoryId: "" };
+  const again: Item = { ...mailing, title: "다시 가져온 제목", categoryId: "" };
+  const first = addImported(board, [fresh, again], "imp");
+
+  expect(first.categories.map((c) => c.name)).toEqual(["회사", "가져옴"]);
+  expect(first.items.map((i) => [i.id, i.title, i.categoryId])).toEqual([["mail", "다시 가져온 제목", "work"], ["ics-1", "새 일정", "imp"]]);
+  expect(addImported(first, [fresh], "other").categories).toHaveLength(2);
 });

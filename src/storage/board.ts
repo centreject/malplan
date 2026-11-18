@@ -3,7 +3,7 @@
 // different fields of the same item both win. An item's completions are one field per date
 // ("done:2026-11-05"), so two devices ticking different days of a repeating task both count.
 import * as v from "valibot";
-import { UNCATEGORIZED_ID } from "../domain/categories";
+import { UNCATEGORIZED_ID, addNamedCategory } from "../domain/categories";
 import type { Category, Item } from "../domain/item";
 import { ALL_TAB_ID, type CalendarTab } from "../domain/tabs";
 import type { Entities, EntityRecord } from "./merge";
@@ -136,6 +136,30 @@ export function restoreBackup(current: Board, backup: Board): Board {
     items: restoreById(current.items, backup.items),
     categories: restoreById(current.categories, backup.categories),
     tabs: restoreById(current.tabs, backup.tabs),
+  };
+}
+
+/**
+ * Items read from another calendar file. New ones go to the "가져옴" category (made once; the user can rename or
+ * recolour it); one already here (the same file imported again, or malplan's own export) is updated in place and
+ * keeps its category, as it may have been moved since.
+ */
+export function addImported(board: Board, imported: Item[], newCategoryId: string): Board {
+  const target = addNamedCategory(board.categories, "가져옴", newCategoryId);
+  const categoryId = target?.id ?? newCategoryId;
+  const incoming = new Map(imported.map((item) => [item.id, item]));
+  const known = new Set(board.items.map((item) => item.id));
+
+  const items = board.items.map((item) => {
+    const update = incoming.get(item.id);
+
+    return update === undefined ? item : { ...update, categoryId: item.categoryId };
+  });
+
+  return {
+    ...board,
+    categories: target?.categories ?? board.categories,
+    items: [...items, ...imported.flatMap((item) => (known.has(item.id) ? [] : [{ ...item, categoryId }]))],
   };
 }
 
