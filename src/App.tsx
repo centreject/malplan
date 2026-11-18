@@ -866,14 +866,14 @@ export default function App() {
           tabs={tabs}
           categories={categories}
           onAddCategory={addCategoryNamed}
-          onSave={(name, categoryIds) => {
+          onSave={(name, categoryIds, colorSlot) => {
             if (editedTab === undefined) {
               const id = crypto.randomUUID();
 
-              setTabs(addTab(tabs, id, name, categoryIds));
+              setTabs(addTab(tabs, id, name, categoryIds, colorSlot));
               setActiveTab(id);
             } else {
-              setTabs(updateTab(tabs, editedTab.id, name, categoryIds));
+              setTabs(updateTab(tabs, editedTab.id, name, categoryIds, colorSlot));
             }
 
             setEditing(undefined);

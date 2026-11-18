@@ -294,6 +294,10 @@ export function MonthPane(props: MonthPaneProps) {
 
 /** A tab takes its first category's colour; 전체 stays neutral. */
 function tabClass(tab: CalendarTab | undefined, categories: Category[]): string {
+  if (tab?.colorSlot !== undefined) {
+    return `cat-${tab.colorSlot}`;
+  }
+
   const firstId = tab?.categoryIds?.[0];
 
   return categoryClass(categories.find((c) => c.id === firstId));

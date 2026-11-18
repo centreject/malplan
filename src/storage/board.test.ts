@@ -285,3 +285,10 @@ test("imported items go to 가져옴, made once; one already here is updated and
   expect(first.items.map((i) => [i.id, i.title, i.categoryId])).toEqual([["mail", "다시 가져온 제목", "work"], ["ics-1", "새 일정", "imp"]]);
   expect(addImported(first, [fresh], "other").categories).toHaveLength(2);
 });
+
+test("a tab's own colour survives the store, and taking it away clears it", async () => {
+  const coloured: Board = { ...board, tabs: [allTab, { ...workTab, colorSlot: 4 }] };
+
+  expect((await roundTrip(coloured)).tabs[1]).toEqual({ ...workTab, colorSlot: 4 });
+  expect(boardChanges(coloured, board)).toEqual([{ entity: "tab", id: "t-work", field: "colorSlot", value: null, remove: false }]);
+});

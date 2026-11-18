@@ -94,6 +94,7 @@ const TabSchema = v.object({
   id: v.string(),
   name: v.string(),
   categoryIds: v.nullable(v.array(v.string())),
+  colorSlot: v.exactOptional(v.number()),
   order: v.number(),
 });
 
@@ -103,7 +104,7 @@ const BackupSchema = v.object({
   items: v.array(ItemSchema),
   categories: v.array(v.omit(CategorySchema, ["order"])),
   // JSON drops 전체's undefined categoryIds.
-  tabs: v.array(v.object({ id: v.string(), name: v.string(), categoryIds: v.exactOptional(v.array(v.string())) })),
+  tabs: v.array(v.object({ id: v.string(), name: v.string(), categoryIds: v.exactOptional(v.array(v.string())), colorSlot: v.exactOptional(v.number()) })),
 });
 
 export function backupJson(board: Board, exportedAt: string): string {
@@ -121,7 +122,7 @@ export function parseBackup(text: string): Board | undefined {
 
     const { items, categories, tabs } = parsed.output;
 
-    return { items, categories, tabs: tabs.map(({ id, name, categoryIds }) => ({ id, name, categoryIds })) };
+    return { items, categories, tabs: tabs.map((tab) => tabOf(tab.id, tab.name, tab.categoryIds, tab.colorSlot)) };
   } catch {
     return undefined;
   }
@@ -168,6 +169,16 @@ export function restoreExactly(backup: Board): Board {
   return { ...backup, tabs: [ALL_TAB, ...backup.tabs.filter((tab) => tab.id !== ALL_TAB_ID)] };
 }
 
+function tabOf(id: string, name: string, categoryIds: string[] | undefined, colorSlot: number | undefined): CalendarTab {
+  const tab: CalendarTab = { id, name, categoryIds };
+
+  if (colorSlot !== undefined) {
+    tab.colorSlot = colorSlot;
+  }
+
+  return tab;
+}
+
 function restoreById<T extends { id: string }>(now: T[], saved: T[]): T[] {
   const restored = new Map(saved.map((record) => [record.id, record]));
   const known = new Set(now.map((record) => record.id));
@@ -187,7 +198,7 @@ function boardRecords(board: Board): Record<"item" | "category" | "tab", Map<str
     ),
     category: new Map(board.categories.map(({ id, ...fields }, order) => [id, fieldsOf({ ...fields, order })])),
     tab: new Map(
-      board.tabs.map(({ id, name, categoryIds }, order) => [id, fieldsOf({ name, categoryIds: categoryIds ?? null, order })]),
+      board.tabs.map(({ id, name, categoryIds, colorSlot }, order) => [id, fieldsOf({ name, categoryIds: categoryIds ?? null, colorSlot, order })]),
     ),
   };
 }
@@ -195,7 +206,7 @@ function boardRecords(board: Board): Record<"item" | "category" | "tab", Map<str
 type EntityFields =
   | Omit<Item, "id" | "done">
   | (Omit<Category, "id"> & { order: number })
-  | { name: string; categoryIds: string[] | null; order: number };
+  | { name: string; categoryIds: string[] | null; colorSlot: number | undefined; order: number };
 
 /** Plain-data round trip: drops undefined fields, which JSON cannot hold. */
 function fieldsOf(fields: EntityFields): Map<string, Json> {
@@ -307,7 +318,7 @@ export function boardFromEntities(entities: Entities): LoadedBoard {
 
   const tabs = parse("tab", TabSchema, entities.tab)
     .toSorted((a, b) => a.order - b.order)
-    .map(({ id, name, categoryIds }): CalendarTab => ({ id, name, categoryIds: categoryIds ?? undefined }))
+    .map((tab) => tabOf(tab.id, tab.name, tab.categoryIds ?? undefined, tab.colorSlot))
     .filter((tab) => tab.id !== ALL_TAB_ID);
 
   const categories = parse("category", CategorySchema, entities.category)

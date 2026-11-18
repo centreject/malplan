@@ -75,7 +75,7 @@ type TabEditorProps = {
   tab: CalendarTab | undefined;
   tabs: CalendarTab[];
   categories: Category[];
-  onSave: (name: string, categoryIds: string[]) => void;
+  onSave: (name: string, categoryIds: string[], colorSlot: number | undefined) => void;
   onDelete: () => void;
   /** Moves the edited tab by -1 / +1 right away. */
   onMove: (delta: number) => void;
@@ -83,11 +83,16 @@ type TabEditorProps = {
   onClose: () => void;
 };
 
+/** The palette slots a tab can take, as categories do. */
+const TAB_SLOTS = [1, 2, 3, 4, 5, 6];
+
 /** Add or edit a calendar tab. Mounted only while open. */
 export function TabEditor({ tab, tabs, categories, onSave, onDelete, onMove, onAddCategory, onClose }: TabEditorProps) {
   const dialog = useRef<HTMLDialogElement>(null);
   const [name, setName] = useState(tab?.name ?? "");
   const [selected, setSelected] = useState<string[]>(tab?.categoryIds ?? []);
+  /** undefined: the first chosen category's colour. */
+  const [colorSlot, setColorSlot] = useState<number | undefined>(tab?.colorSlot);
   const index = tab === undefined ? -1 : tabs.indexOf(tab);
   const empty = selected.length === 0;
 
@@ -112,7 +117,7 @@ export function TabEditor({ tab, tabs, categories, onSave, onDelete, onMove, onA
           event.preventDefault();
 
           if (!empty) {
-            onSave(name, selected);
+            onSave(name, selected, colorSlot);
           }
         }}
       >
@@ -140,6 +145,27 @@ export function TabEditor({ tab, tabs, categories, onSave, onDelete, onMove, onA
           <legend>보여 줄 분류</legend>
           <CategoryChecklist categories={categories} selected={selected} onChange={setSelected} onAdd={onAddCategory} />
           {empty && <p className="tab-editor-hint">분류를 하나 이상 고르세요.</p>}
+        </fieldset>
+
+        <fieldset className="settings-section">
+          <legend>탭 색</legend>
+          <span className="cat-slots" role="radiogroup" aria-label="탭 색">
+            <label className="tab-color-auto">
+              <input type="radio" name="tab-color" checked={colorSlot === undefined} onChange={() => setColorSlot(undefined)} />
+              첫 분류 색
+            </label>
+            {TAB_SLOTS.map((slot) => (
+              <input
+                key={slot}
+                type="radio"
+                name="tab-color"
+                className={`cat-slot cat-${slot}`}
+                checked={colorSlot === slot}
+                onChange={() => setColorSlot(slot)}
+                aria-label={`색 ${slot}`}
+              />
+            ))}
+          </span>
         </fieldset>
 
         <footer className="tab-editor-actions">
