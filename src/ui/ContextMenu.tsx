@@ -14,6 +14,13 @@ const noMenu: OpenItemMenu = () => undefined;
 /** Right-click on an item anywhere on the board: App supplies what the menu does. */
 export const ItemMenu = createContext<OpenItemMenu>(noMenu);
 
+type OpenDayMenu = (event: MouseEvent, date: IsoDate) => void;
+
+const noDayMenu: OpenDayMenu = () => undefined;
+
+/** Right-click on a day (not on an item in it) in the week and month panes. */
+export const DayMenu = createContext<OpenDayMenu>(noDayMenu);
+
 const ROW_PX = 34;
 
 const WIDTH_PX = 168;

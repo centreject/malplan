@@ -1,6 +1,6 @@
 import { AppWindow, Bell, CalendarDays, HardDrive, Info, Palette, Plug, Sparkles, Tags } from "lucide-react";
 import { useEffect, useMemo, useRef, useState, type MouseEvent } from "react";
-import { ContextMenu, ItemMenu, type MenuAction, type MenuRequest } from "./ui/ContextMenu";
+import { ContextMenu, DayMenu, ItemMenu, type MenuAction, type MenuRequest } from "./ui/ContextMenu";
 import { NEW_CATEGORY, applyEdit, cardFromItem, cardFromParse, commitCards, splitInput, type Draft } from "./domain/card";
 import { addCorrections, loadCorrections } from "./llm/corrections";
 import { REPEAT_DATE_REFUSAL, applyEditCommand, type EditResult } from "./domain/editCommand";
@@ -165,11 +165,16 @@ export default function App() {
   /** Bumped per dialog so late AI answers for a closed dialog are dropped. */
   const aiSession = useRef(0);
 
+  /** A blank form for direct entry, no AI, dated `date`. */
+  const openBlank = (date: IsoDate) => {
+    setConfirm({ drafts: [{ id: crypto.randomUUID(), card: cardFromParse(parseKorean("", date), date, categories) }], editing: false });
+    setAi({ extractions: new Map(), inputs: new Map(), note: undefined });
+  };
+
   const openNew = (quickText: string) => {
     // Nothing typed: a blank form for direct entry, no AI.
     if (quickText.trim() === "") {
-      setConfirm({ drafts: [{ id: crypto.randomUUID(), card: cardFromParse(parseKorean("", now.today), now.today, categories) }], editing: false });
-      setAi({ extractions: new Map(), inputs: new Map(), note: undefined });
+      openBlank(now.today);
 
       return;
     }
@@ -564,16 +569,38 @@ export default function App() {
       actions.push({ label: item.done.includes(key) ? "완료 취소" : "완료", run: () => toggleDone(item, key) });
     }
 
-    // One occurrence or the whole series is a choice the edit screen asks.
-    if (item.when.kind !== "recurring") {
-      actions.push({
-        label: "삭제",
-        run: () => act("삭제했습니다", (board) => ({ ...board, items: board.items.filter((other) => other.id !== item.id) })),
-      });
+    actions.push({ label: "복제", run: () => act("복제했습니다", (board) => ({ ...board, items: [...board.items, { ...item, id: crypto.randomUUID(), done: [] }] })) });
+
+    const remove = (scope: SeriesScope) => (board: Board) => ({
+      ...board,
+      items: item.when.kind === "recurring" && date !== undefined && scope !== "all"
+        ? deleteOccurrence(board.items, item, date, scope)
+        : board.items.filter((other) => other.id !== item.id),
+    });
+
+    // A repeating item clicked on one of its days: that one, it and the following, or all of them.
+    if (item.when.kind === "recurring" && date !== undefined) {
+      actions.push(
+        { label: "이 일정만 삭제", run: () => act("이 일정을 삭제했습니다", remove("this")) },
+        { label: "이후 전부 삭제", run: () => act("이후 일정을 삭제했습니다", remove("future")) },
+        { label: "반복 전체 삭제", run: () => act("반복 일정을 삭제했습니다", remove("all")) },
+      );
+    } else {
+      actions.push({ label: item.when.kind === "recurring" ? "반복 전체 삭제" : "삭제", run: () => act("삭제했습니다", remove("all")) });
     }
 
     event.preventDefault();
     setMenu({ x: event.clientX, y: event.clientY, actions });
+  };
+
+  /** Right-click on a day: an item's own menu, already opened, wins. */
+  const dayMenu = (event: MouseEvent, date: IsoDate) => {
+    if (event.defaultPrevented) {
+      return;
+    }
+
+    event.preventDefault();
+    setMenu({ x: event.clientX, y: event.clientY, actions: [{ label: `${shortDate(date)}에 추가`, run: () => openBlank(date) }] });
   };
 
   // The webview's own menu (back, reload, print) has no place in the app; text fields keep it for copy and paste.
@@ -591,6 +618,7 @@ export default function App() {
 
   return (
     <ItemMenu value={itemMenu}>
+    <DayMenu value={dayMenu}>
     <div className="app">
       {/* Custom category colours: one rule per category, generated from validated hex values. */}
       <style>{customColorCss(categories)}</style>
@@ -939,6 +967,7 @@ export default function App() {
       )}
       {menu !== undefined && <ContextMenu key={`${menu.x},${menu.y}`} request={menu} onClose={() => setMenu(undefined)} />}
     </div>
+    </DayMenu>
     </ItemMenu>
   );
 }

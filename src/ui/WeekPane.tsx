@@ -1,5 +1,5 @@
 import { useContext, useState, type ReactNode } from "react";
-import { ItemMenu } from "./ContextMenu";
+import { DayMenu, ItemMenu } from "./ContextMenu";
 import { partsOf, weekdayOf, type IsoDate } from "../domain/date";
 import type { Category, Item } from "../domain/item";
 import { occurrencesOn } from "../domain/schedule";
@@ -34,6 +34,7 @@ export function WeekPane(props: WeekPaneProps) {
   const first = props.dates[0] ?? props.today;
   const last = props.dates.at(-1) ?? props.today;
   const openMenu = useContext(ItemMenu);
+  const openDayMenu = useContext(DayMenu);
   /** The day an item is being dragged over. */
   const [dropOn, setDropOn] = useState<IsoDate>();
 
@@ -61,6 +62,7 @@ export function WeekPane(props: WeekPaneProps) {
             <li
               key={date}
               className={`week-day ${date === props.today ? "is-today" : ""} ${date === props.selected ? "is-selected" : ""} ${date === dropOn ? "is-drop" : ""}`}
+              onContextMenu={(event) => openDayMenu(event, date)}
               onDragOver={(event) => {
                 if (isItemDrag(event)) {
                   event.preventDefault();

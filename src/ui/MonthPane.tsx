@@ -1,6 +1,6 @@
 import { ChevronDown, Plus } from "lucide-react";
 import { Fragment, useContext, useEffect, useRef, useState, type MouseEvent, type RefObject } from "react";
-import { ItemMenu } from "./ContextMenu";
+import { DayMenu, ItemMenu } from "./ContextMenu";
 import { partsOf, weekdayOf, type IsoDate, type Weekday } from "../domain/date";
 import { categoryClass } from "../domain/categories";
 import type { Category, Item } from "../domain/item";
@@ -55,6 +55,7 @@ export function MonthPane(props: MonthPaneProps) {
   const categoryOf = (item: Item) => props.categories.find((c) => c.id === item.categoryId);
   const [dragged, setDragged] = useState<string>();
   const openMenu = useContext(ItemMenu);
+  const openDayMenu = useContext(DayMenu);
   const grid = useRef<HTMLDivElement>(null);
   const rows = useRowsThatFit(grid);
   const limit = Math.min(props.cellCapacity, rows ?? props.cellCapacity);
@@ -202,6 +203,7 @@ export function MonthPane(props: MonthPaneProps) {
                 date === dropOn ? "is-drop" : "",
               ].join(" ")}
               data-date={date}
+              onContextMenu={(event) => openDayMenu(event, date)}
               onDragOver={(event) => {
                 if (isItemDrag(event)) {
                   event.preventDefault();
