@@ -7,8 +7,9 @@ import { REPEAT_DATE_REFUSAL, applyEditCommand, type EditResult } from "./domain
 import { revertChange } from "./domain/undo";
 import { applyEditReply, buildEditPrompt } from "./llm/edit";
 import { buildPrompt, guardExtraction, parseExtraction, type Extraction } from "./llm/extract";
+import { UNREADABLE_REPLY, aiFailureNote } from "./llm/aiNote";
 import { localServer, warmUpLocal } from "./llm/localServer";
-import { complete, connectionErrorText, loadLlmSettings, saveLlmSettings } from "./llm/providers";
+import { complete, loadLlmSettings, saveLlmSettings } from "./llm/providers";
 import { AiSettings } from "./ui/AiSettings";
 import { addDays, partsOf, type IsoDate } from "./domain/date";
 import type { Category, Item } from "./domain/item";
@@ -70,9 +71,6 @@ function firstBoard(today: IsoDate) {
 
 /** How long the undo toast stays. */
 const UNDO_MS = 8000;
-
-/** Thrown for a sentence whose AI reply is not the JSON asked for. */
-const UNREADABLE_REPLY = "unreadable reply";
 
 type MonthCursor = { year: number; month: number };
 
@@ -213,25 +211,7 @@ export default function App() {
         return;
       }
 
-      const failures = results.flatMap((result) => (result.status === "rejected" ? [result.reason instanceof Error ? result.reason : String(result.reason)] : []));
-      const first = failures[0];
-
-      if (first === undefined) {
-        setAi((current) => ({ ...current, note: undefined }));
-
-        return;
-      }
-
-      const why = first instanceof Error && first.message === UNREADABLE_REPLY
-        ? "AI 답을 읽지 못해 규칙 기반으로만 정리했습니다."
-        : llm.provider !== "local"
-        ? `AI 정리 실패: ${connectionErrorText(first)} 규칙 기반 결과를 확인하세요.`
-        : localServer?.status() === "no-model"
-          ? "로컬 AI 모델이 없어 규칙 기반으로만 정리했습니다. 마이페이지 → AI 변환에서 받을 수 있습니다."
-          : "로컬 AI 모델이 아직 준비되지 않아 규칙 기반으로만 정리했습니다.";
-
-      // Some sentences came through: say how many did not, instead of calling the whole request a failure.
-      const note = failures.length < results.length ? `${results.length}개 중 ${failures.length}개만 해당 · ${why}` : why;
+      const note = aiFailureNote(results, llm.provider, localServer?.status());
 
       setAi((current) => ({ ...current, note }));
     });
