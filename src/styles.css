@@ -1212,6 +1212,11 @@ ul {
   cursor: pointer;
 }
 
+/* A week (and the weekday header) is a row for assistive tech only; the cells stay in the month grid. */
+.month-week {
+  display: contents;
+}
+
 .month-cell:nth-child(7n) {
   border-right: 0;
 }

@@ -1,7 +1,7 @@
 import { ChevronDown, Plus } from "lucide-react";
 import { Fragment, useContext, useEffect, useRef, useState, type MouseEvent, type RefObject } from "react";
 import { DayMenu, ItemMenu } from "./ContextMenu";
-import { partsOf, weekdayOf, type IsoDate, type Weekday } from "../domain/date";
+import { addDays, partsOf, weekdayOf, type IsoDate, type Weekday } from "../domain/date";
 import { categoryClass } from "../domain/categories";
 import type { Category, Item } from "../domain/item";
 import { monthCells, occurrencesOn } from "../domain/schedule";
@@ -65,6 +65,43 @@ export function MonthPane(props: MonthPaneProps) {
   const [hovered, setHovered] = useState<IsoDate>();
   /** The day an item is being dragged over. */
   const [dropOn, setDropOn] = useState<IsoDate>();
+  // One day of the grid is in the Tab order (the one last focused, else the selected one, else the 1st); arrows move
+  // between days, as in a calendar grid.
+  const [focused, setFocused] = useState<IsoDate>();
+  const firstOfMonth = cells.find((date) => partsOf(date).month === props.month) ?? cells[0];
+  const tabStop = [focused, props.selected].find((date) => date !== undefined && cells.includes(date)) ?? firstOfMonth;
+
+  /** ←/→ a day, ↑/↓ a week, within the days shown. */
+  const moveFocus = (event: React.KeyboardEvent<HTMLElement>, date: IsoDate) => {
+    const step = new Map([["ArrowLeft", -1], ["ArrowRight", 1], ["ArrowUp", -7], ["ArrowDown", 7]]).get(event.key);
+
+    // A key on an item inside the day belongs to the item.
+    if (step === undefined || event.target !== event.currentTarget) {
+      return;
+    }
+
+    const next = addDays(date, step);
+
+    event.preventDefault();
+
+    if (cells.includes(next)) {
+      grid.current?.querySelector<HTMLElement>(`[data-date="${next}"]`)?.focus();
+    }
+  };
+
+  /** ←/→ between tabs, choosing the tab it lands on (tabs that follow focus). */
+  const moveTab = (event: React.KeyboardEvent<HTMLElement>, index: number) => {
+    const step = event.key === "ArrowLeft" ? -1 : event.key === "ArrowRight" ? 1 : 0;
+    const next = props.tabs[(index + step + props.tabs.length) % props.tabs.length];
+
+    if (step === 0 || next === undefined) {
+      return;
+    }
+
+    event.preventDefault();
+    props.onTab(next.id);
+    event.currentTarget.parentElement?.querySelector<HTMLElement>(`[data-tab="${next.id}"]`)?.focus();
+  };
 
   useEffect(() => {
     if (pinned === undefined) {
@@ -109,6 +146,9 @@ export function MonthPane(props: MonthPaneProps) {
                 type="button"
                 role="tab"
                 aria-selected={t.id === props.activeTab}
+                tabIndex={t.id === props.activeTab ? 0 : -1}
+                data-tab={t.id}
+                onKeyDown={(event) => moveTab(event, index)}
                 className={`tab ${tabClass(t, props.categories)} ${t.id === ALL_TAB_ID ? "tab-filter" : ""} ${t.id === ALL_TAB_ID && props.allFilter !== undefined ? "is-filtering" : ""}`}
                 draggable={t.id !== ALL_TAB_ID}
                 // 전체 already selected: a second click opens the category filter. Other tabs: double-click or right-click to edit.
@@ -178,12 +218,16 @@ export function MonthPane(props: MonthPaneProps) {
       </PaneHeader>
 
       <div ref={grid} className="month-grid" role="grid" aria-label={`${props.year}년 ${props.month}월`}>
-        {headers.map((weekday) => (
-          <span key={weekday} role="columnheader" className={`month-weekday ${toneOf(weekday, false)}`}>
-            {WEEKDAY_NAMES[weekday]}
-          </span>
-        ))}
-        {cells.map((date) => {
+        <div role="row" className="month-week">
+          {headers.map((weekday) => (
+            <span key={weekday} role="columnheader" className={`month-weekday ${toneOf(weekday, false)}`}>
+              {WEEKDAY_NAMES[weekday]}
+            </span>
+          ))}
+        </div>
+        {weeksOf(cells).map((week) => (
+        <div key={week[0]} role="row" className="month-week">
+        {week.map((date) => {
           const { month, day } = partsOf(date);
           const occurrences = occurrencesOn(props.items, date);
           const holiday = props.holidays.get(date);
@@ -193,7 +237,10 @@ export function MonthPane(props: MonthPaneProps) {
             <div
               key={date}
               role="gridcell"
-              tabIndex={0}
+              tabIndex={date === tabStop ? 0 : -1}
+              onFocus={(event) => {
+                if (event.target === event.currentTarget) setFocused(date);
+              }}
               className={[
                 "month-cell",
                 outside ? "is-outside" : "",
@@ -237,6 +284,8 @@ export function MonthPane(props: MonthPaneProps) {
                 if (event.key === "Enter" || event.key === " ") {
                   props.onSelect(date);
                 }
+
+                moveFocus(event, date);
               }}
             >
               <span className="month-head">
@@ -287,12 +336,19 @@ export function MonthPane(props: MonthPaneProps) {
             </div>
           );
         })}
+        </div>
+        ))}
       </div>
     </section>
   );
 }
 
 /** A tab takes its first category's colour; 전체 stays neutral. */
+/** The grid's days in rows of seven. */
+function weeksOf(cells: IsoDate[]): IsoDate[][] {
+  return Array.from({ length: Math.ceil(cells.length / 7) }, (_, index) => cells.slice(index * 7, index * 7 + 7));
+}
+
 function tabClass(tab: CalendarTab | undefined, categories: Category[]): string {
   if (tab?.colorSlot !== undefined) {
     return `cat-${tab.colorSlot}`;
