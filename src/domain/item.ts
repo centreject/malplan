@@ -31,7 +31,11 @@ export type Item = {
   note?: string;
   /** Reminder this many minutes before the start; unset uses the notification settings' lead (see reminders.ts). */
   remindMinutes?: number;
+  /** Small steps inside the item ("여권 챙기기"). One list for the item: a repeating item shares its ticks across days. */
+  checklist?: ChecklistEntry[];
 };
+
+export type ChecklistEntry = { text: string; done: boolean };
 
 export type Category = {
   id: string;

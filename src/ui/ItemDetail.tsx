@@ -22,11 +22,13 @@ type ItemDetailProps = {
   commandNote: string | undefined;
   /** Ticks or unticks the task under the given completion key, and closes. */
   onToggle: (key: string) => void;
+  /** Ticks or unticks one checklist entry; the view stays open. */
+  onCheck: (index: number) => void;
   onDelete: () => void;
 };
 
 /** Read-only view of a saved item; 수정 opens the edit dialog. New entries go straight to editing instead. */
-export function ItemDetail({ item, date, categories, onEdit, onClose, onCommand, onCommandFocus, commandNote, onToggle, onDelete }: ItemDetailProps) {
+export function ItemDetail({ item, date, categories, onEdit, onClose, onCommand, onCommandFocus, commandNote, onToggle, onCheck, onDelete }: ItemDetailProps) {
   const dialog = useRef<HTMLDialogElement>(null);
   const [request, setRequest] = useState("");
   const recurring = item.when.kind === "recurring";
@@ -55,6 +57,24 @@ export function ItemDetail({ item, date, categories, onEdit, onClose, onCommand,
 
   if (item.remindMinutes !== undefined) {
     rows.push(["알림", item.remindMinutes === NO_REMINDER ? "없음" : leadText(item.remindMinutes)]);
+  }
+
+  const checklist = item.checklist ?? [];
+
+  if (checklist.length > 0) {
+    rows.push([
+      "체크",
+      <ul key="checklist" className="detail-checklist" aria-label={`체크리스트 ${checklist.filter((entry) => entry.done).length}/${checklist.length} 완료`}>
+        {checklist.map((entry, index) => (
+          <li key={index}>
+            <label>
+              <input type="checkbox" checked={entry.done} onChange={() => onCheck(index)} />
+              <span className={entry.done ? "is-done" : ""}>{entry.text}</span>
+            </label>
+          </li>
+        ))}
+      </ul>,
+    ]);
   }
 
   if (doneAt !== undefined) {

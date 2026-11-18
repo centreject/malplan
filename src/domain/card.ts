@@ -4,7 +4,7 @@ import { parseKorean, type ClockTime, type Flag, type ParseResult, type Slot } f
 import { partsOf, weekdayOf, type IsoDate, type Weekday } from "./date";
 import { addNamedCategory } from "./categories";
 import { guessCategory } from "./categoryKinds";
-import type { Category, Item, ItemTime, ItemWhen } from "./item";
+import type { Category, ChecklistEntry, Item, ItemTime, ItemWhen } from "./item";
 import type { Recurrence } from "./recurrence";
 
 export type CardKind = "event" | "task" | "undated";
@@ -46,6 +46,8 @@ export type Card = {
   place: string;
   note: string;
   remindMinutes: number | undefined;
+  /** Blank entries are dropped on save. */
+  checklist: ChecklistEntry[];
   done: string[];
   /** Parser guesses to badge as "추정". */
   flags: CardFlag[];
@@ -176,6 +178,7 @@ export function cardFromItem(item: Item, today: IsoDate): Card {
     place: item.place ?? "",
     note: item.note ?? "",
     remindMinutes: item.remindMinutes,
+    checklist: item.checklist ?? [],
     done: item.done,
     flags: [],
   };
@@ -223,6 +226,12 @@ export function itemFromCard(card: Card, id: string): Item {
     item.remindMinutes = card.remindMinutes;
   }
 
+  const checklist = card.checklist.flatMap((entry) => (entry.text.trim() === "" ? [] : [{ text: entry.text.trim(), done: entry.done }]));
+
+  if (checklist.length > 0) {
+    item.checklist = checklist;
+  }
+
   return item;
 }
 
@@ -250,6 +259,11 @@ export function applyEdit(current: Item, opened: Item, edited: Item): Item {
   const place = pick("place");
   const note = pick("note");
   const remindMinutes = pick("remindMinutes");
+  const checklist = pick("checklist");
+
+  if (checklist !== undefined) {
+    item.checklist = checklist;
+  }
 
   if (place !== undefined) {
     item.place = place;

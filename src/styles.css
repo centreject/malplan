@@ -2761,6 +2761,26 @@ ul {
 }
 
 /* Rows share the header and footer side margins: 24px left, wider right for long text. */
+.cf-checklist,
+.detail-checklist {
+  display: grid;
+  gap: 4px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.detail-checklist label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.detail-checklist .is-done {
+  color: var(--ink-3);
+  text-decoration: line-through;
+}
+
 .detail-rows {
   display: grid;
   gap: 12px;

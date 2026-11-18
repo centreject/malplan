@@ -347,6 +347,17 @@ describe("applyEdit", () => {
     expect(saved).toEqual({ ...current, place: "강남역" });
   });
 
+  test("a checklist: blank entries are dropped, and ticks made elsewhere survive an edit of other fields", () => {
+    const listed = itemFromCard({ ...cardFromItem(opened, today), checklist: [{ text: " 여권 ", done: false }, { text: "  ", done: true }] }, opened.id);
+
+    expect(listed.checklist).toEqual([{ text: "여권", done: false }]);
+
+    const ticked: Item = { ...listed, checklist: [{ text: "여권", done: true }] };
+    const renamed = itemFromCard({ ...cardFromItem(listed, today), title: "출장" }, listed.id);
+
+    expect(applyEdit(ticked, listed, renamed).checklist).toEqual([{ text: "여권", done: true }]);
+  });
+
   test("a field cleared in the form is removed; an untouched form changes nothing", () => {
     expect(applyEdit(opened, opened, formOf({ note: "", remindMinutes: undefined }))).toEqual(
       item({ kind: "task", when: { kind: "single", date: today } }),

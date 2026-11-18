@@ -423,6 +423,44 @@ function CardEditor({ card, errors, categories, occurrence, lockStart, heading, 
         <textarea id={id("note")} className="cf-input cf-note" rows={2} value={card.note} onChange={(event) => set({ note: event.target.value })} />
       </Field>
 
+      <Field label="체크리스트" groupId={id("checklist")}>
+        <ul className="cf-checklist">
+          {card.checklist.map((entry, index) => (
+            // Entries have no id of their own; the position is the identity while the form is open.
+            <li key={index} className="cf-row">
+              <input
+                type="checkbox"
+                checked={entry.done}
+                onChange={(event) => set({ checklist: card.checklist.map((e, i) => (i === index ? { ...e, done: event.target.checked } : e)) })}
+                aria-label={`${entry.text || "새 항목"} 완료`}
+              />
+              <input
+                className="cf-input"
+                value={entry.text}
+                onChange={(event) => set({ checklist: card.checklist.map((e, i) => (i === index ? { ...e, text: event.target.value } : e)) })}
+                placeholder="예: 여권 챙기기"
+                aria-label={`체크리스트 ${index + 1}`}
+                autoComplete="off"
+              />
+              <button
+                type="button"
+                className="icon-button"
+                onClick={() => set({ checklist: card.checklist.filter((_, i) => i !== index) })}
+                aria-label={`체크리스트 ${index + 1} 지우기`}
+                title="지우기"
+              >
+                <X size={16} strokeWidth={2} aria-hidden="true" />
+              </button>
+            </li>
+          ))}
+        </ul>
+        <button type="button" className="cf-chip" onClick={() => set({ checklist: [...card.checklist, { text: "", done: false }] })}>
+          <Plus size={14} strokeWidth={2} aria-hidden="true" />
+          항목 추가
+        </button>
+        {card.repeat && card.checklist.length > 0 && <span className="cf-hint">반복 일정은 체크가 모든 회차에 같이 남습니다</span>}
+      </Field>
+
       {dated && (
         <Field label="알림" htmlFor={id("remind")}>
           <select

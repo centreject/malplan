@@ -937,6 +937,13 @@ export default function App() {
             setDetail(undefined);
             toggleDone(detail.item, key);
           }}
+          onCheck={(index) => {
+            const checked = { ...detail.item, checklist: (detail.item.checklist ?? []).map((entry, i) => (i === index ? { ...entry, done: !entry.done } : entry)) };
+
+            // Only this field: a title or a date changed elsewhere meanwhile stays.
+            persisted.update((board) => ({ ...board, items: board.items.map((item) => (item.id === checked.id ? { ...item, checklist: checked.checklist } : item)) }));
+            setDetail({ ...detail, item: checked });
+          }}
           onDelete={() => {
             commandRun.current += 1;
             setCommandNote(undefined);

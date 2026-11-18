@@ -80,6 +80,7 @@ const ItemSchema = v.object({
   place: v.exactOptional(v.string()),
   note: v.exactOptional(v.string()),
   remindMinutes: v.exactOptional(v.number()),
+  checklist: v.exactOptional(v.array(v.object({ text: v.string(), done: v.boolean() }))),
 });
 
 const CategorySchema = v.object({
