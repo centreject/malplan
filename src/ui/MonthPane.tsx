@@ -10,6 +10,7 @@ import { WEEKDAY_NAMES, startLabel } from "./format";
 import { ItemMark, PaneHeader } from "./parts";
 import { MonthPicker } from "./MonthPicker";
 import { CategoryChecklist } from "./TabEditor";
+import { droppedItem, isItemDrag, startDrag } from "./dragItem";
 
 type MonthPaneProps = {
   year: number;
@@ -37,6 +38,8 @@ type MonthPaneProps = {
   onSelect: (date: IsoDate) => void;
   /** date = the occurrence clicked, when there is one. */
   onEdit: (item: Item, date?: IsoDate) => void;
+  /** An item dragged from the day `from` and dropped on `to`. */
+  onMove: (id: string, from: IsoDate, to: IsoDate) => void;
   onPrev: () => void;
   onNext: () => void;
   onReset: (() => void) | undefined;
@@ -59,6 +62,8 @@ export function MonthPane(props: MonthPaneProps) {
   // until the day is clicked again, somewhere else is clicked, or Escape. The same rules as the missed-dates popup.
   const [pinned, setPinned] = useState<IsoDate>();
   const [hovered, setHovered] = useState<IsoDate>();
+  /** The day an item is being dragged over. */
+  const [dropOn, setDropOn] = useState<IsoDate>();
 
   useEffect(() => {
     if (pinned === undefined) {
@@ -194,8 +199,29 @@ export function MonthPane(props: MonthPaneProps) {
                 date === props.today ? "is-today" : "",
                 date === props.selected ? "is-selected" : "",
                 occurrences.length > limit && (date === pinned || date === hovered) ? "is-unfolded" : "",
+                date === dropOn ? "is-drop" : "",
               ].join(" ")}
               data-date={date}
+              onDragOver={(event) => {
+                if (isItemDrag(event)) {
+                  event.preventDefault();
+                  setDropOn(date);
+                }
+              }}
+              onDragLeave={(event) => {
+                // Into a child of this day is still over it.
+                if (!(event.relatedTarget instanceof Node && event.currentTarget.contains(event.relatedTarget))) setDropOn(undefined);
+              }}
+              onDrop={(event) => {
+                const item = droppedItem(event);
+
+                setDropOn(undefined);
+
+                if (item !== undefined) {
+                  event.preventDefault();
+                  props.onMove(item.id, item.date, date);
+                }
+              }}
               // The list is inside the cell, so this fires only once the pointer leaves both (and the list's margin).
               onMouseLeave={() => setHovered(undefined)}
               onClick={() => {
@@ -221,6 +247,8 @@ export function MonthPane(props: MonthPaneProps) {
                     <button
                       type="button"
                       className={`month-item item-open ${done ? "is-done" : ""}`}
+                      draggable
+                      onDragStart={(event) => startDrag(event, item.id, date)}
                       onClick={() => props.onEdit(item, date)}
                       onContextMenu={(event) => openMenu(event, item, date)}
                     >
@@ -241,6 +269,8 @@ export function MonthPane(props: MonthPaneProps) {
                       <button
                         type="button"
                         className={`month-item item-open ${done ? "is-done" : ""}`}
+                        draggable
+                        onDragStart={(event) => startDrag(event, item.id, date)}
                         onClick={() => props.onEdit(item, date)}
                         onContextMenu={(event) => openMenu(event, item, date)}
                       >

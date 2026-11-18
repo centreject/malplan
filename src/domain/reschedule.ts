@@ -1,4 +1,5 @@
 import { addDays, dayNumber, weekdayOf, type IsoDate } from "./date";
+import { editOccurrence } from "./series";
 import type { Item } from "./item";
 import { missedDates } from "./schedule";
 
@@ -60,4 +61,37 @@ export function reschedule(
         return [item];
     }
   });
+}
+
+/**
+ * Drag and drop: the occurrence on `from` goes to `to`. A one-off moves (done stays done); a range moves as a whole,
+ * the dragged day landing on `to`; a repeating item moves only that occurrence, as 이 일정만 does.
+ */
+export function moveOccurrence(items: Item[], id: string, from: IsoDate, to: IsoDate, newId: () => string): Item[] {
+  const item = items.find((i) => i.id === id);
+
+  if (item === undefined || from === to) {
+    return items;
+  }
+
+  const when = item.when;
+
+  switch (when.kind) {
+    case "single":
+      return items.map((i) => (i.id === id ? { ...i, when: { kind: "single", date: to }, done: i.done.includes(from) ? [to] : [] } : i));
+
+    case "range": {
+      const shift = dayNumber(to) - dayNumber(from);
+      const end = addDays(when.end, shift);
+
+      // A range is done under its last day.
+      return items.map((i) => (i.id === id ? { ...i, when: { kind: "range", start: addDays(when.start, shift), end }, done: i.done.includes(when.end) ? [end] : [] } : i));
+    }
+
+    case "recurring":
+      return editOccurrence(items, item, { ...item, when: { kind: "single", date: to } }, from, "this", newId);
+
+    case "none":
+      return items;
+  }
 }

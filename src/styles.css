@@ -979,6 +979,13 @@ ul {
   background: var(--surface-2);
 }
 
+/* A day an item is being dragged over (week and month panes). */
+.week-day.is-drop,
+.month-cell.is-drop {
+  outline: 2px dashed var(--accent);
+  outline-offset: -2px;
+}
+
 .week-head {
   display: flex;
   align-items: baseline;

@@ -14,7 +14,8 @@ import { AiSettings } from "./ui/AiSettings";
 import { addDays, partsOf, type IsoDate } from "./domain/date";
 import type { Category, Item } from "./domain/item";
 import { holidaysForYears, mergeHolidays } from "./domain/holidays";
-import { reschedule } from "./domain/reschedule";
+import { shortDate } from "./domain/format";
+import { moveOccurrence, reschedule } from "./domain/reschedule";
 import { deleteOccurrence, editOccurrence, type SeriesScope } from "./domain/series";
 import { daysAround, doneKey, isDone, overdueTasks } from "./domain/schedule";
 import { weekLabel, weekStartOf } from "./domain/weeks";
@@ -518,6 +519,13 @@ export default function App() {
     };
   });
 
+  /** Dragged to another day: undoable, as a drop is easy to make by accident. */
+  const moveItem = (id: string, from: IsoDate, to: IsoDate) => {
+    if (from !== to) {
+      act(`${shortDate(to)}로 옮겼습니다`, (board) => ({ ...board, items: moveOccurrence(board.items, id, from, to, () => crypto.randomUUID()) }));
+    }
+  };
+
   /** Undoable: a check in 밀린 할 일 or 날짜 없는 할 일 takes the row off the screen. */
   const toggleDone = (target: Item, date: string) => {
     const key = doneKey(target, date);
@@ -669,6 +677,7 @@ export default function App() {
             holidays={holidays}
             onSelect={select}
             onEdit={openEdit}
+            onMove={moveItem}
             title={`${weekMonth}월 ${weekNth}주차`}
             picker={<WeekPicker label={`${weekMonth}월 ${weekNth}주차`} first={week[0] ?? weekAnchor} today={now.today} start={display.weekNumberStart} onPick={moveWeek} />}
             onPrev={() => moveWeek(addDays(weekAnchor, -weekStep))}
@@ -700,6 +709,7 @@ export default function App() {
             onAddCategory={addCategoryNamed}
             onSelect={select}
             onEdit={openEdit}
+            onMove={moveItem}
             onPrev={() => setMonthCursor(shiftMonth(monthCursor, -1))}
             onNext={() => setMonthCursor(shiftMonth(monthCursor, 1))}
             onPickMonth={(year, month) => setMonthCursor({ year, month })}

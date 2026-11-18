@@ -1,9 +1,10 @@
-import { useContext, type ReactNode } from "react";
+import { useContext, useState, type ReactNode } from "react";
 import { ItemMenu } from "./ContextMenu";
 import { partsOf, weekdayOf, type IsoDate } from "../domain/date";
 import type { Category, Item } from "../domain/item";
 import { occurrencesOn } from "../domain/schedule";
 import { shortDate, startLabel, weekdayName } from "./format";
+import { droppedItem, isItemDrag, startDrag } from "./dragItem";
 import { ItemMark, PaneHeader } from "./parts";
 
 const VISIBLE_PER_DAY = 5;
@@ -22,6 +23,8 @@ type WeekPaneProps = {
   onSelect: (date: IsoDate) => void;
   /** date = the occurrence clicked, when there is one. */
   onEdit: (item: Item, date?: IsoDate) => void;
+  /** An item dragged from the day `from` and dropped on `to`. */
+  onMove: (id: string, from: IsoDate, to: IsoDate) => void;
   onPrev: () => void;
   onNext: () => void;
   onReset: (() => void) | undefined;
@@ -31,6 +34,8 @@ export function WeekPane(props: WeekPaneProps) {
   const first = props.dates[0] ?? props.today;
   const last = props.dates.at(-1) ?? props.today;
   const openMenu = useContext(ItemMenu);
+  /** The day an item is being dragged over. */
+  const [dropOn, setDropOn] = useState<IsoDate>();
 
   return (
     <section className="pane pane-week" aria-label={`${props.title} 할 일`}>
@@ -55,7 +60,27 @@ export function WeekPane(props: WeekPaneProps) {
           return (
             <li
               key={date}
-              className={`week-day ${date === props.today ? "is-today" : ""} ${date === props.selected ? "is-selected" : ""}`}
+              className={`week-day ${date === props.today ? "is-today" : ""} ${date === props.selected ? "is-selected" : ""} ${date === dropOn ? "is-drop" : ""}`}
+              onDragOver={(event) => {
+                if (isItemDrag(event)) {
+                  event.preventDefault();
+                  setDropOn(date);
+                }
+              }}
+              onDragLeave={(event) => {
+                // Into a child of this day is still over it.
+                if (!(event.relatedTarget instanceof Node && event.currentTarget.contains(event.relatedTarget))) setDropOn(undefined);
+              }}
+              onDrop={(event) => {
+                const item = droppedItem(event);
+
+                setDropOn(undefined);
+
+                if (item !== undefined) {
+                  event.preventDefault();
+                  props.onMove(item.id, item.date, date);
+                }
+              }}
             >
               <button type="button" className={`week-head ${tone}`} onClick={() => props.onSelect(date)}>
                 <span className="week-weekday">{weekdayName(date)}</span>
@@ -65,7 +90,7 @@ export function WeekPane(props: WeekPaneProps) {
               <ul className="week-items">
                 {occurrences.slice(0, VISIBLE_PER_DAY).map(({ item, done }) => (
                   <li key={item.id}>
-                    <button type="button" className={`week-item item-open ${done ? "is-done" : ""}`} onClick={() => props.onEdit(item, date)} onContextMenu={(event) => openMenu(event, item, date)}>
+                    <button type="button" draggable onDragStart={(event) => startDrag(event, item.id, date)} className={`week-item item-open ${done ? "is-done" : ""}`} onClick={() => props.onEdit(item, date)} onContextMenu={(event) => openMenu(event, item, date)}>
                       <ItemMark
                         category={props.categories.find((c) => c.id === item.categoryId)}
                         task={item.kind === "task"}

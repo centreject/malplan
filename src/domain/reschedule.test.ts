@@ -1,6 +1,6 @@
 import { describe, expect, test } from "vitest";
 import type { Item } from "./item";
-import { quickTargets, reschedule } from "./reschedule";
+import { moveOccurrence, quickTargets, reschedule } from "./reschedule";
 
 // 2026-10-08 is a Thursday.
 const today = "2026-10-08";
@@ -81,5 +81,29 @@ describe("reschedule", () => {
     const other = task("b", { kind: "single", date: "2026-10-01" });
 
     expect(reschedule([other], ["a"], "2026-10-09", today, () => "new")).toEqual([other]);
+  });
+});
+
+describe("moveOccurrence (drag and drop)", () => {
+  test("a one-off moves and stays done", () => {
+    const done = { ...task("a", { kind: "single", date: "2026-10-08" }), done: ["2026-10-08"] };
+
+    expect(moveOccurrence([done], "a", "2026-10-08", "2026-10-10", () => "x")).toEqual([{ ...done, when: { kind: "single", date: "2026-10-10" }, done: ["2026-10-10"] }]);
+  });
+
+  test("a range moves as a whole: the dragged day lands on the target", () => {
+    const trip = task("t", { kind: "range", start: "2026-10-08", end: "2026-10-10" });
+
+    expect(moveOccurrence([trip], "t", "2026-10-09", "2026-10-12", () => "x")[0]?.when).toEqual({ kind: "range", start: "2026-10-11", end: "2026-10-13" });
+  });
+
+  test("a repeating item moves only that occurrence", () => {
+    const weekly = task("w", { kind: "recurring", rule: { freq: "weekly", weekdays: [4], start: "2026-10-01" } });
+    const moved = moveOccurrence([weekly], "w", "2026-10-08", "2026-10-09", () => "one");
+
+    expect(moved.map((i) => [i.id, i.when])).toEqual([
+      ["w", { kind: "recurring", rule: { freq: "weekly", weekdays: [4], start: "2026-10-01", except: ["2026-10-08"] } }],
+      ["one", { kind: "single", date: "2026-10-09" }],
+    ]);
   });
 });
