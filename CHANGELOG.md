@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.2.13 (2026-11-18)
+
+- Import another calendar's .ics file (마이페이지 → 저장 · 백업): time zones, all-day and multi-day events, repeats with COUNT and exceptions; new items go to a "가져옴" category, and importing the same file again updates them.
+- Drag an item to another day in the week and month panes; a repeating item moves only that occurrence. Undo from the toast.
+- "10분 후", "2시간 뒤" count from now; "10분 후 회의, 내일 3시 치과" opens two cards.
+- Right-click a day for "11/25에 추가"; a repeating item offers 이 일정만 / 이후 전부 / 반복 전체 삭제; every item offers 복제.
+- A tab can have its own colour.
+- Keyboard: the month grid moves with the arrow keys (one day in the Tab order), and so do the tabs.
+
 ## 0.2.12 (2026-11-17)
 
 - Keyboard shortcuts: / focuses the sentence input, T goes to today, ←/→ step a day, Ctrl+Z reverts the last change (listed in 설정 → 정보).

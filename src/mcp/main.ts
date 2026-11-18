@@ -202,7 +202,7 @@ async function call(request: ToolCall): Promise<string> {
   }
 }
 
-const server = new Server({ name: "malplan", version: "0.2.12" }, { capabilities: { tools: {} } });
+const server = new Server({ name: "malplan", version: "0.2.13" }, { capabilities: { tools: {} } });
 
 server.setRequestHandler(ListToolsRequestSchema, () => ({ tools: TOOLS }));
 
