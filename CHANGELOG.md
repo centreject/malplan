@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.2.14 (2026-11-19)
+
+- An item can hold a checklist of small steps ("여권 챙기기"), ticked in the item's detail view; a repeating item shares one list.
+- 말로 고치기: a new date moves a multi-day item whole; an undated task given "오늘" or "오늘 3시" gets that date and time. MCP edit_schedule refuses what the edit screen would refuse.
+- Parser: "새벽 2시~4시" and "밤 10시~12시" keep their meridiem, "오전 12시" is midnight, "오늘 2시간 후" late at night is tomorrow, "0일마다" is not a repeat.
+- .ics import: importing malplan's own export again keeps checklists, reminders and completions; repeats whose end cannot be read, or limited to some months, come in as one day instead of every day for good; times near a daylight-saving change are right.
+- Reminders: a 시간대 item follows its own setting (none, or a lead before the slot); an undecided item set to none leaves the morning summary; 아무때나 has no reminder field.
+- Search opens an ended repeat on its last real occurrence and finds checklist steps.
+- Fixes: a load failure shows the real error; a late AI answer no longer lands on a new form; no "오늘까지만 반복" on a repeat that has not started; clicking an item in a crowded month cell no longer pins its list; the item detail shows the latest version; a duplicate starts unticked.
+- Sync files are on disk before they replace the old ones; MCP on PCs with Korean names no longer share one log file.
+
 ## 0.2.13 (2026-11-18)
 
 - Import another calendar's .ics file (마이페이지 → 저장 · 백업): time zones, all-day and multi-day events, repeats with COUNT and exceptions; new items go to a "가져옴" category, and importing the same file again updates them.
