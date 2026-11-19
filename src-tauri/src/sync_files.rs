@@ -65,7 +65,8 @@ pub fn sync_stamp(dir: String) -> Result<String, String> {
         let meta = entry.metadata().map_err(text_error)?;
 
         if meta.is_file() {
-            let modified = meta.modified().map_err(text_error)?.duration_since(UNIX_EPOCH).map_err(|e| e.to_string())?;
+            // A time before 1970 (some network shares) is still a time: zero, not a failed refresh.
+            let modified = meta.modified().map_err(text_error)?.duration_since(UNIX_EPOCH).unwrap_or_default();
 
             parts.push(format!("{}	{}	{}", entry.file_name().to_string_lossy(), meta.len(), modified.as_nanos()));
         }
@@ -88,13 +89,17 @@ pub fn sync_read(dir: String, name: String) -> Result<Option<String>, String> {
     }
 }
 
-/// Write via a temp file and rename, so readers never see a half-written file.
+/// Write via a temp file and rename, so readers never see a half-written file. The temp file is on disk before
+/// the rename: a crash right after must not leave an empty file in place of the old one.
 #[tauri::command(async)]
 pub fn sync_write(dir: String, name: String, content: String) -> Result<(), String> {
     let target = file_path(&dir, &name)?;
     let temp = file_path(&dir, &format!("{name}.tmp"))?;
+    let mut file = fs::File::create(&temp).map_err(text_error)?;
 
-    fs::write(&temp, content).map_err(text_error)?;
+    file.write_all(content.as_bytes()).map_err(text_error)?;
+    file.sync_data().map_err(text_error)?;
+    drop(file);
     fs::rename(&temp, &target).map_err(text_error)
 }
 

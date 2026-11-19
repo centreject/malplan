@@ -131,7 +131,8 @@ function RecurringList({ items, categories, today, weekStart, onEdit, onEndSerie
                 <button type="button" className="icon-button" aria-label={`${item.title} 수정`} title="수정" onClick={() => onEdit(item)}>
                   <Pencil size={16} strokeWidth={2} />
                 </button>
-                {!finished && (
+                {/* A series that starts after today has no "today" to end on: delete or edit it instead. */}
+                {!finished && item.when.kind === "recurring" && item.when.rule.start <= today && (
                   <button type="button" className="icon-button" aria-label={`${item.title} 반복 끝내기`} title="오늘까지만 반복" onClick={() => onEndSeries(item)}>
                     <CalendarOff size={16} strokeWidth={2} />
                   </button>
@@ -158,7 +159,7 @@ function RecurringList({ items, categories, today, weekStart, onEdit, onEndSerie
       {groupList(active, false)}
       {ended.length > 0 && (
         <details className="side-list">
-          <summary>끝난 반복 <span className="count num">{ended.flatMap((g) => g.entries).length}</span></summary>
+          <summary>끝난 반복 <span className="count num">{new Set(ended.flatMap((g) => g.entries.map((entry) => entry.item.id))).size}</span></summary>
           {groupList(ended, true)}
         </details>
       )}

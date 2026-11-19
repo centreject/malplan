@@ -114,8 +114,8 @@ export function parseKorean(text: string, today: IsoDate, nowMinutes?: number): 
   const relative = nowMinutes === undefined ? undefined : takeRelativeTime(scanner, nowMinutes);
   const time = relative?.time ?? takeTime(scanner, flags);
 
-  // "10분 후" late in the evening lands on the next day.
-  if (relative !== undefined && date === undefined) {
+  // "10분 후" late in the evening lands on the next day, "오늘 2시간 후" too: it counts from now, not from today.
+  if (relative !== undefined && (date === undefined || (date.kind === "single" && date.date === today))) {
     date = { kind: "single", date: addDays(today, relative.days) };
   }
 
@@ -194,13 +194,17 @@ function takeRule(scanner: Scanner, today: IsoDate): Recurrence | undefined {
     return { freq: "daily", start };
   }
 
-  const everyDays = scanner.take(/(\d{1,2})일\s*마다/);
+  // "0일마다" is no interval: left unread rather than a rule that never comes round.
+  const everyDays = scanner.take(/(\d{1,2})일\s*마다/, (m) => Number(m[1]) >= 1);
 
   if (everyDays !== undefined) {
     return { freq: "daily", interval: Number(everyDays[1]), start };
   }
 
-  const everyMonths = scanner.take(/(\d{1,2})개월\s*(?:마다|에\s*한\s*번)(?:\s*(\d{1,2})일)?/);
+  const everyMonths = scanner.take(
+    /(\d{1,2})개월\s*(?:마다|에\s*한\s*번)(?:\s*(\d{1,2})일)?/,
+    (m) => Number(m[1]) >= 1 && (m[2] === undefined || (Number(m[2]) >= 1 && Number(m[2]) <= 31)),
+  );
 
   if (everyMonths !== undefined) {
     const day = everyMonths[2] === undefined ? partsOf(today).day : Number(everyMonths[2]);
@@ -243,7 +247,10 @@ function takeRule(scanner: Scanner, today: IsoDate): Recurrence | undefined {
     return { freq: "weekly", weekdays: [everyWeekdayValue], start };
   }
 
-  const weekly = scanner.take(new RegExp(`(매주|격주|\\d{1,2}주\\s*마다)\\s*((?:${WEEKDAY_TOKEN}[,\\s·]*)+)`));
+  const weekly = scanner.take(
+    new RegExp(`(매주|격주|\\d{1,2}주\\s*마다)\\s*((?:${WEEKDAY_TOKEN}[,\\s·]*)+)`),
+    (m) => !/^0+주/.test(m[1] ?? ""),
+  );
 
   if (weekly === undefined) {
     return undefined;
@@ -1037,10 +1044,10 @@ function takeTime(scanner: Scanner, flags: Flag[]): ParsedTime | undefined {
 
   if (range !== undefined) {
     const start = toClock(range[1], range[2], range[3], range[4], flags);
-    const endMeridiem = range[5] ?? (start.hour >= 12 ? "오후" : undefined);
-    const end = toClock(endMeridiem, range[6], range[7], range[8], []);
+    const end = toClock(range[5] ?? endMeridiem(range[1], start, Number(range[6])), range[6], range[7], range[8], []);
 
-    return { kind: "exact", start, end };
+    // "밤 10시~12시" ends at midnight: 0:00, which an end at or before its start already means.
+    return { kind: "exact", start, end: { hour: end.hour % 24, minute: end.minute } };
   }
 
   const single = scanner.take(new RegExp(`(?:${MERIDIEM}\\s*)?${CLOCK}`), (m) => validClock(m[2], m[3]));
@@ -1084,6 +1091,24 @@ function validClock(hourText: string | undefined, minuteText: string | undefined
   return Number(hourText) <= 24 && Number(minuteText ?? 0) <= 59;
 }
 
+/**
+ * The end's meridiem when only the start says one. "밤 10시~1시" stays at night; "새벽 2시~4시" and "오전 9시~11시"
+ * stay in the morning (12 is noon: "오전 9시~12시"); an end before a morning start ("오전 10시~2시") is afternoon.
+ */
+function endMeridiem(startMeridiem: string | undefined, start: ClockTime, endHour: number): string | undefined {
+  if (startMeridiem === "밤") {
+    return "밤";
+  }
+
+  const morning = startMeridiem === "오전" || startMeridiem === "새벽" || startMeridiem === "아침";
+
+  if (morning && endHour > start.hour && endHour < 12) {
+    return startMeridiem;
+  }
+
+  return start.hour >= 12 ? "오후" : undefined;
+}
+
 function toClock(
   meridiem: string | undefined,
   hourText: string | undefined,
@@ -1097,6 +1122,9 @@ function toClock(
   if (meridiem === "밤" && hour === 12) {
     // 밤 12시: midnight, written 24 here and moved to the next day by parseKorean.
     hour = 24;
+  } else if ((meridiem === "오전" || meridiem === "새벽") && hour === 12) {
+    // 오전 12시, like 12 AM: midnight at the start of that day.
+    hour = 0;
   } else if ((meridiem === "밤" && hour <= 5) || meridiem === "새벽" || meridiem === "오전") {
     // 밤 1시, 새벽 3시: small hours, not afternoon.
   } else if (hour < 12) {

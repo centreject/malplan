@@ -56,3 +56,11 @@ test("each result carries the nearest upcoming date, else the last one; sorted b
     ["undated", undefined],
   ]);
 });
+
+test("an ended series opens on its last real occurrence, and a checklist step is found", () => {
+  // Wednesdays until Monday 10/12: the last one is 10/7.
+  const ended = item("ended", { when: { kind: "recurring", rule: { freq: "weekly", weekdays: [3], start: "2026-09-02", until: "2026-10-12" } }, checklist: [{ text: "여권 챙기기", done: false }] });
+
+  expect(searchItems([ended], "ended", "2026-11-19")[0]?.date).toBe("2026-10-07");
+  expect(searchItems([ended], "여권", "2026-11-19")).toHaveLength(1);
+});

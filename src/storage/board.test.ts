@@ -292,3 +292,21 @@ test("a tab's own colour survives the store, and taking it away clears it", asyn
   expect((await roundTrip(coloured)).tabs[1]).toEqual({ ...workTab, colorSlot: 4 });
   expect(boardChanges(coloured, board)).toEqual([{ entity: "tab", id: "t-work", field: "colorSlot", value: null, remove: false }]);
 });
+
+describe("addImported, review fixes (2026-11-19)", () => {
+  test("importing malplan's own export again keeps the checklist, reminder and completions", () => {
+    const local: Item = { ...mailing, checklist: [{ text: "봉투", done: true }] };
+    const fromFile: Item = { ...mailing, done: [], categoryId: "new" };
+    const next = addImported({ ...board, items: [local] }, [fromFile], "new").items[0];
+
+    expect(next?.checklist).toEqual(local.checklist);
+    expect(next?.remindMinutes).toBe(10);
+    expect(next?.done).toEqual(["2026-10-07"]);
+  });
+
+  test("a UID the file repeats comes in once", () => {
+    const twice = [{ ...mailing, id: "dup" }, { ...mailing, id: "dup", title: "second" }];
+
+    expect(addImported(board, twice, "new").items.filter((i) => i.id === "dup")).toHaveLength(1);
+  });
+});

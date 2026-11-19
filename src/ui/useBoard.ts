@@ -131,8 +131,8 @@ export function useBoard(seed: () => Board) {
         setLoadFailed(false);
         apply();
       },
-      (error: Error) => {
-        report(`reload failed: ${error.message}`);
+      (error: Error | string) => {
+        report(`reload failed: ${errorText(error)}`);
         setLoadFailed(true);
       },
     );
@@ -185,9 +185,9 @@ export function useBoard(seed: () => Board) {
       show(loaded.board);
       setLoadFailed(false);
       setReady(true);
-    })().catch((error: Error) => {
-      report(`load failed: ${error.message}`);
-      setErrors([`불러오기 실패: ${error.message}. 잠시 뒤 다시 시도합니다.`]);
+    })().catch((error: Error | string) => {
+      report(`load failed: ${errorText(error)}`);
+      setErrors([`불러오기 실패: ${errorText(error)}. 잠시 뒤 다시 시도합니다.`]);
       setLoadFailed(true);
 
       if (!cancelled) {
@@ -259,6 +259,11 @@ export async function folderHasData(dir: string | undefined): Promise<boolean> {
   const backend = await openBackend(dir);
 
   return (await backend.list()).some((name) => name === "snapshot.json" || (name.startsWith("log-") && name.endsWith(".jsonl")));
+}
+
+/** Tauri commands reject with the Rust error string, not an Error. */
+function errorText(error: Error | string): string {
+  return error instanceof Error ? error.message : error;
 }
 
 function sameList(a: readonly string[], b: readonly string[]): boolean {

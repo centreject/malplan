@@ -221,6 +221,12 @@ export async function editSchedule(
   }
 
   const changes = result.changes.join(", ");
+  // The app's edit screen shows these and will not save; neither does this.
+  const problems = Object.values(cardErrors(result.card));
+
+  if (problems.length > 0) {
+    return { text: `바꿀 수 없습니다: ${item.title} — ${problems.join(" ")}`, next: board };
+  }
 
   if (!request.save) {
     return { text: `바꾸면: ${item.title} — ${changes}. 사용자가 확인하면 save=true로 다시 호출.`, next: board };

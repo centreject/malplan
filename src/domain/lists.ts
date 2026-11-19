@@ -131,7 +131,8 @@ function upcomingDate(item: Item, today: IsoDate): IsoDate | undefined {
   }
 }
 
-function lastDate(item: Item): IsoDate | undefined {
+/** The item's last day, for a repeating one its last real occurrence; undefined when it has none or never ends. */
+export function lastDate(item: Item): IsoDate | undefined {
   switch (item.when.kind) {
     case "single":
       return item.when.date;

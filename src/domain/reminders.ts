@@ -27,7 +27,7 @@ export function checkFrom(previous: { today: IsoDate; minutes: number } | undefi
 /**
  * Reminders whose fire time falls in (fromMinutes, toMinutes] of `today`.
  * Exact times fire `remindMinutes` (or the default) before the start, possibly on the day before;
- * slots fire when the slot starts; undecided items get one morning summary. The key identifies the
+ * slots fire when the slot starts (or their own lead before it); undecided items get one morning summary. The key identifies the
  * occurrence and its time, so the caller can avoid firing twice yet a moved item reminds again. Unfinished tasks from
  * earlier days get one morning summary too.
  * After a gap (the PC slept), items that have already started are skipped and the label says the time
@@ -66,17 +66,20 @@ export function dueReminders(
             body: `${formatClock(time.start)}${where} (${leadLabel(start - toMinutes)})`,
           });
         }
-      } else if (time.kind === "slot" && offset === 0) {
-        const start = minutesOf(SLOT_START[time.slot]);
+      } else if (time.kind === "slot") {
+        // When the slot starts, or the lead the item chose before it; "없음" is none, as for a set time.
+        const lead = item.remindMinutes ?? 0;
+        const start = offset * DAY + minutesOf(SLOT_START[time.slot]);
+        const leadKey = lead === 0 ? "" : `-${lead}`;
 
-        if (inWindow(start) && start >= toMinutes) {
-          reminders.push({ key: `${item.id}@${start}@${date}`, title: item.title, body: item.place ?? "" });
+        if (lead !== NO_REMINDER && inWindow(start - lead) && start >= toMinutes) {
+          reminders.push({ key: `${item.id}@${start - offset * DAY}${leadKey}@${date}`, title: item.title, body: item.place ?? "" });
         }
       }
     }
   }
 
-  const undecided = occurrencesOn(items, today).filter((o) => !o.done && o.item.time.kind === "undecided");
+  const undecided = occurrencesOn(items, today).filter((o) => !o.done && o.item.time.kind === "undecided" && o.item.remindMinutes !== NO_REMINDER);
 
   // Any minute of the morning, not only 08:00: a PC turned on at 9 still gets it. The key keeps it to once a day.
   if (undecided.length > 0 && toMinutes >= UNDECIDED_SUMMARY_AT && toMinutes < UNDECIDED_SUMMARY_UNTIL) {

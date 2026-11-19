@@ -155,14 +155,30 @@ export function addImported(board: Board, imported: Item[], newCategoryId: strin
   const items = board.items.map((item) => {
     const update = incoming.get(item.id);
 
-    return update === undefined ? item : { ...update, categoryId: item.categoryId };
+    return update === undefined ? item : keepLocal(item, update);
   });
 
   return {
     ...board,
     categories: target?.categories ?? board.categories,
-    items: [...items, ...imported.flatMap((item) => (known.has(item.id) ? [] : [{ ...item, categoryId }]))],
+    // One per id: a file can repeat a UID.
+    items: [...items, ...[...incoming.values()].flatMap((item) => (known.has(item.id) ? [] : [{ ...item, categoryId }]))],
   };
+}
+
+/** A calendar file has no checklist or reminder, and its completion only when it says so: those stay as they were here. */
+function keepLocal(current: Item, update: Item): Item {
+  const merged: Item = { ...update, categoryId: current.categoryId, done: [...new Set([...current.done, ...update.done])] };
+
+  if (current.checklist !== undefined) {
+    merged.checklist = current.checklist;
+  }
+
+  if (current.remindMinutes !== undefined) {
+    merged.remindMinutes = current.remindMinutes;
+  }
+
+  return merged;
 }
 
 /** "완전히 되돌리기": the board becomes the backup; whatever it does not hold is deleted. 전체 stays first. */

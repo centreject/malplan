@@ -2,6 +2,7 @@ import { isTauri } from "@tauri-apps/api/core";
 import { open } from "@tauri-apps/plugin-dialog";
 import { FolderOpen, RotateCcw } from "lucide-react";
 import { useState } from "react";
+import { defaultSyncDir } from "../storage/backends";
 import { folderHasData, type FolderMode } from "./useBoard";
 
 type StorageSettingsProps = {
@@ -37,8 +38,8 @@ export function StorageSettings({ dir, errors, unsaved, onSwitch }: StorageSetti
 
   const choose = (next: string | undefined) =>
     attempt(async () => {
-      // The folder in use already: nothing to merge or replace.
-      if (next === dir) {
+      // The folder in use already (the default one picked by path, or another spelling of it): nothing to merge or replace.
+      if (next === dir || (await sameFolder(next, dir))) {
         return;
       }
 
@@ -126,4 +127,12 @@ export function StorageSettings({ dir, errors, unsaved, onSwitch }: StorageSetti
       )}
     </fieldset>
   );
+}
+
+/** Windows paths: case and a trailing separator do not make another folder. undefined is the default folder. */
+async function sameFolder(a: string | undefined, b: string | undefined): Promise<boolean> {
+  const fallback = await defaultSyncDir();
+  const plain = (path: string | undefined) => (path ?? fallback).replaceAll("/", "\\").replace(/\\+$/, "").toLowerCase();
+
+  return plain(a) === plain(b);
 }

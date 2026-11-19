@@ -2,7 +2,7 @@
 // It opens the same sync folder as the app and appends only to its own log, so the app picks the
 // changes up on its next refresh. Usage: node malplan-mcp.mjs [--dir <sync folder>]
 import { createHash, randomUUID } from "node:crypto";
-import { mkdir, open, readdir, readFile, rename, stat, unlink, writeFile } from "node:fs/promises";
+import { mkdir, open, readdir, readFile, rename, stat, unlink } from "node:fs/promises";
 import { homedir, hostname, tmpdir } from "node:os";
 import { join } from "node:path";
 import { Server } from "@modelcontextprotocol/sdk/server/index.js";
@@ -43,21 +43,48 @@ class NodeFolder implements Backend {
 
   async write(name: string, content: string) {
     await mkdir(this.#dir, { recursive: true });
-    await writeFile(join(this.#dir, `${name}.tmp`), content, "utf8");
+    const temp = await open(join(this.#dir, `${name}.tmp`), "w");
+
+    // On disk before the rename, as the app's sync_write: a crash must not leave an empty file in place of the old one.
+    try {
+      await temp.writeFile(content, "utf8");
+      await temp.sync();
+    } finally {
+      await temp.close();
+    }
+
     await rename(join(this.#dir, `${name}.tmp`), join(this.#dir, name));
   }
 
   async append(name: string, line: string) {
     await mkdir(this.#dir, { recursive: true });
-    const file = await open(join(this.#dir, name), "a");
+    const file = await open(join(this.#dir, name), "a+");
 
     try {
-      await file.appendFile(line, "utf8");
+      // As the app's sync_append: a line an earlier append cut short gets its own end, so only that line is lost.
+      const { size } = await file.stat();
+      const last = Buffer.alloc(1);
+
+      if (size > 0) {
+        await file.read(last, 0, 1, size - 1);
+      }
+
+      await file.appendFile(size > 0 && last[0] !== 0x0a ? `\n${line}` : line, "utf8");
       await file.sync();
     } finally {
       await file.close();
     }
   }
+}
+
+/**
+ * This PC's log name. A name with other letters ("민수-PC") keeps a short hash of itself: replaced by "_" alone,
+ * "민수-PC" and "영희-PC" would both write log-mcp-__-PC.jsonl. An ASCII name stays as it was.
+ */
+function deviceName(host: string): string {
+  const safe = host.replace(/[^\w-]/g, "_");
+
+  return safe === host ? `mcp-${safe}` : `mcp-${safe}-${createHash("sha256").update(host).digest("hex").slice(0, 8)}`;
 }
 
 /** The app's default folder (Tauri app data + "sync"); --dir overrides it for a chosen folder. */
@@ -172,7 +199,7 @@ const TOOLS = [
 
 const dir = syncDir(process.argv);
 
-const store = new SyncStore(new NodeFolder(dir), `mcp-${hostname().replace(/[^\w-]/g, "_")}`, () => Date.now());
+const store = new SyncStore(new NodeFolder(dir), deviceName(hostname()), () => Date.now());
 
 async function call(request: ToolCall): Promise<string> {
   const today = localToday();

@@ -125,3 +125,12 @@ test("the check starts from the current minute on start and on a new day", () =>
   expect(checkFrom(undefined, today, at(9))).toBe(at(8, 59));
   expect(checkFrom({ today: "2026-10-07", minutes: at(23, 59) }, today, at(0, 1))).toBe(at(0, 0));
 });
+
+test("a slot honours its own setting: none, or a lead before the slot starts", () => {
+  const off = item("off", { time: { kind: "slot", slot: "morning" }, remindMinutes: NO_REMINDER });
+  const early = item("early", { time: { kind: "slot", slot: "morning" }, remindMinutes: 30 });
+  const later = item("later", { time: { kind: "undecided" }, remindMinutes: NO_REMINDER });
+
+  expect(dueReminders([off, later], today, at(7), at(9), 10)).toEqual([]);
+  expect(dueReminders([early], today, at(7, 29), at(7, 30), 10).map((r) => r.key)).toEqual(["early@480-30@2026-10-08"]);
+});

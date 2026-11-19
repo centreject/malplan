@@ -167,6 +167,8 @@ export default function App() {
 
   /** A blank form for direct entry, no AI, dated `date`. */
   const openBlank = (date: IsoDate) => {
+    // An AI answer still on its way belongs to the sentence before: it must not land on this form.
+    aiSession.current += 1;
     setConfirm({ drafts: [{ id: crypto.randomUUID(), card: cardFromParse(parseKorean("", date), date, categories) }], editing: false });
     setAi({ extractions: new Map(), inputs: new Map(), note: undefined });
   };
@@ -316,6 +318,8 @@ export default function App() {
     });
 
   const saveDrafts = (drafts: Draft[], scope: SeriesScope) => {
+    // Saved: an AI answer arriving now is for a form that is gone.
+    aiSession.current += 1;
     // Learn from category and kind fixes: what the AI proposed vs what the user kept.
     addCorrections(
       drafts.flatMap((draft) => {
@@ -569,7 +573,7 @@ export default function App() {
       actions.push({ label: item.done.includes(key) ? "완료 취소" : "완료", run: () => toggleDone(item, key) });
     }
 
-    actions.push({ label: "복제", run: () => act("복제했습니다", (board) => ({ ...board, items: [...board.items, { ...item, id: crypto.randomUUID(), done: [] }] })) });
+    actions.push({ label: "복제", run: () => act("복제했습니다", (board) => ({ ...board, items: [...board.items, { ...duplicate(item), id: crypto.randomUUID() }] })) });
 
     const remove = (scope: SeriesScope) => (board: Board) => ({
       ...board,
@@ -664,6 +668,7 @@ export default function App() {
               act("삭제했습니다", (board) => ({ ...board, items: board.items.filter((item) => item.id !== target.id) }));
             }}
             onAddRecurring={() => {
+              aiSession.current += 1;
               const base = cardFromParse(parseKorean("", now.today), now.today, categories);
 
               setConfirm({ drafts: [{ id: crypto.randomUUID(), card: { ...base, kind: "task", repeat: true } }], editing: false });
@@ -914,7 +919,8 @@ export default function App() {
       )}
       {detail !== undefined && (
         <ItemDetail
-          item={detail.item}
+          // The item as it is now: another device's sync or a tick can change it while this stays open.
+          item={items.find((item) => item.id === detail.item.id) ?? detail.item}
           date={detail.date}
           categories={categories}
           commandNote={commandNote}
@@ -938,11 +944,10 @@ export default function App() {
             toggleDone(detail.item, key);
           }}
           onCheck={(index) => {
-            const checked = { ...detail.item, checklist: (detail.item.checklist ?? []).map((entry, i) => (i === index ? { ...entry, done: !entry.done } : entry)) };
+            const tick = (item: Item): Item => ({ ...item, checklist: (item.checklist ?? []).map((entry, i) => (i === index ? { ...entry, done: !entry.done } : entry)) });
 
-            // Only this field: a title or a date changed elsewhere meanwhile stays.
-            persisted.update((board) => ({ ...board, items: board.items.map((item) => (item.id === checked.id ? { ...item, checklist: checked.checklist } : item)) }));
-            setDetail({ ...detail, item: checked });
+            // Only this field, on the item as stored now: a title, a date or another tick changed elsewhere stays.
+            persisted.update((board) => ({ ...board, items: board.items.map((item) => (item.id === detail.item.id ? tick(item) : item)) }));
           }}
           onDelete={() => {
             commandRun.current += 1;
@@ -977,4 +982,15 @@ export default function App() {
     </DayMenu>
     </ItemMenu>
   );
+}
+
+/** A copy starts unfinished: no completed days, no ticked steps. */
+function duplicate(item: Item): Item {
+  const copy: Item = { ...item, done: [] };
+
+  if (item.checklist !== undefined) {
+    copy.checklist = item.checklist.map((entry) => ({ ...entry, done: false }));
+  }
+
+  return copy;
 }

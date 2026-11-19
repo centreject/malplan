@@ -184,3 +184,16 @@ describe("mcp tools", () => {
     expect(listSchedule(one.next, today, 15)).toContain("10/19(월)");
   });
 });
+
+describe("edit_schedule, review fixes (2026-11-19)", () => {
+  test("a new date moves a range whole", async () => {
+    const { store, board } = await seeded();
+    const trip = { id: "r1", title: "여행", kind: "event" as const, categoryId: "work", when: { kind: "range" as const, start: "2026-10-20", end: "2026-10-22" }, time: { kind: "anytime" as const }, done: [] };
+    const next = { ...board, items: [trip] };
+
+    await store.setMany(boardWrites(board, next));
+    const saved = await editSchedule(store, next, { id: "r1", text: "10월 25일로", date: undefined, save: true }, today, () => "x");
+
+    expect(saved.next.items[0]?.when).toEqual({ kind: "range", start: "2026-10-25", end: "2026-10-27" });
+  });
+});

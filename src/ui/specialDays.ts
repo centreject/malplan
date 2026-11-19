@@ -37,10 +37,14 @@ function loadCache(): Cache | undefined {
   return loadStored(CACHE_STORAGE, CacheSchema, undefined);
 }
 
+const FETCH_TIMEOUT_MS = 15_000;
+
 /** data.go.kr sends no CORS headers, so the desktop app fetches through the Rust HTTP plugin. */
 async function fetchYear(key: string, year: number): Promise<Map<IsoDate, string>> {
   const url = specialDaysUrl(key, year);
-  const response = isTauri() ? await tauriFetch(url) : await window.fetch(url);
+  // A server that never answers must not leave the request open for good.
+  const init = { signal: AbortSignal.timeout(FETCH_TIMEOUT_MS) };
+  const response = isTauri() ? await tauriFetch(url, init) : await window.fetch(url, init);
 
   if (!response.ok) {
     throw new Error(`HTTP ${response.status}`);
@@ -84,7 +88,8 @@ export function useSpecialDays(apiKey: string, years: number[], now: number) {
         }
       } catch (error) {
         if (!cancelled) {
-          setFailure(error instanceof Error ? error.message : String(error));
+          // A network error can quote the request URL, and with it the key: settings show it, so the key goes.
+          setFailure((error instanceof Error ? error.message : String(error)).replace(/serviceKey=[^&\s]*/g, "serviceKey=***"));
         }
       }
     })();

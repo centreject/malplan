@@ -2,7 +2,7 @@
 // Dates and times are computed here, as everywhere; the result goes to the edit screen before anything is saved.
 import { parseKorean } from "../parse/parseKorean";
 import { clockText, type Card, type CardKind } from "./card";
-import { addDays, type IsoDate } from "./date";
+import { addDays, dayNumber, type IsoDate } from "./date";
 import { shortDate } from "./format";
 import type { Category } from "./item";
 
@@ -82,6 +82,8 @@ export function applyEditCommand(
 
   if (shift === null && parsed.date?.kind === "single") {
     date = parsed.date.date;
+    // A range moves whole: "11월 25일로" on 11/20–11/22 is 11/25–11/27, not an end before its start.
+    next.endDate = card.endDate === "" ? "" : addDays(card.endDate, dayNumber(date) - dayNumber(from));
   }
 
   if (parsed.time?.kind === "exact") {
@@ -93,7 +95,10 @@ export function applyEditCommand(
     next.slot = parsed.time.slot;
   }
 
-  if (date === from) {
+  // An undated task's form holds today only as a placeholder: "오늘로" / "오늘 3시" still gives it that date.
+  const datedNow = card.kind === "undated" && (shift !== null || parsed.date?.kind === "single");
+
+  if (date === from && !datedNow) {
     return editResult(card, next, categories);
   }
 
@@ -167,6 +172,14 @@ function keptEnd(card: Card, start: string): string {
   return clockText({ hour: Math.floor(end / 60), minute: end % 60 });
 }
 
+function dateText(card: Card): string {
+  if (card.kind === "undated") {
+    return "";
+  }
+
+  return card.endDate === "" ? shortDate(card.date) : `${shortDate(card.date)}–${shortDate(card.endDate)}`;
+}
+
 function timeText(card: Card): string {
   if (card.timeMode === "exact") {
     return card.end === "" ? card.start : `${card.start}–${card.end}`;
@@ -181,7 +194,7 @@ function describeChanges(before: Card, after: Card, categories: Category[], chan
 
   const pairs: [string, string, string][] = [
     ["종류", KIND_NAMES[before.kind], KIND_NAMES[after.kind]],
-    ["날짜", shortDate(before.date), shortDate(after.date)],
+    ["날짜", dateText(before), dateText(after)],
     ["시간", timeText(before), timeText(after)],
     ["제목", before.title, after.title],
     ["장소", before.place, after.place],

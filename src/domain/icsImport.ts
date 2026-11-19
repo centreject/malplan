@@ -1,6 +1,6 @@
 // iCalendar (RFC 5545) import: events and todos from another calendar app become malplan items. Text from outside, so
 // every value is checked here and anything this app cannot represent is reported rather than guessed.
-import { addDays, isRealDate, makeDate, weekdayOf, type IsoDate, type Weekday } from "./date";
+import { addDays, daysInMonth, isRealDate, weekdayOf, type IsoDate, type Weekday } from "./date";
 import type { Item, ItemTime, ItemWhen } from "./item";
 import { expand, type Recurrence } from "./recurrence";
 import type { ClockTime } from "../parse/parseKorean";
@@ -156,6 +156,10 @@ function moment(prop: Property, zone: string, value = prop.value.trim()): Moment
     return { date };
   }
 
+  if (Number(h) > 23 || Number(mi) > 59) {
+    return undefined;
+  }
+
   const wall = { date, clock: { hour: Number(h), minute: Number(mi) } };
   const from = utc === "Z" ? "UTC" : prop.params.get("TZID");
 
@@ -167,7 +171,9 @@ function inZone(wall: Required<Moment>, from: string, to: string): Moment {
   try {
     const [y, m, d] = wall.date.split("-").map(Number);
     const guess = Date.UTC(y ?? 1970, (m ?? 1) - 1, d ?? 1, wall.clock.hour, wall.clock.minute);
-    const instant = guess - offsetMs(guess, from);
+    // Twice: the offset at the guess can differ from the one at the real instant near a daylight-saving change.
+    const estimate = guess - offsetMs(guess, from);
+    const instant = guess - offsetMs(estimate, from);
 
     return wallIn(instant, to);
   } catch {
@@ -247,9 +253,16 @@ function recurrence(value: string, start: IsoDate, zone: string, props: Property
     .filter((d): d is IsoDate => d !== undefined);
 
   const untilText = parts.get("UNTIL");
-  const until = untilText === undefined ? undefined : moment({ name: "UNTIL", params: new Map(), value: untilText }, zone)?.date;
   const count = parts.get("COUNT");
-  const end = until ?? (count === undefined ? undefined : countEnd(rule, Number(count)));
+
+  const end = untilText !== undefined
+    ? moment({ name: "UNTIL", params: new Map(), value: untilText }, zone)?.date
+    : count === undefined ? undefined : countEnd(rule, Number(count));
+
+  // An end that cannot be read is not "no end": an endless series would fill the calendar with days that are not.
+  if (end === undefined && (untilText !== undefined || count !== undefined)) {
+    return undefined;
+  }
 
   const result: Recurrence = { ...rule };
 
@@ -270,7 +283,12 @@ type Base = { start: IsoDate; interval?: number };
 function ruleOfFreq(parts: ReadonlyMap<string, string>, base: Base, start: IsoDate): Recurrence | undefined {
   const byDay = parts.get("BYDAY")?.split(",").filter((d) => d !== "") ?? [];
   const monthDay = parts.get("BYMONTHDAY");
-  const [year, month, day] = start.split("-").map(Number);
+  const [, month, day] = start.split("-").map(Number);
+
+  // BYMONTH limits the other frequencies to some months, which their malplan rules cannot say.
+  if (parts.has("BYMONTH") && parts.get("FREQ") !== "YEARLY") {
+    return undefined;
+  }
 
   switch (parts.get("FREQ")) {
     case "DAILY":
@@ -286,7 +304,7 @@ function ruleOfFreq(parts: ReadonlyMap<string, string>, base: Base, start: IsoDa
 
     case "MONTHLY": {
       if (byDay.length === 1) {
-        const match = /^(-1|[1-4])(SU|MO|TU|WE|TH|FR|SA)$/.exec(byDay[0] ?? "");
+        const match = /^\+?(-1|[1-4])(SU|MO|TU|WE|TH|FR|SA)$/.exec(byDay[0] ?? "");
         const weekday = BYDAY.get(match?.[2] ?? "");
 
         return match === null || weekday === undefined ? undefined : { ...base, freq: "monthly", nth: Number(match[1]), weekday };
@@ -301,7 +319,10 @@ function ruleOfFreq(parts: ReadonlyMap<string, string>, base: Base, start: IsoDa
       const m = Number(parts.get("BYMONTH") ?? month);
       const d = Number(monthDay ?? day);
 
-      return byDay.length === 0 && isRealDate(makeDate(year ?? 2000, m, d)) ? { ...base, freq: "yearly", month: m, day: d } : undefined;
+      // 2/29 is a real yearly date (leap years only); 2/30 is not. 2028 is a leap year.
+      const real = Number.isInteger(m) && m >= 1 && m <= 12 && Number.isInteger(d) && d >= 1 && d <= daysInMonth(2028, m);
+
+      return byDay.length === 0 && real ? { ...base, freq: "yearly", month: m, day: d } : undefined;
     }
 
     default:

@@ -300,7 +300,11 @@ export function MonthPane(props: MonthPaneProps) {
                       className={`month-item item-open ${done ? "is-done" : ""}`}
                       draggable
                       onDragStart={(event) => startDrag(event, item.id, date)}
-                      onClick={() => props.onEdit(item, date)}
+                      onClick={(event) => {
+                        // The cell around it would pin or unpin its full list too.
+                        event.stopPropagation();
+                        props.onEdit(item, date);
+                      }}
                       onContextMenu={(event) => openMenu(event, item, date)}
                     >
                       <ItemMark category={categoryOf(item)} task={item.kind === "task"} done={done} />
@@ -322,7 +326,11 @@ export function MonthPane(props: MonthPaneProps) {
                         className={`month-item item-open ${done ? "is-done" : ""}`}
                         draggable
                         onDragStart={(event) => startDrag(event, item.id, date)}
-                        onClick={() => props.onEdit(item, date)}
+                        onClick={(event) => {
+                        // The cell around it would pin or unpin its full list too.
+                        event.stopPropagation();
+                        props.onEdit(item, date);
+                      }}
                         onContextMenu={(event) => openMenu(event, item, date)}
                       >
                         <ItemMark category={categoryOf(item)} task={item.kind === "task"} done={done} />

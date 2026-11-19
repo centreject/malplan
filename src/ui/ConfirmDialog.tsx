@@ -184,7 +184,8 @@ export function ConfirmDialog(props: ConfirmDialogProps) {
               errors={errors[index] ?? {}}
               categories={categories}
               occurrence={occurrence}
-              lockStart={occurrence !== undefined && scope === "this" && draft.card.repeat}
+              // "이후 전부" also starts on the clicked occurrence (series.ts): a start typed here would be dropped.
+              lockStart={occurrence !== undefined && scope !== "all" && draft.card.repeat}
               heading={drafts.length > 1 ? `${index + 1} / ${drafts.length}` : undefined}
               onChange={(card) => update(draft.id, card)}
               onExclude={drafts.length > 1 ? () => exclude(draft.id) : undefined}
@@ -287,7 +288,7 @@ function CardEditor({ card, errors, categories, occurrence, lockStart, heading, 
                 className="cf-input cf-date num"
                 value={card.date}
                 disabled={lockStart}
-                title={lockStart ? "이 일정만 옮기려면 반복을 끄고 날짜를 고르세요" : undefined}
+                title={lockStart ? "고른 회차부터 적용됩니다. 이 일정만 옮기려면 반복을 끄고 날짜를 고르세요" : undefined}
                 onChange={(event) => set({ date: event.target.value })}
                 {...invalid("date")}
               />
@@ -461,7 +462,8 @@ function CardEditor({ card, errors, categories, occurrence, lockStart, heading, 
         {card.repeat && card.checklist.length > 0 && <span className="cf-hint">반복 일정은 체크가 모든 회차에 같이 남습니다</span>}
       </Field>
 
-      {dated && (
+      {/* "아무때나" has no time to remind before; a slot reminds at its start, undecided in the morning summary. */}
+      {dated && card.timeMode !== "anytime" && (
         <Field label="알림" htmlFor={id("remind")}>
           <select
             id={id("remind")}

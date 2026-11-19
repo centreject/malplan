@@ -1,5 +1,6 @@
 import type { IsoDate } from "./date";
 import type { Category, Item } from "./item";
+import { lastDate } from "./lists";
 import { firstOccurrence } from "./schedule";
 
 export type SearchResult = { item: Item; date: IsoDate | undefined };
@@ -21,7 +22,7 @@ export function searchItems(items: Item[], query: string, today: IsoDate, option
   const categoryName = new Map((options.categories ?? []).map((c) => [c.id, c.name]));
 
   const hits = items.filter((item) =>
-    [item.title, item.place ?? "", item.note ?? "", categoryName.get(item.categoryId) ?? ""].some((text) => text.toLowerCase().includes(needle)),
+    [item.title, item.place ?? "", item.note ?? "", categoryName.get(item.categoryId) ?? "", ...(item.checklist ?? []).map((entry) => entry.text)].some((text) => text.toLowerCase().includes(needle)),
   );
 
   return hits
@@ -41,7 +42,8 @@ function nearestDate(item: Item, today: IsoDate): IsoDate | undefined {
     case "range":
       return item.when.end < today ? item.when.end : item.when.start < today ? today : item.when.start;
     case "recurring":
-      return firstOccurrence(item.when.rule, today, LOOKAHEAD_DAYS) ?? item.when.rule.until ?? item.when.rule.start;
+      // An ended series opens on its last real occurrence: its end date need not be one ("10/12까지 매주 수요일").
+      return firstOccurrence(item.when.rule, today, LOOKAHEAD_DAYS) ?? lastDate(item) ?? item.when.rule.start;
     case "none":
       return undefined;
   }

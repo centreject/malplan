@@ -112,3 +112,31 @@ describe("parseIcs", () => {
     expect(parseIcs("not a calendar", "Asia/Seoul", "c")).toEqual({ items: [], warnings: [] });
   });
 });
+
+const calendar = (...lines: string[]) => ["BEGIN:VCALENDAR", "BEGIN:VEVENT", "UID:a", "SUMMARY:x", ...lines, "END:VEVENT", "END:VCALENDAR"].join("\r\n");
+
+const whenOf = (...lines: string[]) => parseIcs(calendar(...lines), "Asia/Seoul", "c").items[0]?.when;
+
+describe("review fixes (2026-11-19)", () => {
+
+  test("a rule whose end cannot be read, or that only some months hold, is not taken as every day for good", () => {
+    expect(whenOf("DTSTART;VALUE=DATE:20260105", "RRULE:FREQ=DAILY;UNTIL=garbage")?.kind).toBe("single");
+    expect(whenOf("DTSTART;VALUE=DATE:20260105", "RRULE:FREQ=DAILY;COUNT=x")?.kind).toBe("single");
+    expect(whenOf("DTSTART;VALUE=DATE:20260105", "RRULE:FREQ=DAILY;BYMONTH=1")?.kind).toBe("single");
+  });
+
+  test("+1MO and a yearly 2/29 are read; 2/30 is not", () => {
+    expect(whenOf("DTSTART;VALUE=DATE:20260105", "RRULE:FREQ=MONTHLY;BYDAY=+1MO")).toEqual({ kind: "recurring", rule: { freq: "monthly", nth: 1, weekday: 1, start: "2026-01-05" } });
+    expect(whenOf("DTSTART;VALUE=DATE:20260105", "RRULE:FREQ=YEARLY;BYMONTH=2;BYMONTHDAY=29")?.kind).toBe("recurring");
+    expect(whenOf("DTSTART;VALUE=DATE:20260105", "RRULE:FREQ=YEARLY;BYMONTH=2;BYMONTHDAY=30")?.kind).toBe("single");
+  });
+
+  test("an impossible time is no time", () => {
+    expect(parseIcs(calendar("DTSTART:20260105T999900"), "Asia/Seoul", "c").items).toEqual([]);
+  });
+
+  test("a time just after a daylight-saving change moves by the offset then in force", () => {
+    // 2026-03-08 03:30 in New York is EDT (UTC-4): 07:30 UTC, 16:30 in Seoul.
+    expect(parseIcs(calendar("DTSTART;TZID=America/New_York:20260308T033000"), "Asia/Seoul", "c").items[0]?.time).toEqual({ kind: "exact", start: { hour: 16, minute: 30 } });
+  });
+});

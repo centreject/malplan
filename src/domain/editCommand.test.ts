@@ -177,3 +177,22 @@ test("an undated task given a date becomes a dated task, and saving keeps the da
     date: "2026-10-06",
   });
 });
+
+describe("review fixes (2026-11-19)", () => {
+  test("a new date moves a range whole, never leaving its end before its start", () => {
+    const trip: Item = { ...item, when: { kind: "range", start: "2026-10-20", end: "2026-10-22" }, time: { kind: "anytime" } };
+    const result = applyEditCommand(cardFromItem(trip, today), "10월 25일로", today, categories);
+
+    expect(result !== undefined && result !== REPEAT_DATE_REFUSAL && itemFromCard(result.card, "a").when).toEqual({ kind: "range", start: "2026-10-25", end: "2026-10-27" });
+    expect(result !== undefined && result !== REPEAT_DATE_REFUSAL && result.changes).toEqual(["날짜: 10/20–10/22 → 10/25–10/27"]);
+  });
+
+  test("an undated task given today gets today, with the time asked for", () => {
+    const someday: Item = { ...item, kind: "task", when: { kind: "none" }, time: { kind: "anytime" } };
+    const onlyDate = applyEditCommand(cardFromItem(someday, today), "오늘로", today, categories);
+    const withTime = applyEditCommand(cardFromItem(someday, today), "오늘 3시", today, categories);
+
+    expect(onlyDate !== undefined && onlyDate !== REPEAT_DATE_REFUSAL && itemFromCard(onlyDate.card, "a").when).toEqual({ kind: "single", date: today });
+    expect(withTime !== undefined && withTime !== REPEAT_DATE_REFUSAL && itemFromCard(withTime.card, "a").time).toEqual({ kind: "exact", start: { hour: 15, minute: 0 } });
+  });
+});

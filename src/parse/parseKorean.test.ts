@@ -619,3 +619,33 @@ describe("ranges without 까지", () => {
     expect(dateOf(text)).toEqual({ kind: "range", start, end });
   });
 });
+
+const clock = (text: string, now?: number) => parseKorean(text, today, now);
+
+describe("review fixes (2026-11-19)", () => {
+
+  test("a range keeps the start's meridiem where it reads so", () => {
+    expect(clock("새벽 2시~4시 작업").time).toEqual({ kind: "exact", start: { hour: 2, minute: 0 }, end: { hour: 4, minute: 0 } });
+    expect(clock("오전 9시~12시 작업").time).toEqual({ kind: "exact", start: { hour: 9, minute: 0 }, end: { hour: 12, minute: 0 } });
+    expect(clock("오전 10시~2시 작업").time).toEqual({ kind: "exact", start: { hour: 10, minute: 0 }, end: { hour: 14, minute: 0 } });
+    expect(clock("밤 10시~12시 작업").time).toEqual({ kind: "exact", start: { hour: 22, minute: 0 }, end: { hour: 0, minute: 0 } });
+    expect(clock("밤 10시~1시 작업").time).toEqual({ kind: "exact", start: { hour: 22, minute: 0 }, end: { hour: 1, minute: 0 } });
+  });
+
+  test("오전 12시 is midnight", () => {
+    expect(clock("오전 12시 작업").time).toEqual({ kind: "exact", start: { hour: 0, minute: 0 } });
+  });
+
+  test("오늘 2시간 후 at 23:00 is tomorrow 01:00", () => {
+    const parsed = clock("오늘 2시간 후 전화", 23 * 60);
+
+    expect(parsed.date).toEqual({ kind: "single", date: "2026-10-06" });
+    expect(parsed.time).toEqual({ kind: "exact", start: { hour: 1, minute: 0 } });
+  });
+
+  test("a zero interval is no rule", () => {
+    expect(clock("0일마다 물주기").date?.kind).not.toBe("recurring");
+    expect(clock("0개월마다 점검").date?.kind).not.toBe("recurring");
+    expect(clock("0주마다 월요일 회의").date?.kind).not.toBe("recurring");
+  });
+});
