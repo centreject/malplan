@@ -101,10 +101,12 @@ async fn download_model(app: &AppHandle, cancel: &AtomicBool) -> Result<(), Stri
         .build()
         .map_err(|e| e.to_string())?;
 
-    // A dropped connection resumes from the .part file a few times before the user has to press 이어받기.
+    // A dropped connection resumes from the .part file a few times before the user has to press 이어받기. An attempt
+    // that got further starts the count again: a slow line that keeps dropping still finishes.
     let mut retries = 0;
 
     loop {
+        let before = fs::metadata(&part).map_or(0, |m| m.len());
         let result = fetch_resumable(&client, MODEL.url, &part, MODEL.size, cancel, |received| {
             let _ = app.emit("model-download", Progress { received, total: MODEL.size });
         })
@@ -116,9 +118,20 @@ async fn download_model(app: &AppHandle, cancel: &AtomicBool) -> Result<(), Stri
                 return Err(error);
             }
             Err(_) => {
+                if fs::metadata(&part).map_or(0, |m| m.len()) > before {
+                    retries = 0;
+                }
+
                 retries += 1;
-                let wait = Duration::from_secs(3 * u64::from(retries));
-                let _ = tauri::async_runtime::spawn_blocking(move || std::thread::sleep(wait)).await;
+
+                // Waits in short steps, so 일시정지 during the wait stops it at once.
+                for _ in 0..(15 * retries) {
+                    if cancel.load(Ordering::SeqCst) {
+                        return Err("cancelled".into());
+                    }
+
+                    let _ = tauri::async_runtime::spawn_blocking(|| std::thread::sleep(Duration::from_millis(200))).await;
+                }
             }
         }
     }
@@ -161,6 +174,13 @@ async fn fetch_resumable(
 
     let mut response = request.send().await.map_err(|e| e.to_string())?;
     let status = response.status();
+
+    // The .part no longer fits the file on the server (it changed, or the part is bad): start over, as a retry.
+    if status == StatusCode::RANGE_NOT_SATISFIABLE && have > 0 {
+        fs::remove_file(part).map_err(|e| e.to_string())?;
+
+        return Err("range refused; starting over".into());
+    }
 
     if !status.is_success() {
         return Err(format!("HTTP {status}"));
@@ -354,6 +374,39 @@ mod tests {
 
         assert_eq!(result, Err("cancelled".to_string()));
         assert!(part.exists());
+    }
+
+    #[test]
+    fn a_refused_range_deletes_the_part_for_a_fresh_start() {
+        let listener = TcpListener::bind("127.0.0.1:0").unwrap();
+        let url = format!("http://{}/model.gguf", listener.local_addr().unwrap());
+
+        std::thread::spawn(move || {
+            let mut stream = listener.incoming().next().unwrap().unwrap();
+            let mut reader = BufReader::new(stream.try_clone().unwrap());
+            let mut line = String::new();
+
+            while reader.read_line(&mut line).unwrap() > 2 {
+                line.clear();
+            }
+
+            stream.write_all(b"HTTP/1.1 416 Range Not Satisfiable
+Content-Length: 0
+Connection: close
+
+").unwrap();
+            let _ = stream.shutdown(std::net::Shutdown::Write);
+        });
+
+        let part = temp_dir("refused").join("m.part");
+
+        fs::write(&part, b"old bytes").unwrap();
+
+        let result = tauri::async_runtime::block_on(fetch_resumable(&Client::new(), &url, &part, 10_000, &AtomicBool::new(false), |_| {}));
+
+        // Not "HTTP 4…": the download loop retries it, from zero.
+        assert_eq!(result, Err("range refused; starting over".to_string()));
+        assert!(!part.exists());
     }
 
     #[test]

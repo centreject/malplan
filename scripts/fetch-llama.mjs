@@ -1,6 +1,6 @@
 // Fetch the pinned llama-server CPU build into src-tauri/binaries/llama/ (bundled as a Tauri
 // resource, not committed). llama.cpp is MIT licensed. Run: npm run fetch:llama
-import { execFileSync } from "node:child_process";
+import { execFileSync, spawnSync } from "node:child_process";
 import { createHash } from "node:crypto";
 import { existsSync, mkdirSync, readdirSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
@@ -28,10 +28,30 @@ function prune() {
   }
 }
 
-if (existsSync(join(out, "llama-server.exe"))) {
+/** The build of the server already here ("version: 0.6.0-dev (build 11565, …)" on stderr), or undefined. */
+function presentBuild() {
+  const exe = join(out, "llama-server.exe");
+
+  if (!existsSync(exe)) {
+    return undefined;
+  }
+
+  const run = spawnSync(exe, ["--version"], { encoding: "utf8", timeout: 20_000 });
+
+  return /build (\d+)/.exec(`${run.stdout ?? ""}${run.stderr ?? ""}`)?.[1];
+}
+
+const present = presentBuild();
+
+if (present === TAG.slice(1)) {
   prune();
   console.log(`already present: ${out}`);
   process.exit(0);
+}
+
+// Another build (TAG was raised): clear it, or its DLLs would mix with the new ones.
+if (present !== undefined || existsSync(out)) {
+  rmSync(out, { recursive: true, force: true });
 }
 
 const response = await fetch(URL);
