@@ -229,7 +229,10 @@ async function call(request: ToolCall): Promise<string> {
   }
 }
 
-const server = new Server({ name: "malplan", version: "0.2.14" }, { capabilities: { tools: {} } });
+/** package.json's version, set at build time (vite.mcp.config.ts). */
+declare const MALPLAN_VERSION: string;
+
+const server = new Server({ name: "malplan", version: MALPLAN_VERSION }, { capabilities: { tools: {} } });
 
 server.setRequestHandler(ListToolsRequestSchema, () => ({ tools: TOOLS }));
 

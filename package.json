@@ -16,7 +16,8 @@
     "bench:llm": "vitest run --config vitest.eval.config.ts --silent=false",
     "bench:rules": "vitest run --config vitest.eval.config.ts src/llm/eval/rules.eval.ts --silent=false",
     "fetch:llama": "node scripts/fetch-llama.mjs",
-    "build:mcp": "vite build --config vite.mcp.config.ts"
+    "build:mcp": "vite build --config vite.mcp.config.ts",
+    "version:bump": "node scripts/bump-version.mjs"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.133.0",
