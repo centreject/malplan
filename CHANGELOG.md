@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.2.15 (2026-11-19)
+
+- 말로 고치기: "장소 지워", "메모는 없애줘" empty the field (the AI used to leave it as it was). An AI reply with an empty place or note no longer clears it unless the request asks to remove it.
+- AI with a custom server: a server with no model name no longer gets the reply-schema option, which some servers reject.
+- Model download: 일시정지 works at once even while a retry waits; a slow line that keeps dropping keeps going; a resume the server refuses starts over instead of failing every time.
+
 ## 0.2.14 (2026-11-19)
 
 - An item can hold a checklist of small steps ("여권 챙기기"), ticked in the item's detail view; a repeating item shares one list.
