@@ -109,6 +109,17 @@ describe("testConnection", () => {
     expect(JSON.parse(seen[0]?.body ?? "{}")).toMatchObject({ model: "qwen3:4b", temperature: 0 });
   });
 
+  test("a custom server with no model name is called \"local\" without the reply schema", async () => {
+    reply = () => ({ status: 200, body: chat("확인") });
+
+    await testConnection(custom({ model: "" }));
+
+    const body = JSON.parse(seen[0]?.body ?? "{}");
+
+    expect(body.model).toBe("local");
+    expect(body.response_format).toBeUndefined();
+  });
+
   test("an empty or null reply is a failure that points at the model name", async () => {
     for (const content of ["", "   ", null]) {
       reply = () => ({ status: 200, body: chat(content) });

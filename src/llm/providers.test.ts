@@ -130,11 +130,13 @@ describe("connectionErrorText", () => {
 
 describe("chatBody", () => {
   test("the local server gets the reply schema with the category choices", () => {
-    expect(chatBody(LOCAL_MODEL, prompt)).toContain('"response_format":{"type":"json_schema","json_schema":{"name":"extraction","schema":{"type":"object"');
-    expect(chatBody(LOCAL_MODEL, prompt)).toContain('"category":{"enum":["약속","새 분류"]}');
+    expect(chatBody(LOCAL_MODEL, prompt, "schema")).toContain('"response_format":{"type":"json_schema","json_schema":{"name":"extraction","schema":{"type":"object"');
+    expect(chatBody(LOCAL_MODEL, prompt, "schema")).toContain('"category":{"enum":["약속","새 분류"]}');
   });
 
   test("API providers get the plain request", () => {
-    expect(chatBody("m", prompt)).not.toContain("response_format");
+    expect(chatBody("m", prompt, "plain")).not.toContain("response_format");
+    // A custom server with no model name is called "local" too, but is not known to take the schema.
+    expect(chatBody(LOCAL_MODEL, prompt, "plain")).not.toContain("response_format");
   });
 });

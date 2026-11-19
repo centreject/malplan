@@ -16,7 +16,7 @@ async function ask(input: string): Promise<{ reply: string; ms: number }> {
   const response = await fetch(LOCAL_ENDPOINT, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: chatBody(LOCAL_MODEL, prompt),
+    body: chatBody(LOCAL_MODEL, prompt, "schema"),
   });
 
   // A malformed reply just scores as unreadable.

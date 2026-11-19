@@ -116,11 +116,14 @@ type ChatBody = {
   response_format?: { type: "json_schema"; json_schema: { name: string; schema: ReplyJsonSchema } };
 };
 
-/** Request body. Only the local server gets the reply schema (it constrains sampling); others keep plain JSON. */
-/** The model name the bundled server is called with; its replies are held to the JSON schema. */
+/** The model name the bundled server is called with. */
 export const LOCAL_MODEL = "local";
 
-export function chatBody(model: string, prompt: Prompt): string {
+/**
+ * Request body. Only the bundled server gets the reply schema (it constrains sampling): it is the one server known to
+ * take it. Others, a custom server too whatever its model name, keep plain JSON, checked when it comes back.
+ */
+export function chatBody(model: string, prompt: Prompt, schema: "schema" | "plain"): string {
   const body: ChatBody = {
     model,
     temperature: 0,
@@ -130,14 +133,14 @@ export function chatBody(model: string, prompt: Prompt): string {
     ],
   };
 
-  if (model === LOCAL_MODEL) {
+  if (schema === "schema") {
     body.response_format = { type: "json_schema", json_schema: { name: "extraction", schema: prompt.schema } };
   }
 
   return JSON.stringify(body);
 }
 
-async function openAiCompatible(url: string, apiKey: string, model: string, prompt: Prompt, timeout = TIMEOUT_MS): Promise<string> {
+async function openAiCompatible(url: string, apiKey: string, model: string, prompt: Prompt, schema: "schema" | "plain", timeout = TIMEOUT_MS): Promise<string> {
   const headers = new Headers({ "Content-Type": "application/json" });
 
   if (apiKey !== "") {
@@ -147,7 +150,7 @@ async function openAiCompatible(url: string, apiKey: string, model: string, prom
   const response = await httpFetch(url, {
     method: "POST",
     headers,
-    body: chatBody(model, prompt),
+    body: chatBody(model, prompt, schema),
     signal: AbortSignal.timeout(timeout),
   });
 
@@ -194,17 +197,17 @@ export async function complete(settings: LlmSettings, prompt: Prompt): Promise<s
     case "local": {
       const { origin, key } = (await localServer?.ensure()) ?? MANUAL_SERVER;
 
-      return openAiCompatible(`${origin}/v1/chat/completions`, key, LOCAL_MODEL, prompt);
+      return openAiCompatible(`${origin}/v1/chat/completions`, key, LOCAL_MODEL, prompt, "schema");
     }
 
     case "gemini":
-      return openAiCompatible(GEMINI_ENDPOINT, settings.apiKey, model, prompt);
+      return openAiCompatible(GEMINI_ENDPOINT, settings.apiKey, model, prompt, "plain");
     case "openrouter":
       if (model === "") {
         throw new Error("OpenRouter 모델 이름을 설정에 입력하세요.");
       }
 
-      return openAiCompatible(OPENROUTER_ENDPOINT, settings.apiKey, model, prompt);
+      return openAiCompatible(OPENROUTER_ENDPOINT, settings.apiKey, model, prompt, "plain");
     case "custom": {
       const endpoint = customEndpoint(settings.baseUrl);
 
@@ -213,7 +216,7 @@ export async function complete(settings: LlmSettings, prompt: Prompt): Promise<s
       }
 
       // llama.cpp ignores the name; servers that need one (Ollama) answer with their own error.
-      return openAiCompatible(endpoint.url, settings.apiKey, model === "" ? "local" : model, prompt, CUSTOM_TIMEOUT_MS);
+      return openAiCompatible(endpoint.url, settings.apiKey, model === "" ? LOCAL_MODEL : model, prompt, "plain", CUSTOM_TIMEOUT_MS);
     }
 
     case "anthropic":
