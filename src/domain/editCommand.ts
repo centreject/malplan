@@ -24,6 +24,9 @@ const TITLE = /제목(?:은|을|를)?\s*(.+?)\s*(?:으로|로)(?=\s|$)/;
 
 const NOTE = /메모(?:에|를)?\s*(.+?)\s*(?:추가|적어|넣어|남겨)/;
 
+/** "장소 지워", "메모는 없애줘": the field emptied. The local model answers these by leaving the field out, which reads as unchanged. */
+const CLEAR = /(장소|메모)(?:는|를|을)?\s*(?:지워|지우|없애|빼|비워|삭제)/;
+
 const KIND = /(할\s*일|일정)\s*(?:으로|로)(?=\s|,|$)/;
 
 const TIME_NAMES ={ undecided: "미정", anytime: "아무때나", slot: "시간대", exact: "" } as const;
@@ -63,6 +66,13 @@ export function applyEditCommand(
   });
   rest = takeField(rest, NOTE, (note) => {
     next.note = card.note === "" ? note : `${card.note}\n${note}`;
+  });
+  rest = takeField(rest, CLEAR, (field) => {
+    if (field === "장소") {
+      next.place = "";
+    } else {
+      next.note = "";
+    }
   });
   rest = takeField(rest, KIND, (kind) => {
     // An undated task has no date to keep; turning it into an event or a dated task is the edit screen's job.
@@ -204,7 +214,7 @@ function describeChanges(before: Card, after: Card, categories: Category[], chan
 
   for (const [label, from, to] of pairs) {
     if (from !== to) {
-      changes.push(`${label}: ${from === "" ? "없음" : from} → ${to}`);
+      changes.push(`${label}: ${from === "" ? "없음" : from} → ${to === "" ? "없음" : to}`);
     }
   }
 }

@@ -268,7 +268,7 @@ export default function App() {
       setCommandNote("AI가 요청을 정리하는 중…");
 
       try {
-        result = applyEditReply(card, await complete(llm, buildEditPrompt(card, text, categories)), categories);
+        result = applyEditReply(card, await complete(llm, buildEditPrompt(card, text, categories)), categories, text);
       } catch {
         if (commandRun.current !== run) {
           return;

@@ -4,7 +4,7 @@ import * as v from "valibot";
 import type { Card } from "../domain/card";
 import { editResult, type EditResult } from "../domain/editCommand";
 import type { Category } from "../domain/item";
-import { NEW_CATEGORY_CHOICE, parseReplyJson, replySchema, type Prompt } from "./extract";
+import { parseReplyJson, type Prompt, type ReplyJsonSchema } from "./extract";
 
 const PatchSchema = v.object({
   title: v.optional(v.pipe(v.string(), v.trim())),
@@ -31,11 +31,28 @@ export function buildEditPrompt(card: Card, request: string, categories: Categor
     "현재 항목: " + JSON.stringify(current),
   ].join("\n");
 
-  return { system, user: request, schema: { ...replySchema(categories), required: [] } };
+  return { system, user: request, schema: editSchema(categories) };
 }
 
-/** The model's patch applied to the card; unreadable or empty replies give undefined. */
-export function applyEditReply(card: Card, reply: string, categories: Category[]): EditResult | undefined {
+/** The five fields an edit names, none required: only what changes. */
+function editSchema(categories: Category[]): ReplyJsonSchema {
+  const text = { type: "string" } as const;
+
+  return {
+    type: "object",
+    properties: { title: text, kind: { enum: ["event", "task"] }, category: { enum: categories.map((c) => c.name) }, place: text, note: text },
+    required: [],
+  };
+}
+
+/** "장소 지워", "메모 없애": only then may an empty place or note clear what is there. */
+const CLEARS = /지워|지우|없애|빼|비워|삭제/;
+
+/**
+ * The model's patch applied to the card; unreadable or empty replies give undefined. A model may answer an
+ * unchanged field with "": that clears it only when `request` asks to remove something.
+ */
+export function applyEditReply(card: Card, reply: string, categories: Category[], request: string): EditResult | undefined {
   const patch = parseReplyJson(reply, PatchSchema);
 
   if (patch === undefined) {
@@ -43,7 +60,8 @@ export function applyEditReply(card: Card, reply: string, categories: Category[]
   }
 
   const next: Card = { ...card };
-  const category = categories.find((c) => c.name === patch.category && patch.category !== NEW_CATEGORY_CHOICE);
+  const category = categories.find((c) => c.name === patch.category);
+  const clears = CLEARS.test(request);
 
   if (patch.title !== undefined && patch.title !== "") {
     next.title = patch.title;
@@ -57,11 +75,11 @@ export function applyEditReply(card: Card, reply: string, categories: Category[]
     next.categoryId = category.id;
   }
 
-  if (patch.place !== undefined) {
+  if (patch.place !== undefined && (patch.place !== "" || clears)) {
     next.place = patch.place;
   }
 
-  if (patch.note !== undefined) {
+  if (patch.note !== undefined && (patch.note !== "" || clears)) {
     next.note = patch.note;
   }
 

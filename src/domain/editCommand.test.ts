@@ -196,3 +196,12 @@ describe("review fixes (2026-11-19)", () => {
     expect(withTime !== undefined && withTime !== REPEAT_DATE_REFUSAL && itemFromCard(withTime.card, "a").time).toEqual({ kind: "exact", start: { hour: 15, minute: 0 } });
   });
 });
+
+test("장소 지워 / 메모는 없애줘 empty the field", () => {
+  const withNote: Item = { ...item, note: "자료 준비" };
+  const place = applyEditCommand(cardFromItem(withNote, today), "장소 지워", today, categories);
+  const note = applyEditCommand(cardFromItem(withNote, today), "메모는 없애줘", today, categories);
+
+  expect(place !== undefined && place !== REPEAT_DATE_REFUSAL && place.changes).toEqual(["장소: 3층 회의실 → 없음"]);
+  expect(note !== undefined && note !== REPEAT_DATE_REFUSAL && note.changes).toEqual(["메모: 자료 준비 → 없음"]);
+});

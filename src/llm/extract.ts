@@ -37,9 +37,10 @@ export type ReplyJsonSchema = {
     title: SchemaField;
     kind: SchemaField;
     category: SchemaField;
-    newCategory: SchemaField;
+    /** Extraction only: an edit never makes a category or guesses a place. */
+    newCategory?: SchemaField;
     place: SchemaField;
-    placeGuessed: SchemaField;
+    placeGuessed?: SchemaField;
     note: SchemaField;
   };
   required: string[];

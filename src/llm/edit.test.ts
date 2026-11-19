@@ -30,9 +30,23 @@ describe("edit by AI", () => {
   });
 
   test("changed fields apply; unknown categories and empty replies do not", () => {
-    expect(applyEditReply(card, '{"title":"민수와 저녁 약속"}', categories)?.changes).toEqual(["제목: 저녁 약속 → 민수와 저녁 약속"]);
-    expect(applyEditReply(card, '{"category":"동아리"}', categories)).toBeUndefined();
-    expect(applyEditReply(card, "{}", categories)).toBeUndefined();
-    expect(applyEditReply(card, "모르겠습니다", categories)).toBeUndefined();
+    expect(applyEditReply(card, '{"title":"민수와 저녁 약속"}', categories, "고쳐")?.changes).toEqual(["제목: 저녁 약속 → 민수와 저녁 약속"]);
+    expect(applyEditReply(card, '{"category":"동아리"}', categories, "고쳐")).toBeUndefined();
+    expect(applyEditReply(card, "{}", categories, "고쳐")).toBeUndefined();
+    expect(applyEditReply(card, "모르겠습니다", categories, "고쳐")).toBeUndefined();
+  });
+
+  test("an empty place or note clears it only when the request asks to remove", () => {
+    const placed = { ...card, place: "강남역", note: "예약함" };
+
+    expect(applyEditReply(placed, '{"title":"민수와 저녁 약속","place":"","note":""}', categories, "민수도 같이")?.changes).toEqual(["제목: 저녁 약속 → 민수와 저녁 약속"]);
+    expect(applyEditReply(placed, '{"place":""}', categories, "장소 지워줘")?.changes).toEqual(["장소: 강남역 → 없음"]);
+  });
+
+  test("the schema asks only for the five fields an edit names", () => {
+    const { schema } = buildEditPrompt(card, "", categories);
+
+    expect(Object.keys(schema.properties)).toEqual(["title", "kind", "category", "place", "note"]);
+    expect(schema.properties.category).toEqual({ enum: categories.map((c) => c.name) });
   });
 });
