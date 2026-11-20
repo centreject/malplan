@@ -72,7 +72,9 @@ async function run(name: string, rows: EvalRow[]): Promise<void> {
       return { setup, ...tally, total: `${total}/${max} (${Math.round((total / max) * 100)}%)` };
     }),
   );
-  console.log(`first ${(times[0] ?? 0).toFixed(0)}ms, median ${(sorted[Math.floor(sorted.length / 2)] ?? 0).toFixed(0)}ms`);
+  const at = (share: number) => (sorted[Math.floor(sorted.length * share)] ?? 0).toFixed(0);
+
+  console.log(`first ${(times[0] ?? 0).toFixed(0)}ms, median ${at(0.5)}ms, p90 ${at(0.9)}ms, max ${(sorted.at(-1) ?? 0).toFixed(0)}ms`);
   console.log(misses.join("\n"));
 }
 
