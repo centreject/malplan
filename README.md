@@ -80,7 +80,7 @@ flowchart LR
 
 ```bash
 npm ci
-npm run fetch:llama   # llama-server CPU 빌드 (버전 고정, SHA256 확인)
+npm run fetch:llama   # llama-server Vulkan 빌드, GPU 없으면 CPU (버전 고정, SHA256 확인)
 npm run tauri dev
 ```
 

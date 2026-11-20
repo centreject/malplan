@@ -45,7 +45,7 @@
 
 Rust는 프로세스 시작·종료만 맡고, 언제 켜고 끌지는 TypeScript가 정한다.
 
-- [x] llama-server(b11565 CPU 빌드, SHA256 고정)를 Tauri 리소스(`llama/`)로 포함. 저장소에는 넣지 않고 `npm run fetch:llama`로 `src-tauri/binaries/llama/`에 받음 (Rust 빌드 전에 필요, CI도 같은 단계). MIT 고지 화면은 8단계
+- [x] llama-server(b11565 Vulkan 빌드, GPU 없으면 CPU, SHA256 고정. 2026-11-20 CPU 빌드에서 바꿈)를 Tauri 리소스(`llama/`)로 포함. 저장소에는 넣지 않고 `npm run fetch:llama`로 `src-tauri/binaries/llama/`에 받음 (Rust 빌드 전에 필요, CI도 같은 단계). MIT 고지 화면은 8단계
 - [x] 필요할 때 시작: 입력창에 포커스하면 미리 켜기, 요청이 오면 `/health`가 될 때까지 대기 (최대 60초) — `src/llm/localServer.ts`
 - [x] 미리 데우기: 미리 켤 때만 실제 지시문으로 1토큰 요청 1회 (지시문 앞부분이 서버 캐시에 남음)
 - [x] 유휴 종료: 마지막 요청 후 10분 지나면 종료, 앱 종료(`RunEvent::Exit`) 시 함께 종료. 시간 설정 UI는 없음 (상수)

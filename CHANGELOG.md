@@ -3,6 +3,7 @@
 ## Unreleased
 
 - Local AI: the warmed prompt cache is saved and loaded on the next start, so the first request after the server starts takes about 3s instead of 12s (Ryzen 5 5600X). The model no longer answers `placeGuessed`; a place the AI filled in is badged when it differs from the rules'. Warm requests: median 3.0s → 2.5s, same accuracy.
+- Local AI runs on the GPU through Vulkan when there is one, and on the CPU as before when not. On an RTX 3060 Ti a request takes about 0.25s (CPU: about 2.5s). The installer grows by about 12MB.
 
 ## 0.2.16 (2026-11-20)
 

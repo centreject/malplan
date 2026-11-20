@@ -1,5 +1,6 @@
-// Fetch the pinned llama-server CPU build into src-tauri/binaries/llama/ (bundled as a Tauri
-// resource, not committed). llama.cpp is MIT licensed. Run: npm run fetch:llama
+// Fetch the pinned llama-server Vulkan build into src-tauri/binaries/llama/ (bundled as a Tauri
+// resource, not committed). It runs on the GPU through Vulkan and falls back to its CPU backends without one.
+// llama.cpp is MIT licensed. Run: npm run fetch:llama
 import { execFileSync, spawnSync } from "node:child_process";
 import { createHash } from "node:crypto";
 import { existsSync, mkdirSync, readdirSync, rmSync, writeFileSync } from "node:fs";
@@ -8,12 +9,12 @@ import { join } from "node:path";
 
 const TAG = "b11565";
 
-const ZIP = `llama-${TAG}-bin-win-cpu-x64.zip`;
+const ZIP = `llama-${TAG}-bin-win-vulkan-x64.zip`;
 
 const URL = `https://github.com/ggml-org/llama.cpp/releases/download/${TAG}/${ZIP}`;
 
 // From `gh release view b11565 -R ggml-org/llama.cpp --json assets`.
-const SHA256 = "b45d88c70124b1ca8d8969ce073e81bc22906946d2528cab56c09c7e66420fe2";
+const SHA256 = "d21649a9cc9dc063d88848ffa9ae3986222c9e953f2f950e993e00e49cedfe21";
 
 const out = join(import.meta.dirname, "..", "src-tauri", "binaries", "llama");
 
@@ -43,13 +44,14 @@ function presentBuild() {
 
 const present = presentBuild();
 
-if (present === TAG.slice(1)) {
+// The CPU build of the same tag has no Vulkan backend: fetch over it.
+if (present === TAG.slice(1) && existsSync(join(out, "ggml-vulkan.dll"))) {
   prune();
   console.log(`already present: ${out}`);
   process.exit(0);
 }
 
-// Another build (TAG was raised): clear it, or its DLLs would mix with the new ones.
+// Another build (TAG was raised, or the CPU build): clear it, or its DLLs would mix with the new ones.
 if (present !== undefined || existsSync(out)) {
   rmSync(out, { recursive: true, force: true });
 }

@@ -80,7 +80,7 @@ To run it from source instead:
 
 ```bash
 npm ci
-npm run fetch:llama   # llama-server CPU build (pinned, checked by SHA256)
+npm run fetch:llama   # llama-server Vulkan build, CPU without a GPU (pinned, checked by SHA256)
 npm run tauri dev
 ```
 
