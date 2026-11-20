@@ -24,7 +24,7 @@ const text = "10월 31일에 김철수와 저녁약속 있음. 서울 어딘가�
 const card: Card = cardFromParse(parseKorean(text, today), today, categories);
 
 describe("buildPrompt", () => {
-  test("names the categories, today, and asks for JSON only; dates stay with code", () => {
+  test("names the categories and asks for JSON only; dates stay with code", () => {
     const { system, user } = buildPrompt(text, categories, [], today);
 
     expect(system).toContain("회사");
@@ -32,6 +32,10 @@ describe("buildPrompt", () => {
     expect(system).toContain("JSON");
     expect(system).toContain("날짜");
     expect(user).toContain(text);
+  });
+
+  test("the instructions are the same whatever the input or day, so the local server can keep them cached", () => {
+    expect(buildPrompt(text, categories, [], today).system).toBe(buildPrompt("", categories, [], "2027-01-01").system);
   });
 
   test("recent user corrections become examples", () => {
@@ -80,11 +84,11 @@ describe("pickCorrections", () => {
   const unrelated = Array.from({ length: 30 }, (_, index) => ({ input: `택배 ${index}번 보내기`, category: "회사" }));
   const wedding = { input: "토요일 사촌 결혼식", category: "약속" };
 
-  test("old corrections sharing a word come first, then a few recent ones", () => {
+  test("a few recent corrections come first, the same for every input, then old ones sharing a word", () => {
     const picked = pickCorrections([wedding, ...unrelated], "다음 주 일요일 친구 결혼식", today);
 
-    expect(picked[0]).toEqual(wedding);
-    expect(picked.slice(1)).toEqual(unrelated.slice(-3));
+    expect(picked).toEqual([...unrelated.slice(-3), wedding]);
+    expect(pickCorrections([wedding, ...unrelated], "", today)).toEqual(unrelated.slice(-3));
   });
 
   test("date words alone do not make corrections similar", () => {
@@ -94,14 +98,13 @@ describe("pickCorrections", () => {
 
 describe("parseExtraction", () => {
   test("plain JSON", () => {
-    const out = parseExtraction('{"title":"김철수와 저녁 약속","kind":"event","category":"약속","place":"서울 (미정)","placeGuessed":false,"note":"메뉴 미정"}');
+    const out = parseExtraction('{"title":"김철수와 저녁 약속","kind":"event","category":"약속","place":"서울 (미정)","note":"메뉴 미정"}');
 
     expect(out).toEqual({
       title: "김철수와 저녁 약속",
       kind: "event",
       category: "약속",
       place: "서울 (미정)",
-      placeGuessed: false,
       note: "메뉴 미정",
     });
   });
@@ -159,11 +162,11 @@ describe("guardExtraction", () => {
   });
 
   test("a place not written in the sentence is dropped", () => {
-    const kept = guard("토요일 한강 러닝", { title: "러닝", kind: "event", category: "약속", place: "한강", placeGuessed: true });
-    const dropped = guard("엄마 선물 사기", { title: "엄마 선물 사기", kind: "task", category: "약속", place: "집", placeGuessed: true });
+    const kept = guard("토요일 한강 러닝", { title: "러닝", kind: "event", category: "약속", place: "한강" });
+    const dropped = guard("엄마 선물 사기", { title: "엄마 선물 사기", kind: "task", category: "약속", place: "집" });
 
-    expect([kept.place, kept.placeGuessed]).toEqual(["한강", true]);
-    expect([dropped.place, dropped.placeGuessed]).toEqual([undefined, undefined]);
+    expect(kept.place).toBe("한강");
+    expect(dropped.place).toBeUndefined();
   });
 
   test("a place that is really a date or time is dropped", () => {
@@ -184,7 +187,6 @@ describe("applyExtraction", () => {
     kind: "event",
     category: "약속",
     place: "서울 (미정)",
-    placeGuessed: true,
     note: "메뉴 미정",
   };
 
@@ -202,11 +204,12 @@ describe("applyExtraction", () => {
 
   test("a kind or category the model changed from the rules' guess is badged; one it kept is not", () => {
     const changed = applyExtraction({ ...card, kind: "task", categoryId: "work" }, extraction, categories, []);
-    const kept = applyExtraction({ ...card, kind: "event", categoryId: "meet" }, extraction, categories, []);
+    const kept = applyExtraction({ ...card, kind: "event", categoryId: "meet", place: "서울 (미정)" }, extraction, categories, []);
 
-    expect(changed.flags).toEqual(expect.arrayContaining(["kindGuessed", "categoryGuessed"]));
+    expect(changed.flags).toEqual(expect.arrayContaining(["kindGuessed", "categoryGuessed", "placeGuessed"]));
     expect(kept.flags).not.toContain("kindGuessed");
     expect(kept.flags).not.toContain("categoryGuessed");
+    expect(kept.flags).not.toContain("placeGuessed");
   });
 
   test("an unknown category becomes a proposed new one", () => {

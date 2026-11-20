@@ -246,9 +246,9 @@ export default function App() {
 
 
   /** Start the local model while the user is still typing, and prime its cache with the instructions about to be sent. */
-  const prestartAi = (system: string) => {
+  const prestartAi = (system: string, cacheFile?: string) => {
     if (llm.provider === "local") {
-      localServer?.prestart((connection) => warmUpLocal(connection, system));
+      localServer?.prestart((connection) => warmUpLocal(connection, system, cacheFile));
     }
   };
 
@@ -633,7 +633,7 @@ export default function App() {
         today={now.today}
         nowMinutes={now.minutes}
         clearKey={inputClear}
-        onFocus={() => prestartAi(buildPrompt("", categories, loadCorrections(), now.today).system)}
+        onFocus={() => prestartAi(buildPrompt("", categories, loadCorrections(), now.today).system, "extract.bin")}
         onSubmit={openNew}
         onSettings={() => setSettingsOpen("screen")}
         onSearch={() => setSearchOpen(true)}

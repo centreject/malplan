@@ -52,6 +52,11 @@ pub fn models_dir(app: &AppHandle) -> Result<PathBuf, String> {
     Ok(app.path().app_local_data_dir().map_err(|e| e.to_string())?.join("models"))
 }
 
+/// Saved prompt caches. Per model: another model's cache must never be loaded.
+fn slots_dir(models: &std::path::Path) -> PathBuf {
+    models.join(format!("{}.slots", MODEL.file))
+}
+
 fn alive(slot: &mut Option<Running>) -> bool {
     slot.as_mut().is_some_and(|running| matches!(running.child.try_wait(), Ok(None)))
 }
@@ -99,6 +104,10 @@ pub fn llm_start(app: AppHandle, state: State<LlmServer>) -> Result<Connection, 
         .join(format!("llama-server{}", std::env::consts::EXE_SUFFIX));
     // Last run's output, for diagnosing an "error" status.
     let log = File::create(dir.join("llama-server.log")).map_err(|e| e.to_string())?;
+    // The warmed prompt cache, kept across starts so the first request does not work through the prompt again.
+    let slots = slots_dir(&dir);
+
+    fs::create_dir_all(&slots).map_err(|e| e.to_string())?;
     let connection = Connection { port: free_port()?, key: new_key()? };
     let port = connection.port.to_string();
     let mut command = Command::new(exe);
@@ -108,6 +117,8 @@ pub fn llm_start(app: AppHandle, state: State<LlmServer>) -> Result<Connection, 
         .arg(model)
         .args(["--host", "127.0.0.1", "--port", &port, "-c", "2048", "-np", "1", "--jinja"])
         .args(["--chat-template-kwargs", r#"{"enable_thinking":false}"#])
+        .arg("--slot-save-path")
+        .arg(&slots)
         // Only what the app uses. It calls from Rust (the HTTP plugin), so no browser origin needs access.
         .args(["--no-slots", "--no-webui", "--cors-origins", "http://tauri.localhost"])
         // In the environment, not the command line, which other programs can list.
@@ -214,5 +225,8 @@ pub fn model_delete(app: AppHandle) -> Result<(), String> {
         }
     }
 
-    Ok(())
+    match fs::remove_dir_all(slots_dir(&dir)) {
+        Err(e) if e.kind() != std::io::ErrorKind::NotFound => Err(e.to_string()),
+        _ => Ok(()),
+    }
 }

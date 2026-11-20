@@ -1,5 +1,9 @@
 # Changelog
 
+## Unreleased
+
+- Local AI: the warmed prompt cache is saved and loaded on the next start, so the first request after the server starts takes about 3s instead of 12s (Ryzen 5 5600X). The model no longer answers `placeGuessed`; a place the AI filled in is badged when it differs from the rules'. Warm requests: median 3.0s → 2.5s, same accuracy.
+
 ## 0.2.16 (2026-11-20)
 
 - Tab editor: Enter in "분류 추가" adds the category; it used to reload the whole window.

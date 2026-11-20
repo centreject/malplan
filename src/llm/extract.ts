@@ -16,7 +16,6 @@ const ReplySchema = v.object({
   category: v.pipe(v.string(), v.trim(), v.minLength(1)),
   newCategory: v.optional(v.pipe(v.string(), v.trim())),
   place: v.optional(v.pipe(v.string(), v.trim())),
-  placeGuessed: v.optional(v.boolean()),
   note: v.optional(v.pipe(v.string(), v.trim())),
 });
 
@@ -40,7 +39,6 @@ export type ReplyJsonSchema = {
     /** Extraction only: an edit never makes a category or guesses a place. */
     newCategory?: SchemaField;
     place: SchemaField;
-    placeGuessed?: SchemaField;
     note: SchemaField;
   };
   required: string[];
@@ -65,13 +63,16 @@ const SIMILAR_CORRECTIONS = 5;
 
 const RECENT_CORRECTIONS = 3;
 
-/** The latest fixes sharing a word with the input, then the few most recent others. */
+/**
+ * The few most recent fixes, then the latest others sharing a word with the input. Recent first: they are the same
+ * for every input, so the local server keeps them in its cached prompt prefix and only the similar ones are new.
+ */
 export function pickCorrections(corrections: Correction[], input: string, today: IsoDate): Correction[] {
   const words = topicWords(input, today);
-  const similar = corrections.filter((c) => sharesWord(words, topicWords(c.input, today))).slice(-SIMILAR_CORRECTIONS);
-  const recent = corrections.slice(-RECENT_CORRECTIONS).filter((c) => !similar.includes(c));
+  const recent = corrections.slice(-RECENT_CORRECTIONS);
+  const similar = corrections.filter((c) => !recent.includes(c) && sharesWord(words, topicWords(c.input, today))).slice(-SIMILAR_CORRECTIONS);
 
-  return [...similar, ...recent];
+  return [...recent, ...similar];
 }
 
 export function replySchema(categories: Category[]): ReplyJsonSchema {
@@ -85,7 +86,6 @@ export function replySchema(categories: Category[]): ReplyJsonSchema {
       category: { enum: [...categories.map((c) => c.name), NEW_CATEGORY_CHOICE] },
       newCategory: text,
       place: text,
-      placeGuessed: { type: "boolean" },
       note: text,
     },
     required: ["title", "kind", "category"],
@@ -143,14 +143,13 @@ export function buildPrompt(
     .join("\n");
 
   const system = [
-    "너는 한국어 일정 문장에서 정보를 뽑는 도우미다. 오늘은 " + today + "이다.",
+    "너는 한국어 일정 문장에서 정보를 뽑는 도우미다.",
     "날짜·시간·반복은 이미 코드가 계산했으니 절대 다루지 마라.",
     "JSON 객체 하나만 출력하라. 설명이나 다른 글은 쓰지 마라. 모든 값은 한국어로 쓴다.",
     '- "title": 짧은 제목. 날짜·시간·반복 표현은 뺀다. 함께하는 사람이 있으면 제목에 넣는다("김철수와 저녁 약속").',
     '- "kind": 정해진 때에 가거나 만나거나 참석하는 것은 "event", 끝내야 하는 일은 "task".',
     `- "category": 분류 목록 중 하나를 그대로 쓴다. 정말 맞는 것이 없을 때만 "${NEW_CATEGORY_CHOICE}"라고 쓰고 "newCategory"에 새 이름(2~4글자).`,
     '- "place": 문장에 장소가 적혀 있을 때만 그 말 그대로. 없으면 이 필드를 빼라. 장소를 지어내지 마라.',
-    '- "placeGuessed": place가 장소인지 확실하지 않으면 true.',
     '- "note": 제목에 못 담은 중요한 정보만(준비물, 거리 등). 없으면 이 필드를 빼라.',
     "분류 목록: " + categories.map((c) => c.name).join(", "),
     "분류는 문장의 상대와 활동에 가장 구체적으로 맞는 것을 고른다. '개인'처럼 넓은 분류는 다른 분류가 모두 맞지 않을 때만 쓴다.",
@@ -212,7 +211,7 @@ export function guardExtraction(
 ): Extraction {
   // Named as the rules see it: at a word's start, so "고등학교" does not name 학교.
   const named = categories.find((c) => namedIn(input, c.name));
-  const { place, placeGuessed, note, ...rest } = extraction;
+  const { place, note, ...rest } = extraction;
 
   const guarded: Extraction = {
     ...rest,
@@ -223,10 +222,6 @@ export function guardExtraction(
 
   if (place !== undefined && place !== "" && input.includes(place) && !hasDateOrTime(place, today)) {
     guarded.place = place;
-
-    if (placeGuessed !== undefined) {
-      guarded.placeGuessed = placeGuessed;
-    }
   }
 
   if (note !== undefined && !note.includes(guarded.title)) {
@@ -272,10 +267,10 @@ export function applyExtraction(card: Card, extraction: Extraction, categories: 
 
   if (!keep("place") && extraction.place !== undefined && extraction.place !== "") {
     next.place = extraction.place;
+  }
 
-    if (extraction.placeGuessed === true && !next.flags.includes("placeGuessed")) {
-      next.flags = [...next.flags, "placeGuessed"];
-    }
+  if (next.place !== card.place && !next.flags.includes("placeGuessed")) {
+    next.flags = [...next.flags, "placeGuessed"];
   }
 
   if (!keep("note") && extraction.note !== undefined && extraction.note !== "") {

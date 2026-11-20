@@ -161,11 +161,24 @@ export function createLocalServer(control: ServerControl, options: ServerOptions
   };
 }
 
-/** One tiny request with the real system prompt, so llama-server caches its prefix. */
-export async function warmUpLocal(connection: Connection, system: string): Promise<void> {
+/**
+ * One tiny request with the real system prompt, so llama-server caches its prefix. With `cacheFile`, the cache saved
+ * by the last start is loaded first and the warmed one saved after: reading it back takes milliseconds, working
+ * through the prompt again about 10 seconds on a CPU. A missing or stale file only means the prompt is worked through.
+ */
+export async function warmUpLocal(connection: Connection, system: string, cacheFile?: string): Promise<void> {
+  const headers = { "Content-Type": "application/json", Authorization: `Bearer ${connection.key}` };
+
+  const slot = (action: "restore" | "save") =>
+    tauriFetch(`${connection.origin}/slots/0?action=${action}`, { method: "POST", headers, body: JSON.stringify({ filename: cacheFile }) });
+
+  if (cacheFile !== undefined) {
+    await slot("restore");
+  }
+
   await tauriFetch(`${connection.origin}/v1/chat/completions`, {
     method: "POST",
-    headers: { "Content-Type": "application/json", Authorization: `Bearer ${connection.key}` },
+    headers,
     body: JSON.stringify({
       model: "local",
       max_tokens: 1,
@@ -175,6 +188,10 @@ export async function warmUpLocal(connection: Connection, system: string): Promi
       ],
     }),
   });
+
+  if (cacheFile !== undefined) {
+    await slot("save");
+  }
 }
 
 const StartedSchema = v.object({ port: v.pipe(v.number(), v.integer(), v.minValue(1), v.maxValue(65535)), key: v.pipe(v.string(), v.minLength(32)) });
