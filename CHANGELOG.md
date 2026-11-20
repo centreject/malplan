@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.2.16 (2026-11-20)
+
+- Tab editor: Enter in "분류 추가" adds the category; it used to reload the whole window.
+- Parser: "22:00~24:00" ends at midnight, "오전 11:00~1:00" ends at 13:00, "새벽 2시~2시 30분" stays in the morning; "한 시간 후", "십분 뒤", "두 시간 반 후" count from now.
+- The sentence input's preview says "일정 N개" when the line opens several cards.
+- Week pane in day steps: picking a week shows that week.
+- A 시간대 item reminded ahead says when it is ("12시 · 식당 (내일)"); undecided items offer only default or none.
+- 말로 고치기: "장소 지우고 메모 지워" clears both.
+- An invalid colour code shows the colour in use again.
+
 ## 0.2.15 (2026-11-19)
 
 - 말로 고치기: "장소 지워", "메모는 없애줘" empty the field (the AI used to leave it as it was). An AI reply with an empty place or note no longer clears it unless the request asks to remove it.
