@@ -45,8 +45,8 @@ function editSchema(categories: Category[]): ReplyJsonSchema {
   };
 }
 
-/** "장소 지워", "메모 없애": only then may an empty place or note clear what is there. */
-const CLEARS = /지워|지우|없애|빼|비워|삭제/;
+/** "장소 지워", "메모 없애": only then may an empty place or note clear what is there, each the one it names. */
+const CLEARS = "(?:지워|지우|없애|빼|비워|삭제)";
 
 /**
  * The model's patch applied to the card; unreadable or empty replies give undefined. A model may answer an
@@ -61,7 +61,8 @@ export function applyEditReply(card: Card, reply: string, categories: Category[]
 
   const next: Card = { ...card };
   const category = categories.find((c) => c.name === patch.category);
-  const clears = CLEARS.test(request);
+  const clearsPlace = new RegExp(`장소.*${CLEARS}`).test(request);
+  const clearsNote = new RegExp(`메모.*${CLEARS}`).test(request);
 
   if (patch.title !== undefined && patch.title !== "") {
     next.title = patch.title;
@@ -75,11 +76,11 @@ export function applyEditReply(card: Card, reply: string, categories: Category[]
     next.categoryId = category.id;
   }
 
-  if (patch.place !== undefined && (patch.place !== "" || clears)) {
+  if (patch.place !== undefined && (patch.place !== "" || clearsPlace)) {
     next.place = patch.place;
   }
 
-  if (patch.note !== undefined && (patch.note !== "" || clears)) {
+  if (patch.note !== undefined && (patch.note !== "" || clearsNote)) {
     next.note = patch.note;
   }
 

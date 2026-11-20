@@ -134,3 +134,9 @@ test("a slot honours its own setting: none, or a lead before the slot starts", (
   expect(dueReminders([off, later], today, at(7), at(9), 10)).toEqual([]);
   expect(dueReminders([early], today, at(7, 29), at(7, 30), 10).map((r) => r.key)).toEqual(["early@480-30@2026-10-08"]);
 });
+
+test("a slot reminded ahead says when", () => {
+  const tomorrow = item("lunch", { when: { kind: "single", date: "2026-10-09" }, time: { kind: "slot", slot: "lunch" }, remindMinutes: 1440, place: "식당" });
+
+  expect(dueReminders([tomorrow], today, at(11, 59), at(12), 10).map((r) => r.body)).toEqual(["12시 · 식당 (내일)"]);
+});

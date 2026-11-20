@@ -52,6 +52,12 @@ const RULES: [RegExp, (match: string, ...groups: string[]) => string][] = [
     (_, hour = "") => `${NATIVE.get(hour) ?? 0}시`,
   ],
   [new RegExp(`(\\d시\\s*)(${SINO})\\s*분`, "g"), (_, head = "", minute = "") => `${head}${sinoValue(minute)}분`],
+  // 한 시간 후, 두 시간 반 뒤, 십분 뒤, 한 시간 삼십분 있다가: counted from now, only before 후/뒤/있다가.
+  [
+    new RegExp(`(?<![가-힣])(${NATIVE_WORD})\\s*시간(?=\\s*(?:반\\s*)?(?:(?:\\d+|${SINO})\\s*분\\s*)?(?:뒤|후|있다가))`, "g"),
+    (_, hours = "") => `${NATIVE.get(hours) ?? 0}시간`,
+  ],
+  [new RegExp(`(?<![가-힣])(${SINO})\\s*분(?=\\s*(?:뒤|후|있다가))`, "g"), (_, minutes = "") => `${sinoValue(minutes)}분`],
   // 이틀 후, 보름 뒤, 일주일 후, 삼일 후, 한 달 뒤, 일 년 뒤.
   // Not "하루 전날" ("the day before").
   [/(하루|이틀|사흘|나흘|닷새|엿새|이레|여드레|아흐레|열흘|보름)(?=\s*(?:뒤|후|전(?!날)|있다가))/g, (word) => `${DAY_COUNT.get(word) ?? 0}일`],

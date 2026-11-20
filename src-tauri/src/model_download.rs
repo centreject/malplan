@@ -112,16 +112,17 @@ async fn download_model(app: &AppHandle, cancel: &AtomicBool) -> Result<(), Stri
         })
         .await;
 
+        // Before the limit is checked: an attempt that got further is not the last of a run of failures.
+        if result.is_err() && fs::metadata(&part).map_or(0, |m| m.len()) > before {
+            retries = 0;
+        }
+
         match result {
             Ok(()) => break,
             Err(error) if error == "cancelled" || error.starts_with("HTTP 4") || retries >= RETRIES => {
                 return Err(error);
             }
             Err(_) => {
-                if fs::metadata(&part).map_or(0, |m| m.len()) > before {
-                    retries = 0;
-                }
-
                 retries += 1;
 
                 // Waits in short steps, so 일시정지 during the wait stops it at once.

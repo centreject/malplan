@@ -205,3 +205,12 @@ test("장소 지워 / 메모는 없애줘 empty the field", () => {
   expect(place !== undefined && place !== REPEAT_DATE_REFUSAL && place.changes).toEqual(["장소: 3층 회의실 → 없음"]);
   expect(note !== undefined && note !== REPEAT_DATE_REFUSAL && note.changes).toEqual(["메모: 자료 준비 → 없음"]);
 });
+
+test("both fields cleared in one request, and a clear is never read as a place", () => {
+  const withNote: Item = { ...item, note: "자료 준비" };
+  const both = applyEditCommand(cardFromItem(withNote, today), "장소 지우고 메모 지워", today, categories);
+  const then = applyEditCommand(cardFromItem(withNote, today), "장소 지우고 서울역으로", today, categories);
+
+  expect(both !== undefined && both !== REPEAT_DATE_REFUSAL && both.changes).toEqual(["장소: 3층 회의실 → 없음", "메모: 자료 준비 → 없음"]);
+  expect(then !== undefined && then !== REPEAT_DATE_REFUSAL && then.card.place).toBe("");
+});

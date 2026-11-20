@@ -38,7 +38,7 @@ export function recolorCategory(categories: Category[], id: string, slot: number
     : categories;
 }
 
-const HEX = /^#[0-9a-f]{6}$/i;
+export const HEX = /^#[0-9a-f]{6}$/i;
 
 /** Any "#rrggbb" colour, stored lower-case. Invalid input changes nothing. */
 export function setCustomColor(categories: Category[], id: string, hex: string): Category[] {

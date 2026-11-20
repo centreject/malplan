@@ -1,6 +1,6 @@
 import { Plus, Trash2, TriangleAlert } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
-import { UNCATEGORIZED_ID } from "../domain/categories";
+import { HEX, UNCATEGORIZED_ID } from "../domain/categories";
 import type { Category } from "../domain/item";
 import { ALL_TAB_ID, type CalendarTab } from "../domain/tabs";
 
@@ -63,8 +63,11 @@ export function CategorySettings({ categories, tabs, onAdd, onRename, onRecolor,
                     const raw = event.currentTarget.value.trim();
                     const hex = raw.startsWith("#") ? raw : `#${raw}`;
 
-                    if (raw !== "") {
+                    if (HEX.test(hex)) {
                       onCustomColor(c.id, hex);
+                    } else {
+                      // Not a colour: show the one in use again rather than text that was never saved.
+                      event.currentTarget.value = c.color?.toUpperCase() ?? "";
                     }
                   }}
                   onKeyDown={(event) => {

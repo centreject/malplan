@@ -73,7 +73,10 @@ export function dueReminders(
         const leadKey = lead === 0 ? "" : `-${lead}`;
 
         if (lead !== NO_REMINDER && inWindow(start - lead) && start >= toMinutes) {
-          reminders.push({ key: `${item.id}@${start - offset * DAY}${leadKey}@${date}`, title: item.title, body: item.place ?? "" });
+          // At the slot: the place, as before. Ahead of it, when, as for a set time: "하루 전" must say it is tomorrow.
+          const body = lead === 0 ? item.place ?? "" : `${formatClock(SLOT_START[time.slot])}${item.place === undefined ? "" : ` · ${item.place}`} (${leadLabel(start - toMinutes)})`;
+
+          reminders.push({ key: `${item.id}@${start - offset * DAY}${leadKey}@${date}`, title: item.title, body });
         }
       }
     }

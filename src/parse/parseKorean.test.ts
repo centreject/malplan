@@ -649,3 +649,27 @@ describe("review fixes (2026-11-19)", () => {
     expect(clock("0주마다 월요일 회의").date?.kind).not.toBe("recurring");
   });
 });
+
+describe("review fixes (2026-11-20)", () => {
+  test("a colon range ends at midnight as 0:00 and keeps the start's meridiem where it reads so", () => {
+    expect(parseKorean("22:00~24:00 작업", today).time).toEqual({ kind: "exact", start: { hour: 22, minute: 0 }, end: { hour: 0, minute: 0 } });
+    expect(parseKorean("밤 10:00~12:00 작업", today).time).toEqual({ kind: "exact", start: { hour: 22, minute: 0 }, end: { hour: 0, minute: 0 } });
+    expect(parseKorean("오전 11:00~1:00 작업", today).time).toEqual({ kind: "exact", start: { hour: 11, minute: 0 }, end: { hour: 13, minute: 0 } });
+  });
+
+  test("a range within one hour stays in the morning", () => {
+    expect(parseKorean("새벽 2시~2시 30분 작업", today).time).toEqual({ kind: "exact", start: { hour: 2, minute: 0 }, end: { hour: 2, minute: 30 } });
+    expect(parseKorean("오전 12시~12시 30분 작업", today).time).toEqual({ kind: "exact", start: { hour: 0, minute: 0 }, end: { hour: 0, minute: 30 } });
+  });
+
+  test("relative times in words and with 반", () => {
+    const at = (text: string) => parseKorean(text, today, 10 * 60).time;
+
+    expect(at("한 시간 후 회의")).toEqual({ kind: "exact", start: { hour: 11, minute: 0 } });
+    expect(at("십분 뒤 전화")).toEqual({ kind: "exact", start: { hour: 10, minute: 10 } });
+    expect(at("두 시간 반 후 출발")).toEqual({ kind: "exact", start: { hour: 12, minute: 30 } });
+    expect(at("2시간 반 뒤 출발")).toEqual({ kind: "exact", start: { hour: 12, minute: 30 } });
+    expect(at("한 시간 삼십분 있다가 출발")).toEqual({ kind: "exact", start: { hour: 11, minute: 30 } });
+    expect(parseKorean("한 시간 후 회의", today, 600).rest).toBe("회의");
+  });
+});

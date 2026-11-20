@@ -57,11 +57,16 @@ const REMINDERS: [string, string][] = [
   ...[...REMINDER_LEADS, 1440].map((lead): [string, string] => [String(lead), leadText(lead)]),
 ];
 
-/** A lead set elsewhere (MCP, an older version) stays a visible choice instead of the select showing another one. */
-function reminderChoices(current: number | undefined): [string, string][] {
-  return current === undefined || REMINDERS.some(([value]) => value === String(current))
-    ? REMINDERS
-    : [...REMINDERS, [String(current), leadText(current)]];
+/**
+ * A lead set elsewhere (MCP, an older version) stays a visible choice instead of the select showing another one.
+ * Undecided items have no time to lead: only the morning summary, on or off.
+ */
+function reminderChoices(current: number | undefined, undecided: boolean): [string, string][] {
+  const choices = undecided ? REMINDERS.slice(0, 2) : REMINDERS;
+
+  return current === undefined || choices.some(([value]) => value === String(current))
+    ? choices
+    : [...choices, [String(current), leadText(current)]];
 }
 
 const WEEKDAYS: Weekday[] = [0, 1, 2, 3, 4, 5, 6];
@@ -471,7 +476,7 @@ function CardEditor({ card, errors, categories, occurrence, lockStart, heading, 
             value={card.remindMinutes === undefined ? "" : String(card.remindMinutes)}
             onChange={(event) => set({ remindMinutes: event.target.value === "" ? undefined : Number(event.target.value) })}
           >
-            {reminderChoices(card.remindMinutes).map(([value, label]) => (
+            {reminderChoices(card.remindMinutes, card.timeMode === "undecided").map(([value, label]) => (
               <option key={value} value={value}>{label}</option>
             ))}
           </select>

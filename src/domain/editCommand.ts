@@ -58,6 +58,17 @@ export function applyEditCommand(
     rest = rest.replace(shift[0], " ");
   }
 
+  // First, and for each field it names: "장소 지우고 메모 지워"; "장소 지우고 …로" must not read "지우고 …" as a place.
+  for (const _ of ["장소", "메모"]) {
+    rest = takeField(rest, CLEAR, (field) => {
+      if (field === "장소") {
+        next.place = "";
+      } else {
+        next.note = "";
+      }
+    });
+  }
+
   rest = takeField(rest, PLACE, (place) => {
     next.place = place;
   });
@@ -66,13 +77,6 @@ export function applyEditCommand(
   });
   rest = takeField(rest, NOTE, (note) => {
     next.note = card.note === "" ? note : `${card.note}\n${note}`;
-  });
-  rest = takeField(rest, CLEAR, (field) => {
-    if (field === "장소") {
-      next.place = "";
-    } else {
-      next.note = "";
-    }
   });
   rest = takeField(rest, KIND, (kind) => {
     // An undated task has no date to keep; turning it into an event or a dated task is the edit screen's job.

@@ -50,21 +50,31 @@ export function CategoryChecklist({ categories, selected, onChange, onAdd }: Cat
         </li>
       ))}
       <li>
-        <form
-          className="cat-add"
-          onSubmit={(event) => {
-            event.preventDefault();
-            const id = onAdd(draft);
-
-            if (id !== undefined) {
-              setDraft("");
-              onChange(selected.includes(id) ? selected : [...selected, id]);
-            }
-          }}
-        >
+        {/* Not a form: this list sits inside the tab editor's form, and a form inside a form is submitted by the
+            browser itself (the page reloads). Enter is handled here and kept from the outer form. */}
+        <div className="cat-add">
           <Plus size={14} strokeWidth={2} aria-hidden="true" />
-          <input value={draft} onChange={(event) => setDraft(event.target.value)} placeholder="분류 추가 (Enter)" aria-label="새 분류 이름" autoComplete="off" />
-        </form>
+          <input
+            value={draft}
+            onChange={(event) => setDraft(event.target.value)}
+            onKeyDown={(event) => {
+              if (event.key !== "Enter" || event.nativeEvent.isComposing) {
+                return;
+              }
+
+              event.preventDefault();
+              const id = onAdd(draft);
+
+              if (id !== undefined) {
+                setDraft("");
+                onChange(selected.includes(id) ? selected : [...selected, id]);
+              }
+            }}
+            placeholder="분류 추가 (Enter)"
+            aria-label="새 분류 이름"
+            autoComplete="off"
+          />
+        </div>
       </li>
     </ul>
   );

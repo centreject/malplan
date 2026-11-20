@@ -989,18 +989,18 @@ const CLOCK = `(?<![A-Za-z\\d])(\\d{1,2})${SI}(?:\\s*(\\d{1,2})분|\\s*(반))?`;
 /** The start of a range may drop 시: "3~5시". */
 const RANGE_START = `(?<![A-Za-z\\d])(\\d{1,2})(?:${SI}(?:\\s*(\\d{1,2})분|\\s*(반))?)?`;
 
-/** "10분 후", "2시간 뒤", "1시간 30분 있다가": counted from now. "3일 후" is a date and is read elsewhere. */
+/** "10분 후", "2시간 반 뒤", "1시간 30분 있다가": counted from now. "3일 후" is a date and is read elsewhere. */
 function takeRelativeTime(scanner: Scanner, nowMinutes: number): { time: ParsedTime; days: number } | undefined {
   const found = scanner.take(
-    /(?<![\d시])(?:(\d{1,2})\s*시간\s*)?(?:(\d{1,3})\s*분\s*)?(?:후|뒤|있다가)(?:에)?(?![가-힣])/,
-    (m) => m[1] !== undefined || m[2] !== undefined,
+    /(?<![\d시])(?:(\d{1,2})\s*시간\s*(반\s*)?)?(?:(\d{1,3})\s*분\s*)?(?:후|뒤|있다가)(?:에)?(?![가-힣])/,
+    (m) => m[1] !== undefined || m[3] !== undefined,
   );
 
   if (found === undefined) {
     return undefined;
   }
 
-  const total = nowMinutes + Number(found[1] ?? 0) * 60 + Number(found[2] ?? 0);
+  const total = nowMinutes + Number(found[1] ?? 0) * 60 + (found[2] === undefined ? 0 : 30) + Number(found[3] ?? 0);
 
   return { time: { kind: "exact", start: { hour: Math.floor(total / 60) % 24, minute: total % 60 } }, days: Math.floor(total / (24 * 60)) };
 }
@@ -1068,7 +1068,16 @@ function takeTime(scanner: Scanner, flags: Flag[]): ParsedTime | undefined {
 
     const start = clockAt(colon[2], colon[3]);
 
-    return colon[4] === undefined ? { kind: "exact", start } : { kind: "exact", start, end: clockAt(colon[4], colon[5]) };
+    if (colon[4] === undefined) {
+      return { kind: "exact", start };
+    }
+
+    // As for "3시~5시": "오전 11:00~1:00" ends in the afternoon; "22:00~24:00" ends at midnight, 0:00.
+    const end = colon[1] === undefined
+      ? { hour: Number(colon[4]), minute: Number(colon[5]) }
+      : toClock(endMeridiem(colon[1], start, Number(colon[4])), colon[4], colon[5], undefined, []);
+
+    return { kind: "exact", start, end: { hour: end.hour % 24, minute: end.minute } };
   }
 
   // Glued to a noun ("저녁약속", "점심모임") the word sets the slot but stays in the title. 밤 is left out: "밤샘".
@@ -1102,7 +1111,8 @@ function endMeridiem(startMeridiem: string | undefined, start: ClockTime, endHou
 
   const morning = startMeridiem === "오전" || startMeridiem === "새벽" || startMeridiem === "아침";
 
-  if (morning && endHour > start.hour && endHour < 12) {
+  // Same hour counts ("새벽 2시~2시 30분"), and 오전 12시 is 0: "오전 12시~12시 30분" is 0:00–0:30.
+  if (morning && ((endHour >= start.hour && endHour < 12) || (endHour === 12 && start.hour === 0))) {
     return startMeridiem;
   }
 

@@ -459,6 +459,9 @@ export default function App() {
   // Labelled by the first day shown, so the sliding 7 days never claim a week they do not show.
   const { month: weekMonth, nth: weekNth } = weekLabel(week[0] ?? weekAnchor, display.weekNumberStart);
 
+  // In day steps the pane shows three days either side of its anchor: a picked week is centred, not started, there.
+  const pickWeek = (weekStart: IsoDate) => moveWeek(display.weekMove === "week" ? weekStart : addDays(weekStart, 3));
+
   const moveWeek = (next: IsoDate) => {
     setWeekAnchor(next);
 
@@ -712,7 +715,7 @@ export default function App() {
             onEdit={openEdit}
             onMove={moveItem}
             title={`${weekMonth}월 ${weekNth}주차`}
-            picker={<WeekPicker label={`${weekMonth}월 ${weekNth}주차`} first={week[0] ?? weekAnchor} today={now.today} start={display.weekNumberStart} onPick={moveWeek} />}
+            picker={<WeekPicker label={`${weekMonth}월 ${weekNth}주차`} first={week[0] ?? weekAnchor} today={now.today} start={display.weekNumberStart} onPick={pickWeek} />}
             onPrev={() => moveWeek(addDays(weekAnchor, -weekStep))}
             onNext={() => moveWeek(addDays(weekAnchor, weekStep))}
             onReset={weekAnchor === now.today ? undefined : () => moveWeek(now.today)}

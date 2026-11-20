@@ -1,6 +1,7 @@
 import { CornerDownLeft, LayoutGrid, ListChecks, Search, Settings } from "lucide-react";
 import { useState } from "react";
 import type { IsoDate } from "../domain/date";
+import { splitInput } from "../domain/card";
 import { parseKorean } from "../parse/parseKorean";
 import { parseSummary } from "./format";
 
@@ -31,7 +32,9 @@ export function TopBar({ today, nowMinutes, clearKey, onFocus, onSubmit, onSetti
     setText("");
   }
 
-  const summary = text.trim() === "" ? "" : parseSummary(parseKorean(text, today, nowMinutes));
+  // Several items in one line open several cards: the preview says so instead of reading it as one.
+  const pieces = text.trim() === "" ? [] : splitInput(text, today, nowMinutes);
+  const summary = pieces.length === 0 ? "" : pieces.length > 1 ? `일정 ${pieces.length}개` : parseSummary(parseKorean(text, today, nowMinutes));
 
   return (
     <header className="top-bar">

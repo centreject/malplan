@@ -35,7 +35,7 @@ malplan is a Windows desktop app for appointments and to-dos. Dates and times ar
   </tr>
   <tr>
     <td align="center">One sentence → a filled card, checked before saving</td>
-    <td align="center">Four themes, each in light and dark</td>
+    <td align="center">Four themes, light and dark except high contrast</td>
   </tr>
 </table>
 
@@ -48,7 +48,7 @@ malplan is a Windows desktop app for appointments and to-dos. Dates and times ar
 - **Sync through a folder you choose** (local, NAS or a cloud-synced folder): each device writes its own log and changes merge per field.
 - **AI tools (MCP)**: Claude Code, Claude Desktop, Gemini CLI, Antigravity and Codex can list, find and add schedules.
 - Korean holidays (lunar included), reminders, search, ICS export, backups, tray, autostart, a global shortcut you choose.
-- Four themes (bus board, desk calendar, standard, high contrast), each in light and dark, and three text sizes.
+- Four themes (bus board, desk calendar, standard, high contrast), light and dark except high contrast (always dark), and three text sizes.
 
 ## How it works
 
