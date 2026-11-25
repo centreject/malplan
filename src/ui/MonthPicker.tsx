@@ -37,7 +37,7 @@ export function MonthPicker({ year, month, today, onPick }: MonthPickerProps) {
         <span className="num">{year}</span>년
       </button>{" "}
       <button type="button" className="month-picker-part" popoverTarget="month-picker" onClick={() => open("month")} aria-label={`${month}월, 월 고르기`}>
-        <span className="num">{month}</span>월
+        <span className="num month-num">{month}</span>월
       </button>
       {createPortal(
         <div ref={popover} id="month-picker" className="month-picker-pop" popover="auto" role="dialog" aria-label={mode === "month" ? "월 고르기" : "연도 고르기"}>

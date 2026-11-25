@@ -599,6 +599,11 @@ ul {
   font-weight: 700;
 }
 
+/* As wide as the widest week title ("12월 4주차 12/21 – 12/27", 172.5px at 16px), so the arrows stay put. */
+.pane-week .pane-title {
+  min-width: 10.8em;
+}
+
 /* A header with no arrows (the list page): the title pushes the rest to the right itself. */
 .pane-title:not(:has(+ .pane-nav)) {
   margin-right: auto;
@@ -2998,6 +3003,13 @@ ul {
   color: inherit;
   font: inherit;
   cursor: pointer;
+}
+
+/* Always two digits wide: the arrows beside the title stay put from 9월 to 10월. */
+.month-num {
+  display: inline-block;
+  min-width: 2ch;
+  text-align: right;
 }
 
 .month-picker-part:hover,
