@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 0.2.18 (2026-11-25)
 
 - Parser: "3주 뒤 금요일" is the Friday of the week three weeks away, as "다음주 금요일" is next week's; it used to be today plus 21 days with 금요일 left in the title.
 - "…해보기", "알아보기", "물어보기", "찾아보기" read as tasks ("저녁먹자고 해보기"); "영화 보기" stays an event.
