@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 0.2.20 (2026-11-25)
 
 - Calendar headers: the prev/next arrows no longer shift between 9월 and 10월 in the month pane, nor from week to week in the week pane.
 
