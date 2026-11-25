@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 0.2.19 (2026-11-25)
 
 - Local AI model: Gemma 4 E2B (2.8GB) replaces Qwen3 4B. On the held-out sentences it gets 97% right instead of 92%, and on a CPU it answers a little faster (median 2.3s instead of 2.7s). The old model file is removed when the app starts; the new one is downloaded from AI settings, as before.
 - Prompt: a place inside the title ("한강 러닝") is also given as the place, and household bills are an example of a personal task.
