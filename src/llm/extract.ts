@@ -102,6 +102,8 @@ const PROMPT_EXAMPLES: PromptExample[] = [
   { names: CATEGORY_KINDS.meet.names, input: "토요일 점심 민지랑 성수동에서 브런치. 예약은 내가", title: "민지와 브런치", kind: "event", place: "성수동", note: "예약은 내가" },
   { names: CATEGORY_KINDS.contest.names, input: "다음 달 3일 창업 공모전 접수 마감", title: "창업 공모전 접수 마감", kind: "task" },
   { names: CATEGORY_KINDS.personal.names, input: "주말에 안경 맞추러 가기", title: "안경 맞추기", kind: "task" },
+  // Household bills are personal, not work: the local model filed 월세 and 전기요금 under 회사.
+  { names: CATEGORY_KINDS.personal.names, input: "10일까지 통신비 내기", title: "통신비 내기", kind: "task" },
   { names: CATEGORY_KINDS.exercise.names, input: "매주 화목 저녁 수영 강습 수영복 챙기기", title: "수영 강습", kind: "event", note: "수영복 챙기기" },
 ];
 
@@ -149,7 +151,7 @@ export function buildPrompt(
     '- "title": 짧은 제목. 날짜·시간·반복 표현은 뺀다. 함께하는 사람이 있으면 제목에 넣는다("김철수와 저녁 약속").',
     '- "kind": 정해진 때에 가거나 만나거나 참석하는 것은 "event", 끝내야 하는 일은 "task".',
     `- "category": 분류 목록 중 하나를 그대로 쓴다. 정말 맞는 것이 없을 때만 "${NEW_CATEGORY_CHOICE}"라고 쓰고 "newCategory"에 새 이름(2~4글자).`,
-    '- "place": 문장에 장소가 적혀 있을 때만 그 말 그대로. 없으면 이 필드를 빼라. 장소를 지어내지 마라.',
+    '- "place": 문장에 장소가 적혀 있을 때만 그 말 그대로. 제목에 들어간 장소도 쓴다("한강 러닝" → "한강", "약국 들러서 약 사기" → "약국"). 없으면 이 필드를 빼라. 장소를 지어내지 마라.',
     '- "note": 제목에 못 담은 중요한 정보만(준비물, 거리 등). 없으면 이 필드를 빼라.',
     "분류 목록: " + categories.map((c) => c.name).join(", "),
     "분류는 문장의 상대와 활동에 가장 구체적으로 맞는 것을 고른다. '개인'처럼 넓은 분류는 다른 분류가 모두 맞지 않을 때만 쓴다.",

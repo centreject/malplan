@@ -44,7 +44,7 @@ malplan is a Windows desktop app for appointments and to-dos. Dates and times ar
 - **One sentence in, a card out**: dates, times, ranges and repeats ("매주 월·목", "매월 마지막 금요일", "격주", "3개월마다") are parsed by rules; the confirm screen marks every guess as 추정.
 - **Today / week / month on one screen**, with calendar tabs per category, a year/month/week picker in the titles, and an overdue list that keeps every missed task until it is done.
 - **말로 고치기**: edit a saved item by saying what to change ("3시로 바꿔", "하루 미뤄", "장소는 강남역으로").
-- **Local AI, optional API keys**: Qwen3 4B runs through llama.cpp on your PC (one 2.5GB download, then offline). Claude, Gemini or OpenRouter keys can be used instead.
+- **Local AI, optional API keys**: Gemma 4 E2B runs through llama.cpp on your PC (one 2.8GB download, then offline). Claude, Gemini or OpenRouter keys can be used instead.
 - **Sync through a folder you choose** (local, NAS or a cloud-synced folder): each device writes its own log and changes merge per field.
 - **AI tools (MCP)**: Claude Code, Claude Desktop, Gemini CLI, Antigravity and Codex can list, find and add schedules.
 - Korean holidays (lunar included), reminders, search, ICS export, backups, tray, autostart, a global shortcut you choose.
@@ -132,4 +132,4 @@ docs/       spec, plan, product and design notes (Korean)
 
 ## License
 
-malplan is released under the [MIT License](LICENSE). Bundled and downloaded components keep their licenses: llama.cpp (MIT), Qwen3 4B (Apache 2.0), Tauri (MIT/Apache 2.0), React (MIT), valibot (MIT), Lucide (ISC). The parser test phrases come from korean-datetime (MIT, see `src/parse/fixtures`).
+malplan is released under the [MIT License](LICENSE). Bundled and downloaded components keep their licenses: llama.cpp (MIT), Gemma 4 E2B (Apache 2.0), Tauri (MIT/Apache 2.0), React (MIT), valibot (MIT), Lucide (ISC). The parser test phrases come from korean-datetime (MIT, see `src/parse/fixtures`).

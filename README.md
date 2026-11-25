@@ -44,7 +44,7 @@ malplan은 일정과 할 일을 함께 관리하는 Windows 데스크톱 앱입�
 - **한 문장으로 카드 만들기**: 날짜·시간·기간·반복("매주 월·목", "매월 마지막 금요일", "격주", "3개월마다")은 규칙으로 읽고, 확인 화면은 추측한 값마다 "추정"을 표시합니다.
 - **한 화면에 오늘 / 주간 / 월간**: 분류별 달력 탭, 제목을 눌러 연·월·주 선택, 완료할 때까지 남는 밀린 할 일 목록.
 - **말로 고치기**: 저장한 항목을 "3시로 바꿔", "하루 미뤄", "장소는 강남역으로"처럼 말로 고칩니다.
-- **로컬 AI, API 키는 선택**: Qwen3 4B를 llama.cpp로 내 PC에서 실행합니다(2.5GB 한 번 받으면 이후 인터넷 없이 동작). Claude, Gemini, OpenRouter 키를 대신 쓸 수도 있습니다.
+- **로컬 AI, API 키는 선택**: Gemma 4 E2B를 llama.cpp로 내 PC에서 실행합니다(2.8GB 한 번 받으면 이후 인터넷 없이 동작). Claude, Gemini, OpenRouter 키를 대신 쓸 수도 있습니다.
 - **직접 고른 폴더로 동기화**(로컬, NAS, 클라우드 동기화 폴더): 기기마다 자기 기록 파일에만 쓰고, 변경은 필드 단위로 합칩니다.
 - **AI 도구 연결(MCP)**: Claude Code, Claude Desktop, Gemini CLI, Antigravity, Codex에서 일정을 보고, 찾고, 추가할 수 있습니다.
 - 공휴일(음력 포함), 알림, 검색, ICS 내보내기, 백업, 트레이, 자동 실행, 직접 정하는 전역 단축키.
@@ -132,4 +132,4 @@ docs/       명세, 계획, 제품·디자인 문서
 
 ## 라이선스
 
-malplan은 [MIT 라이선스](LICENSE)로 배포합니다. 포함되거나 내려받는 구성 요소는 각자의 라이선스를 따릅니다: llama.cpp (MIT), Qwen3 4B (Apache 2.0), Tauri (MIT/Apache 2.0), React (MIT), valibot (MIT), Lucide (ISC). 파서 시험 문장은 korean-datetime (MIT, `src/parse/fixtures` 참고)에서 가져왔습니다.
+malplan은 [MIT 라이선스](LICENSE)로 배포합니다. 포함되거나 내려받는 구성 요소는 각자의 라이선스를 따릅니다: llama.cpp (MIT), Gemma 4 E2B (Apache 2.0), Tauri (MIT/Apache 2.0), React (MIT), valibot (MIT), Lucide (ISC). 파서 시험 문장은 korean-datetime (MIT, `src/parse/fixtures` 참고)에서 가져왔습니다.

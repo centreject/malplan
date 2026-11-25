@@ -23,14 +23,32 @@ pub struct Model {
 }
 
 pub const MODEL: Model = Model {
-    file: "Qwen3-4B-Q4_K_M.gguf",
-    url: "https://huggingface.co/Qwen/Qwen3-4B-GGUF/resolve/main/Qwen3-4B-Q4_K_M.gguf",
-    size: 2_497_280_256,
-    sha256: "7485fe6f11af29433bc51cab58009521f205840f5b4ae3a32fa7f92e8534fdf5",
-    name: "Qwen3 4B (Q4_K_M)",
-    vendor: "Alibaba Qwen",
+    file: "gemma-4-E2B-it-Q4_0.gguf",
+    url: "https://huggingface.co/ggml-org/gemma-4-E2B-it-GGUF/resolve/main/gemma-4-E2B-it-Q4_0.gguf",
+    size: 2_841_481_184,
+    sha256: "8e30dff3ac4c8434c49a7036fa15564bdbb6044e42bf04550bf1a096ad7e6a52",
+    name: "Gemma 4 E2B (Q4_0)",
+    vendor: "Google",
     license: "Apache-2.0",
 };
+
+/// Models the app used before, removed at start so a replaced 2.5GB file does not stay behind.
+const OLD_MODEL_FILES: [&str; 1] = ["Qwen3-4B-Q4_K_M.gguf"];
+
+/// Best effort: a file that cannot be removed now is tried again on the next start.
+pub fn remove_old_models(app: &AppHandle) {
+    if let Ok(dir) = models_dir(app) {
+        remove_old_models_in(&dir);
+    }
+}
+
+fn remove_old_models_in(dir: &std::path::Path) {
+    for file in OLD_MODEL_FILES {
+        let _ = fs::remove_file(dir.join(file));
+        let _ = fs::remove_file(dir.join(format!("{file}.part")));
+        let _ = fs::remove_dir_all(dir.join(format!("{file}.slots")));
+    }
+}
 
 /// Where the running server listens and the key it takes. The app is its only client.
 #[derive(Clone, Serialize)]
@@ -228,5 +246,32 @@ pub fn model_delete(app: AppHandle) -> Result<(), String> {
     match fs::remove_dir_all(slots_dir(&dir)) {
         Err(e) if e.kind() != std::io::ErrorKind::NotFound => Err(e.to_string()),
         _ => Ok(()),
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn old_models_are_removed_and_the_current_one_kept() {
+        let dir = std::env::temp_dir().join(format!("malplan-old-models-{}", std::process::id()));
+        let old = OLD_MODEL_FILES[0];
+
+        fs::create_dir_all(dir.join(format!("{old}.slots"))).unwrap();
+        fs::write(dir.join(format!("{old}.slots")).join("extract.bin"), b"x").unwrap();
+        fs::write(dir.join(old), b"x").unwrap();
+        fs::write(dir.join(format!("{old}.part")), b"x").unwrap();
+        fs::write(dir.join(MODEL.file), b"x").unwrap();
+
+        remove_old_models_in(&dir);
+
+        assert!(!dir.join(old).exists());
+        assert!(!dir.join(format!("{old}.part")).exists());
+        assert!(!dir.join(format!("{old}.slots")).exists());
+        assert!(dir.join(MODEL.file).exists());
+        // Nothing there: no error.
+        remove_old_models_in(&dir.join("missing"));
+        fs::remove_dir_all(&dir).unwrap();
     }
 }

@@ -95,6 +95,7 @@ pub fn run() {
             model_download::model_download_cancel,
         ])
         .setup(|app| {
+            llm_server::remove_old_models(app.handle());
             let open = MenuItem::with_id(app, "open", "열기", true, None::<&str>)?;
             let quit = MenuItem::with_id(app, "quit", "종료", true, None::<&str>)?;
             let menu = Menu::with_items(app, &[&open, &quit])?;

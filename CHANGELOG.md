@@ -1,5 +1,10 @@
 # Changelog
 
+## Unreleased
+
+- Local AI model: Gemma 4 E2B (2.8GB) replaces Qwen3 4B. On the held-out sentences it gets 97% right instead of 92%, and on a CPU it answers a little faster (median 2.3s instead of 2.7s). The old model file is removed when the app starts; the new one is downloaded from AI settings, as before.
+- Prompt: a place inside the title ("한강 러닝") is also given as the place, and household bills are an example of a personal task.
+
 ## 0.2.18 (2026-11-25)
 
 - Parser: "3주 뒤 금요일" is the Friday of the week three weeks away, as "다음주 금요일" is next week's; it used to be today plus 21 days with 금요일 left in the title.
