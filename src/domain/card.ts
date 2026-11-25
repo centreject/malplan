@@ -64,7 +64,8 @@ export type CardErrors = Partial<
   Record<"title" | "date" | "endDate" | "until" | "weekdays" | "start" | "newCategory", string>
 >;
 
-const TASK_ENDINGS = ["하기", "제출", "발송", "보내기", "마감", "신청", "반납", "사기"];
+// "저녁먹자고 해보기", "가격 알아보기": things to try or find out. Not every "보기": "영화 보기" is an outing.
+const TASK_ENDINGS = ["하기", "제출", "발송", "보내기", "마감", "신청", "반납", "사기", "해보기", "물어보기", "알아보기", "찾아보기"];
 
 /** Default kind from the title's ending verb. The LLM replaces this later. */
 export function guessKind(title: string): "event" | "task" {

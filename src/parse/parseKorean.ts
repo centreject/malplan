@@ -441,6 +441,7 @@ const MONTH_PREFIX = alternation(MONTH_WORDS.map(([word]) => word));
 
 const DATE_RULES: DateRule[] = [
   takeWritten,
+  takeWeeksAheadWeekday,
   takeOffset,
   takeRelativeRange,
   takeMonthDayRange,
@@ -494,6 +495,18 @@ function takeWritten(scanner: Scanner, today: IsoDate, flags: Flag[]): ParsedDat
 
 function validYearMonthDay(yearText: string | undefined, monthText: string | undefined, dayText: string | undefined): boolean {
   return validMonthDay(monthText, dayText) && Number(dayText) <= daysInMonth(Number(yearText), Number(monthText));
+}
+
+/** 3주 뒤 금요일, 2주 후에 월요일: that weekday in the week N weeks away, as "다음주 금요일" is in the next one. */
+function takeWeeksAheadWeekday(scanner: Scanner, today: IsoDate): ParsedDate | undefined {
+  const match = scanner.take(/(?<![\d가-힣])(\d{1,2})\s*주\s*(?:뒤|후)(?:에)?\s*([일월화수목금토])(?:요일|욜)/);
+  const weekday = WEEKDAY_BY_CHAR.get(match?.[2] ?? "");
+
+  if (match === undefined || weekday === undefined) {
+    return undefined;
+  }
+
+  return { kind: "single", date: addDays(mondayOf(today, Number(match[1])), (weekday + 6) % 7) };
 }
 
 /** 3일 뒤, 2주 3일 후, 1년 2개월 뒤, 하루 전 (number words were turned into digits first). */

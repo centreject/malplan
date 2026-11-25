@@ -53,12 +53,15 @@ describe("guessKind", () => {
     expect(guessKind("택배 반품 보내기")).toBe("task");
     expect(guessKind("운동화 사기")).toBe("task");
     expect(guessKind("공모전 서류 마감 ")).toBe("task");
+    expect(guessKind("금요일 저녁먹자고 해보기")).toBe("task");
+    expect(guessKind("노트북 가격 알아보기")).toBe("task");
   });
 
   test("everything else is an event", () => {
     expect(guessKind("김철수와 저녁")).toBe("event");
     // "치과 예약" is usually the appointment itself, not a booking chore.
     expect(guessKind("치과 예약")).toBe("event");
+    expect(guessKind("친구랑 영화 보기")).toBe("event");
     expect(guessKind("")).toBe("event");
   });
 });

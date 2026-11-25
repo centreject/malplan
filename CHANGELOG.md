@@ -1,5 +1,10 @@
 # Changelog
 
+## Unreleased
+
+- Parser: "3주 뒤 금요일" is the Friday of the week three weeks away, as "다음주 금요일" is next week's; it used to be today plus 21 days with 금요일 left in the title.
+- "…해보기", "알아보기", "물어보기", "찾아보기" read as tasks ("저녁먹자고 해보기"); "영화 보기" stays an event.
+
 ## 0.2.17 (2026-11-20)
 
 - Local AI: the warmed prompt cache is saved and loaded on the next start, so the first request after the server starts takes about 3s instead of 12s (Ryzen 5 5600X). The model no longer answers `placeGuessed`; a place the AI filled in is badged when it differs from the rules'. Warm requests: median 3.0s → 2.5s, same accuracy.

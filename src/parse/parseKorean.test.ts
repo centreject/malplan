@@ -673,3 +673,20 @@ describe("review fixes (2026-11-20)", () => {
     expect(parseKorean("한 시간 후 회의", today, 600).rest).toBe("회의");
   });
 });
+
+/** Parsed on Wednesday 2026-11-25. */
+function onWednesday(text: string) {
+  return parseKorean(text, "2026-11-25", 600);
+}
+
+describe("user reports (2026-11-25)", () => {
+  test("N주 뒤 + a weekday is that weekday in the week N weeks away, like 다음주 금요일", () => {
+    const on = onWednesday;
+
+    expect(on("3주 뒤 금요일 저녁먹자고 해보기")).toMatchObject({ date: { kind: "single", date: "2026-12-18" }, rest: "저녁먹자고 해보기", flags: [] });
+    expect(on("2주 후 월요일 회의").date).toEqual({ kind: "single", date: "2026-12-07" });
+    expect(on("세 주 뒤에 화요일 치과").date).toEqual({ kind: "single", date: "2026-12-15" });
+    expect(on("1주 후 금요일").date).toEqual(on("다음주 금요일").date);
+    expect(on("3주 뒤 회의").date).toEqual({ kind: "single", date: "2026-12-16" });
+  });
+});
