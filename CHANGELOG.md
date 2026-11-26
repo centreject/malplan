@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 0.2.21 (2026-11-26)
 
 - API keys (Claude, Gemini, OpenRouter, custom server) are kept in the Windows Credential Manager instead of the app's storage; keys saved by an earlier version are moved there at start.
 - Google Drive sync (sign in with Google, the app's own hidden Drive space) is built in, and shows once the release build has its Google client.
