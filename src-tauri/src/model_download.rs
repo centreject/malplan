@@ -25,6 +25,14 @@ const PROGRESS_STEP: u64 = 4 << 20;
 pub struct Download {
     active: AtomicBool,
     cancel: AtomicBool,
+    /// Set on startup when an installed older model file was removed so the UI can ask to download the replacement.
+    replaced: AtomicBool,
+}
+
+impl Download {
+    pub fn mark_replaced(&self) {
+        self.replaced.store(true, Ordering::Relaxed);
+    }
 }
 
 #[derive(Serialize)]
@@ -37,6 +45,8 @@ pub struct ModelStatus {
     partial: u64,
     total: u64,
     downloading: bool,
+    /// True on the launch that removed a previously installed model file.
+    replaced: bool,
     name: &'static str,
     vendor: &'static str,
     license: &'static str,
@@ -61,6 +71,7 @@ pub fn model_status(app: AppHandle, state: State<Download>) -> Result<ModelStatu
         partial: fs::metadata(dir.join(part_name())).map_or(0, |m| m.len()),
         total: MODEL.size,
         downloading: state.active.load(Ordering::Relaxed),
+        replaced: state.replaced.load(Ordering::Relaxed),
         name: MODEL.name,
         vendor: MODEL.vendor,
         license: MODEL.license,

@@ -69,7 +69,7 @@ export function UpdateNotice() {
       </header>
       {state.phase === "available" ? (
         <>
-          <p>받아서 설치하면 malplan이 잠시 닫혔다가 다시 열립니다. 일정과 설정, AI 모델은 그대로 남습니다.</p>
+          <p>받아서 설치하면 malplan이 잠시 닫혔다가 다시 열립니다. 일정과 설정은 그대로 남습니다. 새 버전에 AI 모델 교체가 포함된 경우에만 모델을 다시 받습니다.</p>
           <footer className="confirm-foot">
             <button type="button" className="confirm-button" onClick={() => setDismissed(state.update.version)}>
               나중에

@@ -84,7 +84,7 @@ npm run fetch:llama   # llama-server Vulkan 빌드, GPU 없으면 CPU (버전 �
 npm run tauri dev
 ```
 
-처음 실행하면 AI 모델(2.5GB, Apache 2.0)을 `%LOCALAPPDATA%\com.centreject.malplan\models`에 받을지 묻습니다. 받지 않아도 날짜·시간은 규칙으로 읽습니다.
+처음 실행하면 AI 모델(2.8GB, Apache 2.0)을 `%LOCALAPPDATA%\com.centreject.malplan\models`에 받을지 묻습니다. 받지 않아도 날짜·시간은 규칙으로 읽습니다.
 
 설치 파일(NSIS, 사용자 단위 설치, 관리자 권한 불필요) 만들기: `npx tauri build`. 배포용 빌드는 업데이트 서명 키(`TAURI_SIGNING_PRIVATE_KEY`, 관리자만 보유)로 서명합니다. `vX.Y.Z` 태그를 push하면 GitHub Actions가 빌드해 Release 초안을 만듭니다.
 

@@ -497,9 +497,9 @@ function validYearMonthDay(yearText: string | undefined, monthText: string | und
   return validMonthDay(monthText, dayText) && Number(dayText) <= daysInMonth(Number(yearText), Number(monthText));
 }
 
-/** 3주 뒤 금요일, 2주 후에 월요일: that weekday in the week N weeks away, as "다음주 금요일" is in the next one. */
+/** 3주 뒤 금요일, 2주 후에 월요일, 오늘부터 3주 뒤 금요일: that weekday in the week N weeks away, as "다음주 금요일" is in the next one. */
 function takeWeeksAheadWeekday(scanner: Scanner, today: IsoDate): ParsedDate | undefined {
-  const match = scanner.take(/(?<![\d가-힣])(\d{1,2})\s*주\s*(?:뒤|후)(?:에)?\s*([일월화수목금토])(?:요일|욜)/);
+  const match = scanner.take(/(?:(?<![가-힣])(?:오늘|지금)\s*(?:으로|로)?\s*부터\s*|(?<![\d가-힣]))(\d{1,2})\s*주\s*(?:뒤|후)(?:에)?\s*([일월화수목금토])(?:요일|욜)/);
   const weekday = WEEKDAY_BY_CHAR.get(match?.[2] ?? "");
 
   if (match === undefined || weekday === undefined) {

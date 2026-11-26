@@ -14,6 +14,7 @@ const StatusSchema = v.object({
   partial: v.number(),
   total: v.number(),
   downloading: v.boolean(),
+  replaced: v.boolean(),
 });
 
 export type ModelStatus = v.InferOutput<typeof StatusSchema>;
