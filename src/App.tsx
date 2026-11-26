@@ -835,7 +835,7 @@ export default function App() {
             icon: HardDrive,
             content: (
               <>
-                <StorageSettings dir={persisted.dir} errors={persisted.errors} unsaved={persisted.unsaved} onSwitch={persisted.switchFolder} />
+                <StorageSettings dir={persisted.dir} errors={persisted.errors} unsaved={persisted.unsaved} onSwitch={persisted.switchFolder} drive={persisted.drive} />
                 <BackupSettings
                   board={persisted.board}
                   today={now.today}

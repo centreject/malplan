@@ -2195,6 +2195,12 @@ ul {
   border: 1px solid var(--line);
 }
 
+.storage-drive {
+  display: grid;
+  gap: 8px;
+  margin-top: 12px;
+}
+
 .storage-choice {
   display: grid;
   gap: 8px;

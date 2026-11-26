@@ -1,6 +1,6 @@
 import { isTauri } from "@tauri-apps/api/core";
 import { open } from "@tauri-apps/plugin-dialog";
-import { FolderOpen, RotateCcw } from "lucide-react";
+import { Cloud, CloudOff, FolderOpen, RotateCcw } from "lucide-react";
 import { useState } from "react";
 import { defaultSyncDir } from "../storage/backends";
 import { folderHasData, type FolderMode } from "./useBoard";
@@ -11,10 +11,22 @@ type StorageSettingsProps = {
   /** Changes not yet written: they go to whichever folder is used next. */
   unsaved: number;
   onSwitch: (dir: string | undefined, mode: FolderMode) => Promise<void>;
+  drive: DriveState;
+};
+
+/** The Google Drive connection, from useBoard. */
+export type DriveState = {
+  /** A build with the Google client, in the desktop app. */
+  available: boolean;
+  connected: boolean;
+  /** Why the last round failed. */
+  note: string | undefined;
+  connect: () => Promise<void>;
+  disconnect: () => Promise<void>;
 };
 
 /** "저장 위치": which folder this device syncs through. */
-export function StorageSettings({ dir, errors, unsaved, onSwitch }: StorageSettingsProps) {
+export function StorageSettings({ dir, errors, unsaved, onSwitch, drive }: StorageSettingsProps) {
   const [pending, setPending] = useState<string | null>();
   const [busy, setBusy] = useState(false);
   const [failure, setFailure] = useState<string>();
@@ -59,6 +71,20 @@ export function StorageSettings({ dir, errors, unsaved, onSwitch }: StorageSetti
     }
   };
 
+  /** Signing in waits for the browser; a cancel or a timeout says so here. */
+  const driveAction = async (work: () => Promise<void>, failed: string) => {
+    setBusy(true);
+    setFailure(undefined);
+
+    try {
+      await work();
+    } catch (error) {
+      setFailure(`${failed}: ${error instanceof Error ? error.message : String(error)}`);
+    } finally {
+      setBusy(false);
+    }
+  };
+
   const confirm = (mode: FolderMode) => {
     const next = pending ?? undefined;
 
@@ -86,10 +112,33 @@ export function StorageSettings({ dir, errors, unsaved, onSwitch }: StorageSetti
             <RotateCcw size={16} strokeWidth={2} /> 기본 폴더로
           </button>
         )}
-        <button type="button" className="text-button bordered" disabled title="준비 중">
-          Google Drive 연결 (준비 중)
-        </button>
       </div>
+
+      {drive.available && (
+        <div className="storage-drive">
+          <p className="settings-note">
+            {drive.connected
+              ? "Google Drive와 연결됨: 이 폴더의 일정이 Drive의 malplan 전용 공간(Drive 목록에는 보이지 않음)과 맞춰집니다. 다른 PC에서도 같은 Google 계정으로 연결하세요."
+              : "Google 계정으로 로그인하면 다른 PC와 일정을 맞춥니다. malplan 전용 공간만 쓰고, Drive의 다른 파일은 보지 않습니다."}
+          </p>
+          <div className="storage-actions">
+            {drive.connected ? (
+              <button type="button" className="text-button bordered" onClick={() => void driveAction(drive.disconnect, "연결을 해제하지 못했습니다")}>
+                <CloudOff size={16} strokeWidth={2} /> Google Drive 연결 해제
+              </button>
+            ) : (
+              <button type="button" className="text-button bordered" onClick={() => void driveAction(drive.connect, "Google Drive에 연결하지 못했습니다")}>
+                <Cloud size={16} strokeWidth={2} /> {busy ? "브라우저에서 로그인하세요…" : "Google로 로그인해 Drive 연결"}
+              </button>
+            )}
+          </div>
+          {drive.note !== undefined && (
+            <p className="window-error" role="status">
+              {drive.note}
+            </p>
+          )}
+        </div>
+      )}
 
       {pending !== undefined && (
         <div className="storage-choice" role="alertdialog" aria-label="폴더에 기존 데이터가 있음">

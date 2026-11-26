@@ -1,11 +1,14 @@
+import { isTauri } from "@tauri-apps/api/core";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { ALL_TAB_ID } from "../domain/tabs";
 import { deviceId, loadSyncDir, openBackend, saveSyncDir } from "../storage/backends";
+import { connectDrive, disconnectDrive, forgetDriveSync, savedDriveLink, type DriveLink } from "../storage/driveLink";
+import { GOOGLE_CLIENT } from "../storage/googleAuth";
 import { boardChanges, boardFromEntities, boardWrites, reuseUnchanged, type Board } from "../storage/board";
 import * as v from "valibot";
 import { loadStored, saveStored } from "../storage/localStore";
 import { EntityKindSchema, JsonSchema } from "../storage/schema";
-import { copyInto, Outbox, SyncStore } from "../storage/store";
+import { copyInto, Outbox, SyncStore, type Backend } from "../storage/store";
 import { report } from "./report";
 
 const EMPTY: Board = { items: [], categories: [], tabs: [{ id: ALL_TAB_ID, name: "전체", categoryIds: undefined }] };
@@ -14,6 +17,9 @@ const EMPTY: Board = { items: [], categories: [], tabs: [{ id: ALL_TAB_ID, name:
 const REFRESH_MS = 60_000;
 
 const PENDING_KEY = "malplan.pendingWrites";
+
+/** After an edit, Drive is brought up to date this much later: a burst of edits goes up in one round. */
+const DRIVE_AFTER_EDIT_MS = 5_000;
 
 const PendingSchema = v.array(
   v.object({ entity: EntityKindSchema, id: v.string(), field: v.string(), value: JsonSchema, at: v.exactOptional(v.number()) }),
@@ -49,6 +55,14 @@ export function useBoard(seed: () => Board) {
   /** Bumped to retry a failed load (an offline NAS, a locked file). */
   const [attempt, setAttempt] = useState(0);
   const [loadFailed, setLoadFailed] = useState(false);
+  /** The folder the store reads; Drive rounds copy files in and out of it. */
+  const backend = useRef<Backend>(undefined);
+  const [drive, setDrive] = useState<DriveLink>();
+  const driveRef = useRef<DriveLink>(undefined);
+  /** The last Drive round's failure, or undefined after a round that worked. */
+  const [driveNote, setDriveNote] = useState<string>();
+  /** Bumped by every edit: what the Drive push waits on. */
+  const [editsToSend, setEditsToSend] = useState(0);
 
   const show = useCallback((next: Board) => {
     current.current = next;
@@ -72,6 +86,7 @@ export function useBoard(seed: () => Board) {
     (prev: Board, next: Board) => {
       outbox.add(boardWrites(prev, next), Date.now());
       queue.current = queue.current.then(() => flush(store.current));
+      setEditsToSend((n) => n + 1);
     },
     [flush, outbox],
   );
@@ -118,6 +133,18 @@ export function useBoard(seed: () => Board) {
     // Queued with the writes, so a write never runs while the store is reloading.
     const run = queue.current.then(async () => {
       await flush(target);
+
+      // Drive first, so the refresh reads what came down. Offline or signed out at Google: the folder still works.
+      if (driveRef.current !== undefined && backend.current !== undefined) {
+        try {
+          await driveRef.current.round(backend.current);
+          setDriveNote(undefined);
+        } catch (error) {
+          report(`drive sync failed: ${errorText(error instanceof Error ? error : String(error))}`);
+          setDriveNote("Google Drive와 맞추지 못했습니다. 인터넷 연결을 확인하세요. 이 PC에는 그대로 저장됩니다.");
+        }
+      }
+
       await target.refresh();
       // Cheap unless due; the app stays open for days, so startup alone is not enough.
       await target.compactIfDue(COMPACT_THRESHOLD).catch(() => false);
@@ -144,6 +171,17 @@ export function useBoard(seed: () => Board) {
     return reloading.current;
   }, [show, flush, outbox]);
 
+  // Edits go up to Drive a little after the last one of a burst.
+  useEffect(() => {
+    if (drive === undefined || editsToSend === 0) {
+      return;
+    }
+
+    const timer = window.setTimeout(() => void reload(), DRIVE_AFTER_EDIT_MS);
+
+    return () => window.clearTimeout(timer);
+  }, [drive, editsToSend, reload]);
+
   useEffect(() => {
     let cancelled = false;
     let retry: number | undefined;
@@ -153,8 +191,8 @@ export function useBoard(seed: () => Board) {
         report(`load retry ${attempt}`);
       }
 
-      const backend = await openBackend(dir);
-      const target = new SyncStore(backend, deviceId(), Date.now);
+      const opened = await openBackend(dir);
+      const target = new SyncStore(opened, deviceId(), Date.now);
 
       await target.load();
       // Keep the folder small: the designated device folds logs into the snapshot now and then.
@@ -165,6 +203,7 @@ export function useBoard(seed: () => Board) {
       }
 
       store.current = target;
+      backend.current = opened;
       // Edits made before the store was ready go out first, so the board read next includes them.
       queue.current = queue.current.then(() => flush(target));
       await queue.current;
@@ -223,6 +262,43 @@ export function useBoard(seed: () => Board) {
     };
   }, [ready, reload]);
 
+  // A connection made before signs in again without asking.
+  useEffect(() => {
+    if (GOOGLE_CLIENT === undefined || !isTauri()) {
+      return;
+    }
+
+    void savedDriveLink(GOOGLE_CLIENT, deviceId()).then((saved) => {
+      driveRef.current = saved;
+      setDrive(saved);
+    }, (error: Error | string) => report(`drive token read failed: ${errorText(error)}`));
+  }, []);
+
+  // Connected (now, or at start): bring the folder up to date with Drive at once.
+  useEffect(() => {
+    if (ready && drive !== undefined) {
+      void reload();
+    }
+  }, [ready, drive, reload]);
+
+  const connect = useCallback(async () => {
+    if (GOOGLE_CLIENT === undefined) {
+      return;
+    }
+
+    const made = await connectDrive(GOOGLE_CLIENT, deviceId());
+
+    driveRef.current = made;
+    setDrive(made);
+  }, []);
+
+  const disconnect = useCallback(async () => {
+    driveRef.current = undefined;
+    setDrive(undefined);
+    setDriveNote(undefined);
+    await disconnectDrive();
+  }, []);
+
   /**
    * Switch to another sync folder. "merge" copies this device's data into it first (log lines are
    * idempotent, so overlapping copies are harmless); "replace" just uses what the folder holds.
@@ -239,8 +315,10 @@ export function useBoard(seed: () => Board) {
       }
 
       saveSyncDir(next);
+      forgetDriveSync();
       setReady(false);
       store.current = undefined;
+      backend.current = undefined;
       setDir(next);
     },
     [dir],
@@ -251,7 +329,9 @@ export function useBoard(seed: () => Board) {
   /** Shown on the main screen too: data is not where the user thinks it is. */
   const warning = unsaved > 0 ? unsavedText : loadFailed ? "저장 폴더를 불러오지 못했습니다. 잠시 뒤 다시 시도합니다." : undefined;
 
-  return { board, ready, errors: shownErrors, warning, unsaved, update, dir, switchFolder, reload };
+  const driveState = { available: GOOGLE_CLIENT !== undefined && isTauri(), connected: drive !== undefined, note: driveNote, connect, disconnect };
+
+  return { board, ready, errors: shownErrors, warning, unsaved, update, dir, switchFolder, reload, drive: driveState };
 }
 
 /** Folder holds sync data already? Used to ask merge vs replace. */

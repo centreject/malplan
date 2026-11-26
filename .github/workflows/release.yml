@@ -29,6 +29,11 @@ jobs:
       - run: npm run fetch:llama
       # Built here, without the signing key in the environment: no npm script or build dependency sees it.
       - run: npm run build && npm run build:mcp
+        env:
+          # Google sign-in for Drive sync (a desktop OAuth client, public by Google's rules, still kept out of the
+          # repository). Unset, the build simply offers no Drive sync.
+          VITE_GOOGLE_CLIENT_ID: ${{ secrets.GOOGLE_CLIENT_ID }}
+          VITE_GOOGLE_CLIENT_SECRET: ${{ secrets.GOOGLE_CLIENT_SECRET }}
       - uses: tauri-apps/tauri-action@84b9d35b5fc46c1e45415bdb6144030364f7ebc5 # v0
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
