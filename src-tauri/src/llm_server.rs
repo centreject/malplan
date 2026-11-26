@@ -36,18 +36,24 @@ pub const MODEL: Model = Model {
 const OLD_MODEL_FILES: [&str; 1] = ["Qwen3-4B-Q4_K_M.gguf"];
 
 /// Best effort: a file that cannot be removed now is tried again on the next start.
-pub fn remove_old_models(app: &AppHandle) {
-    if let Ok(dir) = models_dir(app) {
-        remove_old_models_in(&dir);
-    }
+/// Returns true if an installed older model file was removed.
+pub fn remove_old_models(app: &AppHandle) -> bool {
+    models_dir(app).is_ok_and(|dir| remove_old_models_in(&dir))
 }
 
-fn remove_old_models_in(dir: &std::path::Path) {
+fn remove_old_models_in(dir: &std::path::Path) -> bool {
+    let mut removed = false;
+
     for file in OLD_MODEL_FILES {
-        let _ = fs::remove_file(dir.join(file));
+        if fs::remove_file(dir.join(file)).is_ok() {
+            removed = true;
+        }
+
         let _ = fs::remove_file(dir.join(format!("{file}.part")));
         let _ = fs::remove_dir_all(dir.join(format!("{file}.slots")));
     }
+
+    removed
 }
 
 /// Where the running server listens and the key it takes. The app is its only client.
@@ -65,7 +71,7 @@ struct Running {
 #[derive(Default)]
 pub struct LlmServer(Mutex<Option<Running>>);
 
-/// Local (not roaming) app data: a 2.5GB file must not follow a roaming profile.
+/// Local (not roaming) app data: a 2.8GB file must not follow a roaming profile.
 pub fn models_dir(app: &AppHandle) -> Result<PathBuf, String> {
     Ok(app.path().app_local_data_dir().map_err(|e| e.to_string())?.join("models"))
 }
@@ -96,9 +102,9 @@ fn new_key() -> Result<String, String> {
 }
 
 /// Start the server unless it already runs, and return where it listens and its key. Errors with
-/// "no-model" when the model is missing.
+/// "no-model" when the model is missing. `cpu_only` passes `--device none` as a fallback when Vulkan fails.
 #[tauri::command(async)]
-pub fn llm_start(app: AppHandle, state: State<LlmServer>) -> Result<Connection, String> {
+pub fn llm_start(app: AppHandle, state: State<LlmServer>, cpu_only: Option<bool>) -> Result<Connection, String> {
     let mut slot = state.0.lock().map_err(|e| e.to_string())?;
 
     if alive(&mut slot) {
@@ -120,8 +126,14 @@ pub fn llm_start(app: AppHandle, state: State<LlmServer>) -> Result<Connection, 
         .map_err(|e| e.to_string())?
         .join("llama")
         .join(format!("llama-server{}", std::env::consts::EXE_SUFFIX));
-    // Last run's output, for diagnosing an "error" status.
-    let log = File::create(dir.join("llama-server.log")).map_err(|e| e.to_string())?;
+    let cpu_only = cpu_only.unwrap_or(false);
+    // Last run's output, for diagnosing an "error" status; append on CPU fallback so the GPU failure stays visible.
+    let log = if cpu_only {
+        fs::OpenOptions::new().create(true).append(true).open(dir.join("llama-server.log"))
+    } else {
+        File::create(dir.join("llama-server.log"))
+    }
+    .map_err(|e| e.to_string())?;
     // The warmed prompt cache, kept across starts so the first request does not work through the prompt again.
     let slots = slots_dir(&dir);
 
@@ -144,6 +156,10 @@ pub fn llm_start(app: AppHandle, state: State<LlmServer>) -> Result<Connection, 
         .stdin(Stdio::null())
         .stdout(log.try_clone().map_err(|e| e.to_string())?)
         .stderr(log);
+
+    if cpu_only {
+        command.args(["--device", "none"]);
+    }
 
     #[cfg(windows)]
     {
@@ -264,14 +280,19 @@ mod tests {
         fs::write(dir.join(format!("{old}.part")), b"x").unwrap();
         fs::write(dir.join(MODEL.file), b"x").unwrap();
 
-        remove_old_models_in(&dir);
+        assert!(remove_old_models_in(&dir));
+        assert!(!remove_old_models_in(&dir));
 
         assert!(!dir.join(old).exists());
         assert!(!dir.join(format!("{old}.part")).exists());
         assert!(!dir.join(format!("{old}.slots")).exists());
         assert!(dir.join(MODEL.file).exists());
+        // Partial download alone is not a previously installed model.
+        fs::write(dir.join(format!("{old}.part")), b"x").unwrap();
+        assert!(!remove_old_models_in(&dir));
+        assert!(!dir.join(format!("{old}.part")).exists());
         // Nothing there: no error.
-        remove_old_models_in(&dir.join("missing"));
+        assert!(!remove_old_models_in(&dir.join("missing")));
         fs::remove_dir_all(&dir).unwrap();
     }
 }

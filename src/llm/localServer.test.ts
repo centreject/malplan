@@ -1,9 +1,9 @@
 import { describe, expect, it } from "vitest";
-import { createLocalServer, type Connection, type ServerControl } from "./localServer";
+import { createLocalServer, promptHash, warmUpLocal, type Connection, type ServerControl, type ServerHealth, type WarmUpIo } from "./localServer";
 
 const CONNECTION: Connection = { origin: "http://127.0.0.1:50123", key: "k".repeat(64) };
 
-/** A scripted server: healthy after `failedPolls` polls; idle timers are held until fired. */
+/** A scripted server: ready after `failedPolls` polls; idle timers are held until fired. */
 type Fake = { control: ServerControl; calls: string[]; fireIdle: () => void; pendingTimers: () => number };
 
 function fake(startResult: "started" | "no-model", failedPolls: number): Fake {
@@ -12,18 +12,18 @@ function fake(startResult: "started" | "no-model", failedPolls: number): Fake {
   let polls = 0;
 
   const control: ServerControl = {
-    start: async () => {
-      calls.push("start");
+    start: async (cpuOnly) => {
+      calls.push(cpuOnly === true ? "start-cpu" : "start");
 
       return startResult === "started" ? CONNECTION : "no-model";
     },
     stop: async () => {
       calls.push("stop");
     },
-    healthy: async () => {
+    health: async () => {
       polls += 1;
 
-      return polls > failedPolls;
+      return polls > failedPolls ? "ready" : "starting";
     },
     wait: async (ms) => {
       calls.push(`wait ${ms}`);
@@ -122,6 +122,90 @@ describe("createLocalServer", () => {
     expect(server.status()).toBe("ready");
   });
 
+  it("runs only one warm-up when prestart is called again while starting", async () => {
+    const f = fake("started", 1000);
+    let readyNow = false;
+    let release = settled;
+
+    const server = createLocalServer(
+      {
+        ...f.control,
+        health: async () => (readyNow ? "ready" : "starting"),
+        wait: () => new Promise<void>((resolve) => (release = () => Promise.resolve(resolve()))),
+      },
+      OPTIONS,
+    );
+
+    let warmUps = 0;
+
+    const warmUp = async () => {
+      warmUps += 1;
+    };
+
+    server.prestart(warmUp);
+    await Promise.resolve();
+    server.prestart(warmUp);
+
+    readyNow = true;
+    await release();
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    expect(warmUps).toBe(1);
+    expect(server.status()).toBe("ready");
+  });
+
+  it("marks canSave false once a real request arrives during warm-up", async () => {
+    const f = fake("started", 0);
+    const server = createLocalServer(f.control, OPTIONS);
+    let savedAllowed: (() => boolean) | undefined;
+
+    server.prestart(async (_connection, canSave) => {
+      savedAllowed = canSave;
+    });
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    expect(savedAllowed?.()).toBe(true);
+
+    await server.ensure();
+    expect(savedAllowed?.()).toBe(false);
+  });
+
+  it("falls back to CPU once when the GPU launch exits before becoming ready", async () => {
+    const f = fake("started", 0);
+    let cpuMode = false;
+
+    const server = createLocalServer(
+      {
+        ...f.control,
+        start: async (cpuOnly) => {
+          cpuMode = cpuOnly === true;
+
+          return f.control.start(cpuOnly);
+        },
+        health: async () => (cpuMode ? "ready" : "dead"),
+      },
+      OPTIONS,
+    );
+
+    await server.ensure();
+    expect(f.calls).toEqual(["start", "start-cpu"]);
+    expect(server.status()).toBe("ready");
+
+    // Remembers CPU mode for the rest of the session so later restarts do not crash Vulkan again.
+    await server.stop();
+    await server.ensure();
+    expect(f.calls).toEqual(["start", "start-cpu", "stop", "start-cpu"]);
+  });
+
+  it("fails immediately without polling when both GPU and CPU launches exit early", async () => {
+    const f = fake("started", 0);
+    const server = createLocalServer({ ...f.control, health: async () => "dead" }, OPTIONS);
+
+    await expect(server.ensure()).rejects.toThrow("종료");
+    expect(server.status()).toBe("error");
+    expect(f.calls).toEqual(["start", "start-cpu", "stop"]);
+  });
+
   it("a start error after no-model shows as an error", async () => {
     let installed = false;
     const f = fake("no-model", 0);
@@ -157,7 +241,7 @@ describe("createLocalServer", () => {
     const server = createLocalServer(
       {
         ...f.control,
-        healthy: async () => healthyNow,
+        health: async () => (healthyNow ? "ready" : "starting"),
         wait: () => new Promise<void>((resolve) => (release = () => Promise.resolve(resolve()))),
       },
       OPTIONS,
@@ -183,10 +267,10 @@ describe("createLocalServer", () => {
     const server = createLocalServer(
       {
         ...f.control,
-        healthy: async (connection) => {
+        health: async (connection) => {
           checked.push(connection);
 
-          return true;
+          return "ready";
         },
       },
       OPTIONS,
@@ -208,9 +292,89 @@ describe("createLocalServer", () => {
 
   it("a server that does not answer as ours never becomes ready", async () => {
     const f = fake("started", 0);
-    const server = createLocalServer({ ...f.control, healthy: async () => false }, OPTIONS);
+    const server = createLocalServer({ ...f.control, health: async (): Promise<ServerHealth> => "starting" }, OPTIONS);
 
     await expect(server.ensure()).rejects.toThrow("응답");
     expect(server.status()).toBe("error");
+  });
+});
+
+function fakeWarmUpIo(responses: Record<string, boolean>, initialHash: string | null = null): { io: WarmUpIo; paths: string[]; hash: () => string | null } {
+  const paths: string[] = [];
+  let stored = initialHash;
+
+  const io: WarmUpIo = {
+    fetch: async (url) => {
+      const path = url.slice(CONNECTION.origin.length);
+
+      paths.push(path);
+
+      return { ok: responses[path] ?? true };
+    },
+    readHash: () => stored,
+    writeHash: (_file, value) => {
+      stored = value;
+    },
+  };
+
+  return { io, paths, hash: () => stored };
+}
+
+describe("warmUpLocal", () => {
+  it("skips re-warming and saving when restore succeeds and the system prompt is unchanged", async () => {
+    const system = "system prompt v1";
+    const f = fakeWarmUpIo({ "/slots/0?action=restore": true }, promptHash(system));
+
+    await warmUpLocal(CONNECTION, system, "extract.bin", () => true, f.io);
+
+    expect(f.paths).toEqual(["/slots/0?action=restore"]);
+  });
+
+  it("warms and saves when the prompt changed or restore failed", async () => {
+    const system = "system prompt v2";
+    const f = fakeWarmUpIo({ "/slots/0?action=restore": false, "/v1/chat/completions": true, "/slots/0?action=save": true });
+
+    await warmUpLocal(CONNECTION, system, "extract.bin", () => true, f.io);
+
+    expect(f.paths).toEqual(["/slots/0?action=restore", "/v1/chat/completions", "/slots/0?action=save"]);
+    expect(f.hash()).toBe(promptHash(system));
+  });
+
+  it("does not overwrite extract.bin when the warm-up completion fails", async () => {
+    const f = fakeWarmUpIo({ "/slots/0?action=restore": false, "/v1/chat/completions": false }, "old");
+
+    await warmUpLocal(CONNECTION, "system prompt", "extract.bin", () => true, f.io);
+
+    expect(f.paths).toEqual(["/slots/0?action=restore", "/v1/chat/completions"]);
+    expect(f.hash()).toBe("old");
+  });
+
+  it("does not save extract.bin if a real request took the slot during warm-up", async () => {
+    let allowSave = true;
+    const paths: string[] = [];
+    let savedHash: string | null = null;
+
+    const io: WarmUpIo = {
+      fetch: async (url) => {
+        const path = url.slice(CONNECTION.origin.length);
+
+        paths.push(path);
+
+        if (path === "/v1/chat/completions") {
+          allowSave = false;
+        }
+
+        return { ok: path !== "/slots/0?action=restore" };
+      },
+      readHash: () => savedHash,
+      writeHash: (_file, value) => {
+        savedHash = value;
+      },
+    };
+
+    await warmUpLocal(CONNECTION, "system prompt", "extract.bin", () => allowSave, io);
+
+    expect(paths).toEqual(["/slots/0?action=restore", "/v1/chat/completions"]);
+    expect(savedHash).toBeNull();
   });
 });

@@ -688,5 +688,8 @@ describe("user reports (2026-11-25)", () => {
     expect(on("세 주 뒤에 화요일 치과").date).toEqual({ kind: "single", date: "2026-12-15" });
     expect(on("1주 후 금요일").date).toEqual(on("다음주 금요일").date);
     expect(on("3주 뒤 회의").date).toEqual({ kind: "single", date: "2026-12-16" });
+    expect(on("오늘부터 3주 뒤 금요일 회의")).toMatchObject({ date: { kind: "single", date: "2026-12-18" }, rest: "회의", flags: [] });
+    expect(on("지금으로부터 2주 후 월요일 회의")).toMatchObject({ date: { kind: "single", date: "2026-12-07" }, rest: "회의", flags: [] });
+    expect(on("오늘부터 3주 뒤 금요일까지 휴가")).toMatchObject({ date: { kind: "range", start: "2026-11-25", end: "2026-12-18" }, rest: "휴가", flags: [] });
   });
 });

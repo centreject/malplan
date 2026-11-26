@@ -84,7 +84,7 @@ npm run fetch:llama   # llama-server Vulkan build, CPU without a GPU (pinned, ch
 npm run tauri dev
 ```
 
-The first run offers to download the AI model (2.5GB, Apache 2.0) into `%LOCALAPPDATA%\com.centreject.malplan\models`. Without it, dates and times still work by rules.
+The first run offers to download the AI model (2.8GB, Apache 2.0) into `%LOCALAPPDATA%\com.centreject.malplan\models`. Without it, dates and times still work by rules.
 
 To build the installer (NSIS, per-user, no admin rights): `npx tauri build`. Release builds sign the update with `TAURI_SIGNING_PRIVATE_KEY` (the maintainer's key); pushing a tag `vX.Y.Z` builds and drafts the GitHub Release through Actions.
 
