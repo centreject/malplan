@@ -1,7 +1,7 @@
 // Google Drive as a transport: the local sync folder stays the store (the app and the MCP server read it), and this
 // copies its sync files to and from the Drive appDataFolder. Merging is the store's job, as for any synced folder.
 import * as v from "valibot";
-import { isOwnSyncFile, logName, type Backend } from "./store";
+import { copyInto, isOwnSyncFile, logName, MemoryBackend, type Backend } from "./store";
 
 /** A file in the Drive appDataFolder. `md5` changes whenever its content does. */
 export type RemoteFile = { id: string; name: string; md5: string };
@@ -28,9 +28,11 @@ async function hash(text: string): Promise<string> {
 }
 
 /**
- * One round: each sync file goes the way it changed since the last round. A file changed on both sides goes up when
- * this device writes it (its own log, the snapshot it compacted) and comes down otherwise: another device's log is
- * only ever written by that device. Drive may hold two files of one name (two first uploads at once); the first
+ * One round: each sync file goes the way it changed since the last round. What this device writes (its own log, the
+ * snapshot) goes up when changed here. Another device's log only ever comes down when Drive has a newer one: that
+ * device is its only writer, so a local copy never overwrites it (it goes up only when Drive has none yet). The snapshot changed on both sides (a second device connecting, two devices
+ * compacting) is merged, not overwritten: what only the other one held may already be pruned from the logs.
+ * Drive may hold two files of one name (two first uploads at once); the first
  * listed is used. Nothing is deleted: a log only grows or is pruned in place, and the snapshot is rewritten.
  */
 export async function syncWithDrive(local: Backend, drive: DriveFiles, device: string, synced: Synced): Promise<DriveSyncResult> {
@@ -56,7 +58,18 @@ export async function syncWithDrive(local: Backend, drive: DriveFiles, device: s
     const remoteChanged = file !== undefined && file.md5 !== last?.remote;
     const ours = name === logName(device) || name === "snapshot.json";
 
-    if (localChanged && (!remoteChanged || ours) && text !== undefined && localHash !== undefined) {
+    if (name === "snapshot.json" && localChanged && remoteChanged && file !== undefined) {
+      const theirs = new MemoryBackend();
+
+      await theirs.write(name, await drive.download(file.id));
+      await copyInto(theirs, local);
+
+      const merged = (await local.read(name)) ?? "";
+      const sent = await drive.update(file.id, merged);
+
+      next[name] = { local: await hash(merged), remote: sent.md5 };
+      pushed.push(name);
+    } else if (localChanged && (ours || file === undefined) && text !== undefined && localHash !== undefined) {
       const sent = file === undefined ? await drive.create(name, text) : await drive.update(file.id, text);
 
       next[name] = { local: localHash, remote: sent.md5 };

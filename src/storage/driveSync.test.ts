@@ -142,6 +142,18 @@ describe("syncWithDrive", () => {
     expect(await a.folder.read("log-b.jsonl")).toBe("b's new lines\n");
   });
 
+  test("another device's log changed only here never overwrites Drive's", async () => {
+    const drive = new FakeDrive();
+    const a = device("a", drive);
+
+    await drive.create("log-b.jsonl", "b's lines\n");
+    await a.sync();
+    await a.folder.write("log-b.jsonl", "");
+
+    expect(await a.sync()).toMatchObject({ pushed: [], pulled: [] });
+    expect(drive.content("log-b.jsonl")).toBe("b's lines\n");
+  });
+
   test("only the app's own sync files travel: no cloud copies, no other files", async () => {
     const drive = new FakeDrive();
     const a = device("a", drive);
@@ -151,6 +163,35 @@ describe("syncWithDrive", () => {
     await a.folder.write("snapshot.json", "{}");
 
     expect((await a.sync()).pushed).toEqual(["snapshot.json"]);
+  });
+
+  test("a second device connecting with its own snapshot merges both snapshots instead of overwriting one", async () => {
+    const drive = new FakeDrive();
+    const a = device("a", drive);
+    const b = device("b", drive);
+
+    for (const [d, id, name] of [[a, "i1", "치과"], [b, "i2", "회의"]] as const) {
+      await d.store.load();
+      await d.store.set("item", id, "title", name);
+      await d.store.compact();
+    }
+
+    await a.sync();
+    expect((await b.sync()).pushed).toContain("snapshot.json");
+
+    // Only the snapshots count: the logs could already be pruned.
+    for (const d of [a, b]) {
+      for (const name of await d.folder.list()) {
+        if (name.startsWith("log-")) await d.folder.write(name, "");
+      }
+    }
+
+    await a.sync();
+
+    for (const d of [a, b]) {
+      await d.store.load();
+      expect([title(d.store, "i1"), title(d.store, "i2")]).toEqual(["치과", "회의"]);
+    }
   });
 
   test("a file Drive holds twice: the first listed is used", async () => {
