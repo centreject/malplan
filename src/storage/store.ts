@@ -48,6 +48,9 @@ const OWN_LOG_NAME = /^log-[\w.-]+\.jsonl$/;
 
 const isSyncFile = (name: string) => name === SNAPSHOT || isLogFile(name);
 
+/** The files a device's own data lives in: the snapshot and the logs as this app names them (not a cloud copy). */
+export const isOwnSyncFile = (name: string) => name === SNAPSHOT || OWN_LOG_NAME.test(name);
+
 /** Only devices that wrote within this time may be the compactor: one that left (a replaced PC) would block it. */
 const ACTIVE_WITHIN_MS = 30 * 24 * 60 * 60 * 1000;
 
@@ -69,7 +72,7 @@ export const PRUNE_AFTER_MS = 7 * 24 * 60 * 60 * 1000;
  */
 const FIRST_COMPACT_AFTER_MS = 24 * 60 * 60 * 1000;
 
-const logName = (device: string) => `log-${device}.jsonl`;
+export const logName = (device: string) => `log-${device}.jsonl`;
 
 const toLines = (changes: readonly Change[]) => changes.map((c) => `${JSON.stringify(c)}\n`).join("");
 
