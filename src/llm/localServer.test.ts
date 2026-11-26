@@ -299,7 +299,9 @@ describe("createLocalServer", () => {
   });
 });
 
-function fakeWarmUpIo(responses: Record<string, boolean>, initialHash: string | null = null): { io: WarmUpIo; paths: string[]; hash: () => string | null } {
+type FakeWarmUp = { io: WarmUpIo; paths: string[]; hash: () => string | null };
+
+function fakeWarmUpIo(responses: Record<string, boolean>, initialHash: string | null = null): FakeWarmUp {
   const paths: string[] = [];
   let stored = initialHash;
 
