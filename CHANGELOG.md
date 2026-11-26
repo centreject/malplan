@@ -1,5 +1,10 @@
 # Changelog
 
+## Unreleased
+
+- API keys (Claude, Gemini, OpenRouter, custom server) are kept in the Windows Credential Manager instead of the app's storage; keys saved by an earlier version are moved there at start.
+- Google Drive sync (sign in with Google, the app's own hidden Drive space) is built in, and shows once the release build has its Google client.
+
 ## 0.2.20 (2026-11-25)
 
 - Calendar headers: the prev/next arrows no longer shift between 9월 and 10월 in the month pane, nor from week to week in the week pane.

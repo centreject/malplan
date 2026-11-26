@@ -83,7 +83,8 @@ export function loadLlmSettings(): LlmSettings {
   return loadStored(STORAGE_KEY, SettingsSchema, v.parse(SettingsSchema, {}));
 }
 
-export function saveLlmSettings(settings: LlmSettings): void {
+/** The settings as JSON in app storage; keys go elsewhere in the app (llmKeys.ts). */
+export function saveSettingsJson(settings: LlmSettings): void {
   saveStored(STORAGE_KEY, settings);
 }
 

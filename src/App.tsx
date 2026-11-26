@@ -9,7 +9,8 @@ import { applyEditReply, buildEditPrompt } from "./llm/edit";
 import { buildPrompt, guardExtraction, parseExtraction, type Extraction } from "./llm/extract";
 import { UNREADABLE_REPLY, aiFailureNote } from "./llm/aiNote";
 import { localServer, warmUpLocal } from "./llm/localServer";
-import { complete, loadLlmSettings, saveLlmSettings } from "./llm/providers";
+import { loadLlmKeys, saveLlmSettings, withKeys } from "./llm/llmKeys";
+import { complete, loadLlmSettings } from "./llm/providers";
 import { AiSettings } from "./ui/AiSettings";
 import { addDays, partsOf, type IsoDate } from "./domain/date";
 import type { Category, Item } from "./domain/item";
@@ -38,6 +39,7 @@ import { loadNotificationSettings, saveNotificationSettings, useReminders } from
 import { ListPage } from "./ui/ListPage";
 import { SearchDialog } from "./ui/SearchDialog";
 import { StorageSettings } from "./ui/StorageSettings";
+import { report } from "./ui/report";
 import { TabEditor } from "./ui/TabEditor";
 import { useBoard } from "./ui/useBoard";
 import { addImported, restoreBackup, restoreExactly, type Board } from "./storage/board";
@@ -161,6 +163,14 @@ export default function App() {
   }>();
 
   const [llm, setLlm] = useState(loadLlmSettings);
+
+  // Keys come from the Credential Manager a moment after start (moved there from app storage the first time).
+  useEffect(() => {
+    void loadLlmKeys().then(
+      (keys) => setLlm((current) => withKeys(current, keys)),
+      (error: Error | string) => report(`api keys read failed: ${error instanceof Error ? error.message : error}`),
+    );
+  }, []);
   const [ai, setAi] = useState<AiState>({ extractions: new Map(), inputs: new Map(), note: undefined });
   /** Bumped per dialog so late AI answers for a closed dialog are dropped. */
   const aiSession = useRef(0);
@@ -809,7 +819,7 @@ export default function App() {
                 settings={llm}
                 onChange={(next) => {
                   setLlm(next);
-                  saveLlmSettings(next);
+                  void saveLlmSettings(next).catch((error: Error | string) => report(`api keys save failed: ${error instanceof Error ? error.message : error}`));
                 }}
               />
             ),
