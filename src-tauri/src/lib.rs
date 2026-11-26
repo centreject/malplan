@@ -1,5 +1,6 @@
 mod llm_server;
 mod model_download;
+mod secrets;
 mod sync_files;
 
 use std::sync::atomic::{AtomicBool, Ordering};
@@ -93,6 +94,9 @@ pub fn run() {
             model_download::model_status,
             model_download::model_download,
             model_download::model_download_cancel,
+            secrets::secret_get,
+            secrets::secret_set,
+            secrets::secret_delete,
         ])
         .setup(|app| {
             llm_server::remove_old_models(app.handle());

@@ -30,6 +30,7 @@ sha2 = "0.10"
 getrandom = "0.3"
 tauri-plugin-log = "2"
 log = "0.4"
+keyring = { version = "3", features = ["windows-native"] }
 
 
 # Read the optimization guideline for more details: https://tauri.app/concept/size/#cargo-configuration
