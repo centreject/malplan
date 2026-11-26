@@ -1,5 +1,6 @@
 mod llm_server;
 mod model_download;
+mod oauth;
 mod secrets;
 mod sync_files;
 
@@ -78,6 +79,7 @@ pub fn run() {
         .manage(CloseToTray(AtomicBool::new(true)))
         .manage(llm_server::LlmServer::default())
         .manage(model_download::Download::default())
+        .manage(oauth::Redirect::default())
         .invoke_handler(tauri::generate_handler![
             set_close_to_tray,
             sync_files::sync_default_dir,
@@ -94,6 +96,8 @@ pub fn run() {
             model_download::model_status,
             model_download::model_download,
             model_download::model_download_cancel,
+            oauth::oauth_listen,
+            oauth::oauth_wait,
             secrets::secret_get,
             secrets::secret_set,
             secrets::secret_delete,
