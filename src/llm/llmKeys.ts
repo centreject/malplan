@@ -48,10 +48,96 @@ export function withKeys(settings: LlmSettings, keys: ReadonlyMap<ProviderId, st
   return { ...settings, apiKey: settings.apiKey === "" ? own : settings.apiKey, saved };
 }
 
-/** Saves run one after another: a key typed letter by letter must end as its last letter left it. */
-let saving: Promise<void> = Promise.resolve();
+export type KeyStorage = {
+  readSecret: (name: string) => Promise<string | undefined>;
+  saveSecret: (name: string, value: string) => Promise<void>;
+  deleteSecret: (name: string) => Promise<void>;
+  loadSettings: () => LlmSettings;
+  saveSettings: (settings: LlmSettings) => void;
+};
 
-/** Settings to app storage, keys to the Credential Manager (an emptied key is removed there). */
+export type LlmKeyStore = {
+  save: (settings: LlmSettings) => Promise<void>;
+  load: () => Promise<Map<ProviderId, string>>;
+};
+
+/**
+ * Serialized key persistence with a real storage seam (tests pass in-memory fakes).
+ * Never deletes Credential Manager entries before the initial load has succeeded, and never strips
+ * legacy keys from app storage until migrating them into the Credential Manager succeeds.
+ */
+export function createLlmKeyStore(io: KeyStorage): LlmKeyStore {
+  /** Saves and initial migration run one after another, in order. */
+  let saving: Promise<void> = Promise.resolve();
+  /** True once `load()` has read the Credential Manager; before that, empty keys in state mean "not loaded". */
+  let loaded = false;
+
+  const save = (settings: LlmSettings): Promise<void> => {
+    const allowDelete = loaded;
+
+    const run = saving.then(async () => {
+      for (const [provider, key] of keysOf(settings)) {
+        if (key !== "") {
+          await io.saveSecret(secretName(provider), key);
+        } else if (allowDelete) {
+          await io.deleteSecret(secretName(provider));
+        }
+      }
+
+      io.saveSettings(withoutKeys(settings));
+    });
+
+    saving = run.catch(() => undefined);
+
+    return run;
+  };
+
+  const load = (): Promise<Map<ProviderId, string>> => {
+    const run = saving.then(async () => {
+      const stored = io.loadSettings();
+
+      if ([...keysOf(stored).values()].some((key) => key !== "")) {
+        for (const [provider, key] of keysOf(stored)) {
+          if (key !== "") {
+            await io.saveSecret(secretName(provider), key);
+          }
+        }
+
+        // Only blank app storage after every legacy key reached the Credential Manager.
+        io.saveSettings(withoutKeys(stored));
+      }
+
+      const keys = new Map<ProviderId, string>();
+
+      for (const provider of KEYED) {
+        keys.set(provider, (await io.readSecret(secretName(provider))) ?? "");
+      }
+
+      loaded = true;
+
+      return keys;
+    });
+
+    saving = run.then(
+      () => undefined,
+      () => undefined,
+    );
+
+    return run;
+  };
+
+  return { save, load };
+}
+
+const desktopStore = createLlmKeyStore({
+  readSecret,
+  saveSecret,
+  deleteSecret,
+  loadSettings: loadLlmSettings,
+  saveSettings: saveSettingsJson,
+});
+
+/** Settings to app storage, keys to the Credential Manager (an emptied key is removed once keys have loaded). */
 export function saveLlmSettings(settings: LlmSettings): Promise<void> {
   if (!isTauri()) {
     saveSettingsJson(settings);
@@ -59,39 +145,17 @@ export function saveLlmSettings(settings: LlmSettings): Promise<void> {
     return Promise.resolve();
   }
 
-  saveSettingsJson(withoutKeys(settings));
-
-  const run = saving.then(async () => {
-    for (const [provider, key] of keysOf(settings)) {
-      await (key === "" ? deleteSecret(secretName(provider)) : saveSecret(secretName(provider), key));
-    }
-  });
-
-  saving = run.catch(() => undefined);
-
-  return run;
+  return desktopStore.save(settings);
 }
 
 /**
  * The keys this device keeps. Keys an older version left in app storage are moved to the Credential Manager first
- * and blanked there.
+ * and blanked there only after the write succeeds.
  */
-export async function loadLlmKeys(): Promise<Map<ProviderId, string>> {
+export function loadLlmKeys(): Promise<Map<ProviderId, string>> {
   if (!isTauri()) {
-    return new Map();
+    return Promise.resolve(new Map());
   }
 
-  const stored = loadLlmSettings();
-
-  if ([...keysOf(stored).values()].some((key) => key !== "")) {
-    await saveLlmSettings(stored);
-  }
-
-  const keys = new Map<ProviderId, string>();
-
-  for (const provider of KEYED) {
-    keys.set(provider, (await readSecret(secretName(provider))) ?? "");
-  }
-
-  return keys;
+  return desktopStore.load();
 }

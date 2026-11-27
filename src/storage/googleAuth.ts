@@ -78,6 +78,14 @@ const TokenSchema = v.object({
 
 export type Tokens = { access: string; expiresAt: number; refresh: string | undefined };
 
+/** Google rejected the grant or refresh token (revoked access, expired test grant): user must sign in again. */
+export class AuthExpiredError extends Error {
+  constructor(status: number) {
+    super(`Google token HTTP ${status}`);
+    this.name = "AuthExpiredError";
+  }
+}
+
 async function tokenRequest(fields: Record<string, string>, fetcher: typeof fetch, now: number): Promise<Tokens> {
   const response = await fetcher(TOKEN_URL, {
     method: "POST",
@@ -85,6 +93,10 @@ async function tokenRequest(fields: Record<string, string>, fetcher: typeof fetc
     body: new URLSearchParams(fields).toString(),
     signal: AbortSignal.timeout(30_000),
   });
+
+  if (response.status === 400 || response.status === 401) {
+    throw new AuthExpiredError(response.status);
+  }
 
   if (!response.ok) {
     throw new Error(`Google token HTTP ${response.status}`);
@@ -131,6 +143,16 @@ export class GoogleSession {
 
     return this.#access.token;
   }
+
+  /** Drops the cached access token so the next call refreshes it (e.g. after Drive answers HTTP 401). */
+  invalidate(): void {
+    this.#access = undefined;
+  }
+}
+
+/** Cancels an in-progress loopback redirect wait so the user does not have to wait out the 5-minute timeout. */
+export function cancelSignIn(): Promise<void> {
+  return invoke("oauth_cancel");
 }
 
 /** The browser round trip; keeps the refresh token in the Credential Manager and returns it. */
@@ -140,9 +162,27 @@ export async function signIn(client: GoogleClient, fetcher: typeof fetch): Promi
   const { verifier, challenge } = await pkcePair();
   const state = base64Url(crypto.getRandomValues(new Uint8Array(16)));
 
-  await openUrl(authorizationUrl(client, redirect, challenge, state));
+  try {
+    await openUrl(authorizationUrl(client, redirect, challenge, state));
+  } catch (error) {
+    void cancelSignIn().catch(() => undefined);
 
-  const result = readRedirect(await invoke<string>("oauth_wait"), state);
+    throw error;
+  }
+
+  let query: string;
+
+  try {
+    query = await invoke<string>("oauth_wait");
+  } catch (error) {
+    if (error === "sign-in cancelled") {
+      throw new Error("로그인을 취소했습니다.", { cause: error });
+    }
+
+    throw error;
+  }
+
+  const result = readRedirect(query, state);
 
   if ("error" in result) {
     throw new Error(result.error === "access_denied" ? "로그인을 취소했습니다." : `로그인하지 못했습니다. (${result.error})`);

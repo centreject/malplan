@@ -1,8 +1,9 @@
 import { isTauri } from "@tauri-apps/api/core";
 import { open } from "@tauri-apps/plugin-dialog";
 import { Cloud, CloudOff, FolderOpen, RotateCcw } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { defaultSyncDir } from "../storage/backends";
+import { cancelSignIn } from "../storage/googleAuth";
 import { folderHasData, type FolderMode } from "./useBoard";
 
 type StorageSettingsProps = {
@@ -29,10 +30,21 @@ export type DriveState = {
 export function StorageSettings({ dir, errors, unsaved, onSwitch, drive }: StorageSettingsProps) {
   const [pending, setPending] = useState<string | null>();
   const [busy, setBusy] = useState(false);
+  const [signingIn, setSigningIn] = useState(false);
+  const signingInRef = useRef(false);
   const [failure, setFailure] = useState<string>();
   const desktop = isTauri();
   /** The same warning from several lines shows once. */
   const warnings = [...new Set(errors)];
+
+  useEffect(() => {
+    return () => {
+      // Closing the settings dialog cancels a pending browser sign-in instead of leaving its listener for 5 minutes.
+      if (signingInRef.current) {
+        void cancelSignIn().catch(() => undefined);
+      }
+    };
+  }, []);
 
   /** A folder that cannot be read or written (offline NAS, no permission) says so; the current folder stays. */
   const attempt = async (work: () => Promise<void>) => {
@@ -72,15 +84,25 @@ export function StorageSettings({ dir, errors, unsaved, onSwitch, drive }: Stora
   };
 
   /** Signing in waits for the browser; a cancel or a timeout says so here. */
-  const driveAction = async (work: () => Promise<void>, failed: string) => {
+  const driveAction = async (work: () => Promise<void>, failed: string, browserWait = false) => {
     setBusy(true);
     setFailure(undefined);
+
+    if (browserWait) {
+      signingInRef.current = true;
+      setSigningIn(true);
+    }
 
     try {
       await work();
     } catch (error) {
       setFailure(`${failed}: ${error instanceof Error ? error.message : String(error)}`);
     } finally {
+      if (browserWait) {
+        signingInRef.current = false;
+        setSigningIn(false);
+      }
+
       setBusy(false);
     }
   };
@@ -94,7 +116,7 @@ export function StorageSettings({ dir, errors, unsaved, onSwitch, drive }: Stora
   };
 
   return (
-    <fieldset className="settings-section storage-settings" disabled={!desktop || busy}>
+    <fieldset className="settings-section storage-settings" disabled={!desktop}>
       <legend>저장 위치</legend>
       {!desktop && <p className="settings-note">데스크톱 앱에서만 바꿀 수 있습니다. 브라우저에서는 이 브라우저에만 저장됩니다.</p>}
       <p className="storage-path">
@@ -104,11 +126,11 @@ export function StorageSettings({ dir, errors, unsaved, onSwitch, drive }: Stora
         다른 기기와 공유하려면 NAS 공유 폴더나 클라우드 동기화 폴더를 고르세요. 기기마다 같은 폴더를 지정하면 됩니다.
       </p>
       <div className="storage-actions">
-        <button type="button" className="text-button bordered" onClick={() => void pick()}>
+        <button type="button" className="text-button bordered" disabled={busy} onClick={() => void pick()}>
           <FolderOpen size={16} strokeWidth={2} /> 폴더 선택…
         </button>
         {dir !== undefined && (
-          <button type="button" className="text-button bordered" onClick={() => void choose(undefined)}>
+          <button type="button" className="text-button bordered" disabled={busy} onClick={() => void choose(undefined)}>
             <RotateCcw size={16} strokeWidth={2} /> 기본 폴더로
           </button>
         )}
@@ -123,16 +145,23 @@ export function StorageSettings({ dir, errors, unsaved, onSwitch, drive }: Stora
           </p>
           <div className="storage-actions">
             {drive.connected ? (
-              <button type="button" className="text-button bordered" onClick={() => void driveAction(drive.disconnect, "연결을 해제하지 못했습니다")}>
+              <button type="button" className="text-button bordered" disabled={busy} onClick={() => void driveAction(drive.disconnect, "연결을 해제하지 못했습니다")}>
                 <CloudOff size={16} strokeWidth={2} /> Google Drive 연결 해제
               </button>
             ) : (
-              <button type="button" className="text-button bordered" onClick={() => void driveAction(drive.connect, "Google Drive에 연결하지 못했습니다")}>
-                <Cloud size={16} strokeWidth={2} /> {busy ? "브라우저에서 로그인하세요…" : "Google로 로그인해 Drive 연결"}
-              </button>
+              <>
+                <button type="button" className="text-button bordered" disabled={busy} onClick={() => void driveAction(drive.connect, "Google Drive에 연결하지 못했습니다", true)}>
+                  <Cloud size={16} strokeWidth={2} /> {signingIn ? "브라우저에서 로그인하세요…" : "Google로 로그인해 Drive 연결"}
+                </button>
+                {signingIn && (
+                  <button type="button" className="text-button" onClick={() => void cancelSignIn().catch(() => undefined)}>
+                    취소
+                  </button>
+                )}
+              </>
             )}
           </div>
-          {drive.note !== undefined && (
+          {drive.connected && drive.note !== undefined && (
             <p className="window-error" role="status">
               {drive.note}
             </p>
@@ -145,13 +174,13 @@ export function StorageSettings({ dir, errors, unsaved, onSwitch, drive }: Stora
           <p>이 폴더에 이미 malplan 데이터가 있습니다. 어떻게 할까요?</p>
           {unsaved > 0 && <p>저장하지 못한 변경 {unsaved}건은 어느 쪽을 골라도 이 폴더에 저장됩니다.</p>}
           <div className="storage-actions">
-            <button type="button" className="text-button bordered" onClick={() => void confirm("merge")}>
+            <button type="button" className="text-button bordered" disabled={busy} onClick={() => void confirm("merge")}>
               합치기 (지금 데이터도 옮김)
             </button>
-            <button type="button" className="text-button bordered" onClick={() => void confirm("replace")}>
+            <button type="button" className="text-button bordered" disabled={busy} onClick={() => void confirm("replace")}>
               그 폴더 데이터만 사용
             </button>
-            <button type="button" className="text-button" onClick={() => setPending(undefined)}>
+            <button type="button" className="text-button" disabled={busy} onClick={() => setPending(undefined)}>
               취소
             </button>
           </div>

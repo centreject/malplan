@@ -1,9 +1,9 @@
 import { isTauri } from "@tauri-apps/api/core";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { ALL_TAB_ID } from "../domain/tabs";
-import { deviceId, loadSyncDir, openBackend, saveSyncDir } from "../storage/backends";
+import { deviceId, loadSyncDir, openBackend, resetDeviceId, saveSyncDir } from "../storage/backends";
 import { connectDrive, disconnectDrive, forgetDriveSync, savedDriveLink, type DriveLink } from "../storage/driveLink";
-import { GOOGLE_CLIENT } from "../storage/googleAuth";
+import { AuthExpiredError, GOOGLE_CLIENT } from "../storage/googleAuth";
 import { boardChanges, boardFromEntities, boardWrites, reuseUnchanged, type Board } from "../storage/board";
 import * as v from "valibot";
 import { loadStored, saveStored } from "../storage/localStore";
@@ -59,6 +59,8 @@ export function useBoard(seed: () => Board) {
   const backend = useRef<Backend>(undefined);
   const [drive, setDrive] = useState<DriveLink>();
   const driveRef = useRef<DriveLink>(undefined);
+  /** Pauses automatic Drive rounds once Google permanently rejects the token until the user reconnects. */
+  const driveAuthExpired = useRef(false);
   /** The last Drive round's failure, or undefined after a round that worked. */
   const [driveNote, setDriveNote] = useState<string>();
   /** Bumped by every edit: what the Drive push waits on. */
@@ -135,13 +137,26 @@ export function useBoard(seed: () => Board) {
       await flush(target);
 
       // Drive first, so the refresh reads what came down. Offline or signed out at Google: the folder still works.
-      if (driveRef.current !== undefined && backend.current !== undefined) {
+      const activeDrive = driveRef.current;
+
+      if (activeDrive !== undefined && backend.current !== undefined && !driveAuthExpired.current) {
         try {
-          await driveRef.current.round(backend.current);
-          setDriveNote(undefined);
+          await activeDrive.round(backend.current, () => driveRef.current === activeDrive);
+
+          if (driveRef.current === activeDrive) {
+            setDriveNote(undefined);
+          }
         } catch (error) {
-          report(`drive sync failed: ${errorText(error instanceof Error ? error : String(error))}`);
-          setDriveNote("Google Drive와 맞추지 못했습니다. 인터넷 연결을 확인하세요. 이 PC에는 그대로 저장됩니다.");
+          if (driveRef.current === activeDrive) {
+            report(`drive sync failed: ${errorText(error instanceof Error ? error : String(error))}`);
+
+            if (error instanceof AuthExpiredError) {
+              driveAuthExpired.current = true;
+              setDriveNote("Google 연결이 만료되었거나 해제되었습니다. 연결 해제 후 다시 로그인하세요. 이 PC에는 그대로 저장됩니다.");
+            } else {
+              setDriveNote("Google Drive와 맞추지 못했습니다. 인터넷 연결을 확인하세요. 이 PC에는 그대로 저장됩니다.");
+            }
+          }
         }
       }
 
@@ -288,14 +303,19 @@ export function useBoard(seed: () => Board) {
 
     const made = await connectDrive(GOOGLE_CLIENT, deviceId());
 
+    driveAuthExpired.current = false;
     driveRef.current = made;
     setDrive(made);
+    setDriveNote(undefined);
   }, []);
 
   const disconnect = useCallback(async () => {
     driveRef.current = undefined;
+    driveAuthExpired.current = false;
     setDrive(undefined);
     setDriveNote(undefined);
+    // Let any in-flight round finish before revoking the token and clearing SYNCED_KEY.
+    await queue.current;
     await disconnectDrive();
   }, []);
 
@@ -316,6 +336,17 @@ export function useBoard(seed: () => Board) {
 
       saveSyncDir(next);
       forgetDriveSync();
+
+      if (driveRef.current !== undefined && GOOGLE_CLIENT !== undefined) {
+        // Use a new log file name so an empty or replaced local folder never overwrites the old folder's Drive log.
+        const nextDevice = resetDeviceId();
+        const refreshed = await savedDriveLink(GOOGLE_CLIENT, nextDevice);
+
+        driveAuthExpired.current = false;
+        driveRef.current = refreshed;
+        setDrive(refreshed);
+      }
+
       setReady(false);
       store.current = undefined;
       backend.current = undefined;

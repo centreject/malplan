@@ -39,6 +39,7 @@ describe("DriveApi", () => {
 
     expect(files).toEqual([{ id: "1", name: "log-a.jsonl", md5: "m1" }, { id: "2", name: "snapshot.json", md5: "m2" }]);
     expect(seen[0]?.url).toContain("spaces=appDataFolder");
+    expect(seen[0]?.url).toContain("q=trashed+%3D+false");
     expect(seen[0]?.url).toContain("orderBy=createdTime");
     expect(seen[1]?.url).toContain("pageToken=p2");
     expect(seen[0]?.auth).toBe("Bearer tok");
@@ -68,5 +69,28 @@ describe("DriveApi", () => {
   test("an error status or a malformed answer throws instead of syncing garbage", async () => {
     await expect(new DriveApi(async () => "tok", fakeFetch([json({}, 401)]).fetcher).list()).rejects.toThrow("Drive HTTP 401");
     await expect(new DriveApi(async () => "tok", fakeFetch([json({ files: [{ id: 1 }] })]).fetcher).list()).rejects.toThrow();
+  });
+
+  test("invalidates the cached token and retries once on HTTP 401", async () => {
+    let token = "stale";
+    let invalidated = 0;
+
+    const { seen, fetcher } = fakeFetch([
+      json({}, 401),
+      json({ files: [{ id: "1", name: "log-a.jsonl", md5Checksum: "m1" }] }),
+    ]);
+
+    const api = new DriveApi(
+      async () => token,
+      fetcher,
+      () => {
+        invalidated += 1;
+        token = "fresh";
+      },
+    );
+
+    expect(await api.list()).toEqual([{ id: "1", name: "log-a.jsonl", md5: "m1" }]);
+    expect(invalidated).toBe(1);
+    expect(seen.map((req) => req.auth)).toEqual(["Bearer stale", "Bearer fresh"]);
   });
 });

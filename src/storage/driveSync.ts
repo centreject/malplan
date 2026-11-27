@@ -1,7 +1,7 @@
 // Google Drive as a transport: the local sync folder stays the store (the app and the MCP server read it), and this
 // copies its sync files to and from the Drive appDataFolder. Merging is the store's job, as for any synced folder.
 import * as v from "valibot";
-import { copyInto, isOwnSyncFile, logName, MemoryBackend, type Backend } from "./store";
+import { isOwnSyncFile, logName, mergeLogTexts, mergeSnapshots, type Backend } from "./store";
 
 /** A file in the Drive appDataFolder. `md5` changes whenever its content does. */
 export type RemoteFile = { id: string; name: string; md5: string };
@@ -58,13 +58,22 @@ export async function syncWithDrive(local: Backend, drive: DriveFiles, device: s
     const remoteChanged = file !== undefined && file.md5 !== last?.remote;
     const ours = name === logName(device) || name === "snapshot.json";
 
-    if (name === "snapshot.json" && localChanged && remoteChanged && file !== undefined) {
-      const theirs = new MemoryBackend();
+    if (name === "snapshot.json" && localChanged && remoteChanged && file !== undefined && text !== undefined) {
+      const merged = mergeSnapshots(text, await drive.download(file.id));
 
-      await theirs.write(name, await drive.download(file.id));
-      await copyInto(theirs, local);
+      await local.write(name, merged);
 
-      const merged = (await local.read(name)) ?? "";
+      const sent = await drive.update(file.id, merged);
+
+      next[name] = { local: await hash(merged), remote: sent.md5 };
+      pushed.push(name);
+    } else if (name === logName(device) && last === undefined && localChanged && file !== undefined && text !== undefined) {
+      // No prior sync watermark (folder switch, reconnect, cleared localStorage): merge with Drive's existing log
+      // for this device instead of overwriting uncompacted history with a fresh seed log.
+      const merged = mergeLogTexts(text, await drive.download(file.id));
+
+      await local.write(name, merged);
+
       const sent = await drive.update(file.id, merged);
 
       next[name] = { local: await hash(merged), remote: sent.md5 };

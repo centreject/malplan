@@ -90,6 +90,15 @@ export function deviceId(): string {
   }
 }
 
+/** Issues a fresh device id (used when switching folders while Drive is linked so a new folder's log never collides with the old one). */
+export function resetDeviceId(): string {
+  const id = crypto.randomUUID().slice(0, 8);
+
+  writeStored(DEVICE_KEY, id);
+
+  return id;
+}
+
 export async function defaultSyncDir(): Promise<string> {
   return invoke<string>("sync_default_dir");
 }

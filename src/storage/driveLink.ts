@@ -9,17 +9,20 @@ import type { Backend } from "./store";
 /** What each file held when this device and Drive last matched (see syncWithDrive). */
 const SYNCED_KEY = "malplan.driveSynced";
 
-export type DriveLink = { round: (local: Backend) => Promise<DriveSyncResult> };
+export type DriveLink = { round: (local: Backend, stillConnected?: () => boolean) => Promise<DriveSyncResult> };
 
 function link(client: GoogleClient, refresh: string, device: string): DriveLink {
   const session = new GoogleSession(client, refresh, tauriFetch, Date.now);
-  const api = new DriveApi(() => session.token(), tauriFetch);
+  const api = new DriveApi(() => session.token(), tauriFetch, () => session.invalidate());
 
   return {
-    round: async (local) => {
+    round: async (local, stillConnected = () => true) => {
       const result = await syncWithDrive(local, api, device, loadStored(SYNCED_KEY, SyncedSchema, {}));
 
-      saveStored(SYNCED_KEY, result.synced);
+      // Do not rewrite SYNCED_KEY if the user disconnected Drive while this round was in flight.
+      if (stillConnected()) {
+        saveStored(SYNCED_KEY, result.synced);
+      }
 
       return result;
     },
