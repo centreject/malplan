@@ -1,5 +1,6 @@
 import { describe, expect, test } from "vitest";
 import { syncWithDrive, type DriveFiles, type RemoteFile, type Synced } from "./driveSync";
+import { parseSnapshot } from "./schema";
 import { MemoryBackend, SyncStore } from "./store";
 
 /** Drive's appDataFolder in memory. A new md5 per content change, as Drive gives. */
@@ -203,5 +204,65 @@ describe("syncWithDrive", () => {
     await a.sync();
 
     expect(await a.folder.read("log-b.jsonl")).toBe("first\n");
+  });
+
+  test("diverged snapshots from two known devices keep the higher seen watermark per device", async () => {
+    const drive = new FakeDrive();
+    const a = device("a", drive);
+    const b = device("b", drive);
+
+    // Both devices start knowing each other via a shared snapshot.
+    const base = JSON.stringify({ version: 1, compactedAt: 1000, seen: { a: 1000, b: 1000 }, entities: [] });
+
+    await a.folder.write("snapshot.json", base);
+    await a.sync();
+    await b.sync();
+
+    // Both compact offline: A advances seen.a to 5000, B advances seen.b to 6000 and purges a deleted item's tombstone.
+    const snapA = JSON.stringify({
+      version: 1,
+      compactedAt: 5000,
+      seen: { a: 5000, b: 1000 },
+      entities: [{ ts: 5000, device: "a", entity: "item", id: "i1", field: "title", value: "치과" }],
+    });
+
+    const snapB = JSON.stringify({
+      version: 1,
+      compactedAt: 6000,
+      seen: { a: 1000, b: 6000 },
+      entities: [{ ts: 6000, device: "b", entity: "item", id: "i2", field: "title", value: "회의" }],
+    });
+
+    await a.folder.write("snapshot.json", snapA);
+    await b.folder.write("snapshot.json", snapB);
+    await b.sync();
+    await a.sync();
+
+    const merged = parseSnapshot((await a.folder.read("snapshot.json")) ?? "").snapshot;
+
+    expect(merged.seen).toEqual({ a: 5000, b: 6000 });
+    expect(merged.compactedAt).toBe(6000);
+    // An old creation line from B at ts=2000 (<= 6000) must stay skipped instead of resurrecting a purged item.
+    await a.folder.write("log-b.jsonl", `${JSON.stringify({ ts: 2000, device: "b", entity: "item", id: "purged", field: "title", value: "유령" })}\n`);
+    await a.store.load();
+    expect(title(a.store, "purged")).toBeUndefined();
+    expect([title(a.store, "i1"), title(a.store, "i2")]).toEqual(["치과", "회의"]);
+  });
+
+  test("first sync without a watermark merges with Drive's existing log for this device instead of overwriting it", async () => {
+    const drive = new FakeDrive();
+    const remoteLine = `${JSON.stringify({ ts: 5000, device: "a", entity: "item", id: "old1", field: "title", value: "기존 일정" })}\n`;
+    const localSeed = `${JSON.stringify({ ts: 1, device: "a", entity: "category", id: "work", field: "name", value: "회사" })}\n`;
+
+    await drive.create("log-a.jsonl", remoteLine);
+
+    const a = device("a", drive);
+
+    await a.folder.write("log-a.jsonl", localSeed);
+    await a.sync();
+    await a.store.load();
+
+    expect(title(a.store, "old1")).toBe("기존 일정");
+    expect(drive.content("log-a.jsonl")).toContain("기존 일정");
   });
 });

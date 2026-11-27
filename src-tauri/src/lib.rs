@@ -98,6 +98,7 @@ pub fn run() {
             model_download::model_download_cancel,
             oauth::oauth_listen,
             oauth::oauth_wait,
+            oauth::oauth_cancel,
             secrets::secret_get,
             secrets::secret_set,
             secrets::secret_delete,

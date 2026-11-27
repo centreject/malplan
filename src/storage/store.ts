@@ -336,6 +336,57 @@ export async function copyInto(from: Backend, to: Backend): Promise<void> {
   await to.write(SNAPSHOT, JSON.stringify(merged));
 }
 
+/**
+ * Two-way merge of diverged snapshots (e.g. two devices compacting offline before syncing through Drive).
+ * Preserves the higher `seen` watermark per device and the newer `compactedAt`, so entries already folded
+ * and tombstone-purged on either side never replay from old logs.
+ */
+export function mergeSnapshots(localText: string, remoteText: string): string {
+  const local = checked(parseSnapshot(localText));
+  const remote = checked(parseSnapshot(remoteText));
+  const seen = new Map<string, number>(Object.entries(local.seen));
+
+  for (const [device, ts] of Object.entries(remote.seen)) {
+    seen.set(device, Math.max(seen.get(device) ?? -Infinity, ts));
+  }
+
+  // Drop first-run defaults from the incoming side when local already holds entities, matching copyInto.
+  const incoming = local.entities.length > 0 ? remote.entities.filter(isReal) : remote.entities;
+  const folded = applyChanges(applyChanges(emptyState, local.entities), incoming);
+
+  const merged: Snapshot = {
+    version: 1,
+    compactedAt: Math.max(local.compactedAt, remote.compactedAt),
+    seen: Object.fromEntries(seen),
+    entities: [...folded.values()],
+  };
+
+  return JSON.stringify(merged);
+}
+
+/**
+ * Merges two JSONL logs for the same device when syncing without a prior watermark (e.g. reconnect or folder switch),
+ * keeping every valid change from both sides by timestamp so an existing remote log is never overwritten by a seed log.
+ */
+export function mergeLogTexts(localText: string, remoteText: string): string {
+  const remote = parseLog(remoteText).changes;
+  const local = parseLog(localText).changes;
+  const byTs = new Map<number, Change>();
+
+  // Remote first so real history wins over starter defaults at identical low timestamps.
+  for (const change of remote) {
+    byTs.set(change.ts, change);
+  }
+
+  for (const change of local) {
+    if (!byTs.has(change.ts)) {
+      byTs.set(change.ts, change);
+    }
+  }
+
+  return toLines([...byTs.values()].toSorted((a, b) => a.ts - b.ts));
+}
+
 function checked(parsed: ParsedSnapshot): Snapshot {
   if (parsed.error !== undefined) {
     throw new Error(`${SNAPSHOT} is corrupt; refusing to merge folders`);

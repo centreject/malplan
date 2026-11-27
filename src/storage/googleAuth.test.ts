@@ -1,5 +1,5 @@
 import { describe, expect, test } from "vitest";
-import { authorizationUrl, base64Url, DRIVE_SCOPE, exchangeCode, GoogleSession, pkcePair, readRedirect, type GoogleClient } from "./googleAuth";
+import { AuthExpiredError, authorizationUrl, base64Url, DRIVE_SCOPE, exchangeCode, GoogleSession, pkcePair, readRedirect, type GoogleClient } from "./googleAuth";
 
 const client: GoogleClient = { id: "id.apps.googleusercontent.com", secret: "public-secret" };
 
@@ -77,9 +77,18 @@ describe("google sign-in", () => {
     expect(forms[0]?.get("refresh_token")).toBe("r1");
   });
 
-  test("a refused refresh (revoked access) throws", async () => {
+  test("a refused refresh (revoked access) throws AuthExpiredError", async () => {
     const { fetcher } = tokenEndpoint([{ status: 400, body: {} }]);
 
-    await expect(new GoogleSession(client, "r1", fetcher, () => 0).token()).rejects.toThrow("Google token HTTP 400");
+    await expect(new GoogleSession(client, "r1", fetcher, () => 0).token()).rejects.toThrow(AuthExpiredError);
+  });
+
+  test("invalidate drops the cached access token so the next call refreshes immediately", async () => {
+    const { fetcher } = tokenEndpoint([{ body: { access_token: "a1", expires_in: 3600 } }, { body: { access_token: "a2", expires_in: 3600 } }]);
+    const session = new GoogleSession(client, "r1", fetcher, () => 0);
+
+    expect(await session.token()).toBe("a1");
+    session.invalidate();
+    expect(await session.token()).toBe("a2");
   });
 });

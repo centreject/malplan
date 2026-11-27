@@ -22,10 +22,12 @@ function remote(file: v.InferOutput<typeof FileSchema>): RemoteFile {
 export class DriveApi implements DriveFiles {
   readonly #token: TokenSource;
   readonly #fetch: typeof fetch;
+  readonly #onUnauthorized: (() => void) | undefined;
 
-  constructor(token: TokenSource, fetcher: typeof fetch) {
+  constructor(token: TokenSource, fetcher: typeof fetch, onUnauthorized?: () => void) {
     this.#token = token;
     this.#fetch = fetcher;
+    this.#onUnauthorized = onUnauthorized;
   }
 
   /** Oldest first, so every device picks the same one of two files with one name. */
@@ -34,7 +36,13 @@ export class DriveApi implements DriveFiles {
     let page: string | undefined;
 
     do {
-      const query = new URLSearchParams({ spaces: "appDataFolder", orderBy: "createdTime", pageSize: "1000", fields: `files(${FIELDS}),nextPageToken` });
+      const query = new URLSearchParams({
+        spaces: "appDataFolder",
+        q: "trashed = false",
+        orderBy: "createdTime",
+        pageSize: "1000",
+        fields: `files(${FIELDS}),nextPageToken`,
+      });
 
       if (page !== undefined) {
         query.set("pageToken", page);
@@ -89,11 +97,28 @@ export class DriveApi implements DriveFiles {
   }
 
   async #request(url: string, init: RequestInit): Promise<Response> {
-    const headers = new Headers(init.headers);
+    const send = async () => {
+      const headers = new Headers(init.headers);
 
-    headers.set("Authorization", `Bearer ${await this.#token()}`);
+      headers.set("Authorization", `Bearer ${await this.#token()}`);
 
-    const response = await this.#fetch(url, { ...init, headers, signal: AbortSignal.timeout(30_000) });
+      return this.#fetch(url, { ...init, headers, signal: AbortSignal.timeout(30_000) });
+    };
+
+    const response = await send();
+
+    // Cached access token rejected early: invalidate and retry once with a refreshed token.
+    if (response.status === 401 && this.#onUnauthorized !== undefined) {
+      this.#onUnauthorized();
+
+      const retried = await send();
+
+      if (!retried.ok) {
+        throw new Error(`Drive HTTP ${retried.status}`);
+      }
+
+      return retried;
+    }
 
     if (!response.ok) {
       throw new Error(`Drive HTTP ${response.status}`);
